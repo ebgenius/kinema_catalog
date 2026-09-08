@@ -1,0 +1,3 @@
+[submodule "src/franka_description"]
+	path = src/franka_description
+	url = git@github.com:ebgenius/franka_description.git
