@@ -29,7 +29,11 @@ needs on demand, so a fresh checkout needs no setup beyond Docker.
 ./kinema_catalog.sh go2 -v gz        # Unitree Go2 in Gazebo
 ./kinema_catalog.sh fr3 -d humble    # fall back to an older ROS 2 distro
 ./kinema_catalog.sh spot --export    # also write out/spot.urdf (flattened)
+./kinema_catalog.sh --check          # flatten every robot, report what breaks
 ```
+
+`--check` is the one to run after editing a description or swapping meshes: it
+processes every robot in the manifest and tells you which ones stopped resolving.
 
 On Windows use the PowerShell wrapper, which forwards into WSL (where WSLg
 supplies the display):
