@@ -1,0 +1,72 @@
+# kinema_catalog robot manifest
+#
+# One row per launchable robot. Tab-separated. Lines starting with # are ignored.
+#
+# id         short name passed on the command line
+# family     arm | mobile | legged
+# submodule  directory under src/ (also the submodule that gets cloned on demand)
+# type       xacro | urdf
+# path       entry point, relative to the repo root
+# args       xacro args as k:=v, space separated, or - for none
+# mesh_base  for URDFs with relative mesh paths: dir (relative to repo root) they resolve
+#            against; rewritten to file:// at launch time. - if meshes use package://
+# label      human readable name
+#
+# id	family	submodule	type	path	args	mesh_base	label
+
+# ---------------------------------------------------------------- arms
+fr3	arm	franka_description	xacro	src/franka_description/robots/fr3/fr3.urdf.xacro	-	-	Franka FR3
+fp3	arm	franka_description	xacro	src/franka_description/robots/fp3/fp3.urdf.xacro	-	-	Franka Production 3
+fer	arm	franka_description	xacro	src/franka_description/robots/fer/fer.urdf.xacro	-	-	Franka Emika Robot (Panda)
+ur3	arm	Universal_Robots_ROS2_Description	xacro	src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro	ur_type:=ur3 name:=ur3	-	Universal Robots UR3
+ur3e	arm	Universal_Robots_ROS2_Description	xacro	src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro	ur_type:=ur3e name:=ur3e	-	Universal Robots UR3e
+ur5	arm	Universal_Robots_ROS2_Description	xacro	src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro	ur_type:=ur5 name:=ur5	-	Universal Robots UR5
+ur5e	arm	Universal_Robots_ROS2_Description	xacro	src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro	ur_type:=ur5e name:=ur5e	-	Universal Robots UR5e
+ur10	arm	Universal_Robots_ROS2_Description	xacro	src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro	ur_type:=ur10 name:=ur10	-	Universal Robots UR10
+ur10e	arm	Universal_Robots_ROS2_Description	xacro	src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro	ur_type:=ur10e name:=ur10e	-	Universal Robots UR10e
+ur16e	arm	Universal_Robots_ROS2_Description	xacro	src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro	ur_type:=ur16e name:=ur16e	-	Universal Robots UR16e
+ur20	arm	Universal_Robots_ROS2_Description	xacro	src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro	ur_type:=ur20 name:=ur20	-	Universal Robots UR20
+ur30	arm	Universal_Robots_ROS2_Description	xacro	src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro	ur_type:=ur30 name:=ur30	-	Universal Robots UR30
+xarm5	arm	xarm_ros2	xacro	src/xarm_ros2/xarm_description/urdf/xarm_device.urdf.xacro	dof:=5 robot_type:=xarm	-	UFACTORY xArm 5
+xarm6	arm	xarm_ros2	xacro	src/xarm_ros2/xarm_description/urdf/xarm_device.urdf.xacro	dof:=6 robot_type:=xarm	-	UFACTORY xArm 6
+xarm7	arm	xarm_ros2	xacro	src/xarm_ros2/xarm_description/urdf/xarm_device.urdf.xacro	dof:=7 robot_type:=xarm	-	UFACTORY xArm 7
+lite6	arm	xarm_ros2	xacro	src/xarm_ros2/xarm_description/urdf/xarm_device.urdf.xacro	dof:=6 robot_type:=lite	-	UFACTORY Lite 6
+uf850	arm	xarm_ros2	xacro	src/xarm_ros2/xarm_description/urdf/xarm_device.urdf.xacro	dof:=6 robot_type:=uf850	-	UFACTORY UF850
+gen3	arm	ros2_kortex	xacro	src/ros2_kortex/kortex_description/robots/gen3.xacro	arm:=gen3 dof:=7	-	Kinova Gen3 (7-DoF)
+gen3_lite	arm	ros2_kortex	xacro	src/ros2_kortex/kortex_description/robots/gen3_lite_gen3_lite_2f.xacro	-	-	Kinova Gen3 lite
+irb1200	arm	abb_ros2	xacro	src/abb_ros2/robot_specific_config/abb_irb1200_support/urdf/irb1200_5_90.xacro	-	-	ABB IRB 1200-5/0.9
+irb4600	arm	abb_ros2	xacro	src/abb_ros2/robot_specific_config/abb_irb4600_support/urdf/irb4600_40_255.xacro	-	-	ABB IRB 4600-40/2.55
+px100	arm	interbotix_ros_manipulators	xacro	src/interbotix_ros_manipulators/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/px100.urdf.xacro	-	-	Interbotix PincherX 100
+wx250s	arm	interbotix_ros_manipulators	xacro	src/interbotix_ros_manipulators/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/wx250s.urdf.xacro	-	-	Interbotix WidowX 250 S
+vx300s	arm	interbotix_ros_manipulators	xacro	src/interbotix_ros_manipulators/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro	-	-	Interbotix ViperX 300 S
+omx	arm	open_manipulator	xacro	src/open_manipulator/open_manipulator_description/urdf/open_manipulator_x/open_manipulator_x.urdf.xacro	-	-	ROBOTIS OpenMANIPULATOR-X
+omy_3m	arm	open_manipulator	xacro	src/open_manipulator/open_manipulator_description/urdf/omy_3m/omy_3m.urdf.xacro	-	-	ROBOTIS OpenMANIPULATOR-Y 3M
+so100	arm	SO-ARM100	urdf	src/SO-ARM100/Simulation/SO100/so100.urdf	-	src/SO-ARM100/Simulation/SO100	Standard Open Arm SO-100
+so101	arm	SO-ARM100	urdf	src/SO-ARM100/Simulation/SO101/so101_new_calib.urdf	-	src/SO-ARM100/Simulation/SO101	Standard Open Arm SO-101
+panda	arm	moveit_resources	xacro	src/moveit_resources/panda_description/urdf/panda.urdf.xacro	-	-	Panda (MoveIt resources)
+
+# -------------------------------------------------------------- mobile
+tb3_burger	mobile	turtlebot3	urdf	src/turtlebot3/turtlebot3_description/urdf/turtlebot3_burger.urdf	-	-	TurtleBot3 Burger
+tb3_waffle	mobile	turtlebot3	urdf	src/turtlebot3/turtlebot3_description/urdf/turtlebot3_waffle.urdf	-	-	TurtleBot3 Waffle
+tb3_waffle_pi	mobile	turtlebot3	urdf	src/turtlebot3/turtlebot3_description/urdf/turtlebot3_waffle_pi.urdf	-	-	TurtleBot3 Waffle Pi
+husky	mobile	husky	xacro	src/husky/husky_description/urdf/husky.urdf.xacro	-	-	Clearpath Husky
+jackal	mobile	jackal	xacro	src/jackal/jackal_description/urdf/jackal.urdf.xacro	-	-	Clearpath Jackal
+lino_2wd	mobile	linorobot2	xacro	src/linorobot2/linorobot2_description/urdf/robots/2wd.urdf.xacro	-	-	Linorobot2 2WD
+lino_4wd	mobile	linorobot2	xacro	src/linorobot2/linorobot2_description/urdf/robots/4wd.urdf.xacro	-	-	Linorobot2 4WD
+lino_mecanum	mobile	linorobot2	xacro	src/linorobot2/linorobot2_description/urdf/robots/mecanum.urdf.xacro	-	-	Linorobot2 Mecanum
+
+# -------------------------------------------------------------- legged
+go1	legged	unitree_ros	xacro	src/unitree_ros/robots/go1_description/xacro/robot.xacro	-	-	Unitree Go1
+go2	legged	unitree_ros	xacro	src/unitree_ros/robots/go2_description/xacro/robot.xacro	-	-	Unitree Go2
+a1	legged	unitree_ros	xacro	src/unitree_ros/robots/a1_description/xacro/robot.xacro	-	-	Unitree A1
+aliengo	legged	unitree_ros	xacro	src/unitree_ros/robots/aliengo_description/xacro/robot.xacro	-	-	Unitree Aliengo
+b1	legged	unitree_ros	xacro	src/unitree_ros/robots/b1_description/xacro/robot.xacro	-	-	Unitree B1
+b2	legged	unitree_ros	xacro	src/unitree_ros/robots/b2_description/xacro/robot.xacro	-	-	Unitree B2
+b2w	legged	unitree_ros	xacro	src/unitree_ros/robots/b2w_description/xacro/robot.xacro	-	-	Unitree B2-W
+laikago	legged	unitree_ros	xacro	src/unitree_ros/robots/laikago_description/xacro/robot.xacro	-	-	Unitree Laikago
+z1	legged	unitree_ros	xacro	src/unitree_ros/robots/z1_description/xacro/robot.xacro	-	-	Unitree Z1 arm
+aliengo_z1	legged	unitree_ros	xacro	src/unitree_ros/robots/aliengoZ1_description/xacro/robot.xacro	-	-	Unitree Aliengo + Z1
+anymal_b	legged	anymal_b_simple_description	urdf	src/anymal_b_simple_description/urdf/anymal.urdf	-	-	ANYbotics ANYmal B
+anymal_c	legged	anymal_c_simple_description	urdf	src/anymal_c_simple_description/urdf/anymal.urdf	-	-	ANYbotics ANYmal C
+spot	legged	spot_description	xacro	src/spot_description/spot_description/urdf/spot.urdf.xacro	-	-	Boston Dynamics Spot
+spot_arm	legged	spot_description	xacro	src/spot_description/spot_description/urdf/spot.urdf.xacro	arm:=true	-	Boston Dynamics Spot + arm

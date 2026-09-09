@@ -1,4 +1,0 @@
-# Local dev-only plumbing for launching rviz/gazebo containers (Windows + Linux)
-# to sanity-check descriptions before/after changes. Not tracked yet.
-*
-!.gitignore

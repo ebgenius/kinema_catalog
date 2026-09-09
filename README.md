@@ -16,6 +16,36 @@ Each entry under `src/` is a fork owned by [@ebgenius](https://github.com/ebgeni
 as a git submodule pinned to a commit, so upstream history stays intact and changes can be
 proposed back upstream.
 
+## Quick look at any robot
+
+`kinema_catalog` lists every robot in the catalog and opens the one you pick in
+RViz or Gazebo, inside a throwaway Docker container. It clones the submodule it
+needs on demand, so a fresh checkout needs no setup beyond Docker.
+
+```sh
+./kinema_catalog.sh                  # interactive picker
+./kinema_catalog.sh --list           # every robot, grouped by family
+./kinema_catalog.sh ur5e             # UR5e in RViz
+./kinema_catalog.sh go2 -v gz        # Unitree Go2 in Gazebo
+./kinema_catalog.sh fr3 -d humble    # fall back to an older ROS 2 distro
+./kinema_catalog.sh spot --export    # also write out/spot.urdf (flattened)
+```
+
+On Windows use the PowerShell wrapper, which forwards into WSL (where WSLg
+supplies the display):
+
+```powershell
+.\kinema_catalog.ps1 ur5e
+.\kinema_catalog.ps1 go2 -v gz
+```
+
+Defaults to **ROS 2 Lyrical Luth + Gazebo Jetty**; `-d kilted|jazzy|humble|rolling`
+picks an older pairing when a description hasn't caught up. Details and the robot
+manifest live in [`docker/`](docker/).
+
+**Requirements:** Docker (on Windows: Docker Desktop with WSL integration enabled
+for your Ubuntu distro). Nothing else — no local ROS install.
+
 ## Catalog
 
 ### Arms / manipulators
@@ -55,9 +85,11 @@ proposed back upstream.
 
 ## Layout
 
+- `kinema_catalog.sh` / `.ps1` — the launcher described above.
 - `src/` — one submodule per robot description fork.
-- `docker/` — local, untracked plumbing for launching Docker containers (Windows/Linux) to
-  quickly check descriptions in RViz/Gazebo before and after changes. Gitignored for now.
+- `docker/` — viewer image, container orchestrator, and the robot manifest
+  (`robots.tsv`). See [`docker/README.md`](docker/README.md).
+- `out/` — flattened URDFs written by `--export` (gitignored).
 
 ## Working with the submodules
 

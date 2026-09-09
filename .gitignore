@@ -17,3 +17,6 @@ venv/
 build/
 install/
 log/
+
+# URDFs flattened by ./kinema_catalog.sh --export
+out/

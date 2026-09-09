@@ -1,0 +1,19 @@
+# Shell scripts must keep LF endings or bash/WSL refuses to run them.
+*.sh            text eol=lf
+docker/*.tsv    text eol=lf
+Dockerfile      text eol=lf
+
+# PowerShell is happiest with CRLF on Windows.
+*.ps1           text eol=crlf
+
+# Meshes and other binaries must never be line-ending converted.
+*.dae           binary
+*.stl           binary
+*.obj           binary
+*.glb           binary
+*.gltf          binary
+*.fbx           binary
+*.usd           binary
+*.usdz          binary
+*.png           binary
+*.jpg           binary
