@@ -18,8 +18,11 @@ bold() { printf '\033[1m%s\033[0m\n' "$*" >&2; }
 info() { printf '\033[36m==>\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 
+# ROS's setup files reference unset variables, so -u has to come off around them.
+set +u
 # shellcheck disable=SC1090
 source "/opt/ros/$ROS_DISTRO/setup.bash"
+set -u
 
 # ---------------------------------------------------------------------------
 # Make every description package under src/ resolvable as a ROS package without
@@ -99,7 +102,8 @@ generate_urdf() {
   # absolute file:// URIs. The [^":] class deliberately skips package:// etc.
   if [ "$R_MESH" != "-" ]; then
     info "rewriting relative mesh paths against $R_MESH"
-    sed -i "s|filename=\"\\([^\":]*\\)\"|filename=\"file://$CATALOG/$R_MESH/\\1\"|g" "$out"
+    # restricted to <mesh> lines so plugin filenames ("libfoo.so") are never touched
+    sed -i "/<mesh/ s|filename=\"\\([^\":]*\\)\"|filename=\"file://$CATALOG/$R_MESH/\\1\"|g" "$out"
   fi
 
   ROOT_LINK=$(root_link "$out")
@@ -111,6 +115,39 @@ generate_urdf() {
     info "exported out/$KINEMA_ROBOT.urdf"
   fi
   echo "$out"
+}
+
+# Flatten every robot in the manifest and report what breaks. One index build for
+# the whole run, so this is cheap enough to use as a CI check on the manifest.
+check_all() {
+  local id family sub type path args mesh label pass=0 fail=0
+  local -a failed=()
+  while IFS=$'\t' read -r id family sub type path args mesh label; do
+    case "$id" in ''|\#*) continue ;; esac
+    if [ ! -e "$CATALOG/src/$sub/.git" ] && [ -z "$(ls -A "$CATALOG/src/$sub" 2>/dev/null)" ]; then
+      printf '  %-14s \033[2mSKIP  submodule not cloned\033[0m\n' "$id"
+      continue
+    fi
+    R_FAMILY=$family; R_SUB=$sub; R_TYPE=$type; R_PATH=$path
+    R_ARGS=$args; R_MESH=$mesh; R_LABEL=$label
+    KINEMA_ROBOT=$id
+    if ( generate_urdf >/dev/null 2>&1 ); then
+      printf '  %-14s \033[32mok\033[0m    %s\n' "$id" "$R_LABEL"
+      pass=$((pass + 1))
+    else
+      printf '  %-14s \033[31mFAIL\033[0m  %s\n' "$id" "$R_LABEL"
+      failed+=("$id")
+      fail=$((fail + 1))
+    fi
+  done < "$MANIFEST"
+
+  printf '\n%d ok, %d failed\n' "$pass" "$fail"
+  if [ "$fail" -gt 0 ]; then
+    printf 'failed: %s\n' "${failed[*]}"
+    printf 'rerun one for the error:  ./kinema_catalog.sh %s --viewer none\n' "${failed[0]}"
+    return 1
+  fi
+  return 0
 }
 
 PIDS=()
@@ -177,6 +214,15 @@ main() {
   fi
 
   [ -n "${KINEMA_ROBOT:-}" ] || die "KINEMA_ROBOT is not set"
+
+  # manifest-wide check: flatten everything, report failures
+  if [ "$KINEMA_ROBOT" = all ]; then
+    bold "checking every robot in the manifest — ROS 2 $ROS_DISTRO"
+    build_index
+    check_all
+    return $?
+  fi
+
   lookup "$KINEMA_ROBOT" || die "unknown robot '$KINEMA_ROBOT' (see ./kinema_catalog.sh --list)"
 
   bold "$R_LABEL  [$R_FAMILY]  ROS 2 $ROS_DISTRO"

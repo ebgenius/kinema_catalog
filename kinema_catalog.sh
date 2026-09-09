@@ -53,6 +53,7 @@ ${B}options${N}
   -d, --distro <distro>    ROS 2 distro                    (default: $DEFAULT_DISTRO)
                            lyrical | kilted | jazzy | humble | rolling
   -l, --list               list all robots and exit
+      --check              flatten every cloned robot and report failures
       --export             also write the flattened URDF to out/<robot>.urdf
       --build              rebuild the docker image before running
       --no-cache           rebuild from scratch (implies --build)
@@ -218,13 +219,14 @@ display_args() {
 ROBOT=""; VIEWER=""; DISTRO="$DEFAULT_DISTRO"
 FORCE_BUILD=0; NO_CACHE=0; DO_SHELL=0; DO_EXPORT=0; USE_GPU=0; SOFTWARE_GL=0
 XHOST_GRANTED=0
-DO_LIST=0
+DO_LIST=0; DO_CHECK=0
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -v|--viewer)   VIEWER="${2:-}"; shift 2 ;;
     -d|--distro)   DISTRO="${2:-}"; shift 2 ;;
     -l|--list)     DO_LIST=1; shift ;;
+    --check)       DO_CHECK=1; shift ;;
     --export)      DO_EXPORT=1; shift ;;
     --build)       FORCE_BUILD=1; shift ;;
     --no-cache)    NO_CACHE=1; FORCE_BUILD=1; shift ;;
@@ -251,6 +253,14 @@ if [ "$DO_LIST" = 1 ]; then list_robots; exit 0; fi
 
 # --------------------------------------------------------------------------- run
 IMAGE="$IMAGE_PREFIX:$DISTRO"
+
+if [ "$DO_CHECK" = 1 ]; then
+  require_docker
+  ensure_image "$IMAGE"
+  info "checking the manifest against ROS 2 $DISTRO"
+  exec docker run --rm -t \
+    -v "$REPO_ROOT:/catalog" -e "KINEMA_ROBOT=all" -e "KINEMA_VIEWER=none" "$IMAGE"
+fi
 
 if [ "$DO_SHELL" = 1 ]; then
   require_docker
