@@ -1,3 +1,80 @@
 [submodule "src/franka_description"]
 	path = src/franka_description
 	url = git@github.com:ebgenius/franka_description.git
+	branch = main
+[submodule "src/turtlebot3"]
+	path = src/turtlebot3
+	url = git@github.com:ebgenius/turtlebot3.git
+	branch = main
+[submodule "src/unitree_ros"]
+	path = src/unitree_ros
+	url = git@github.com:ebgenius/unitree_ros.git
+	branch = master
+[submodule "src/linorobot2"]
+	path = src/linorobot2
+	url = git@github.com:ebgenius/linorobot2.git
+	branch = jazzy
+[submodule "src/open_manipulator"]
+	path = src/open_manipulator
+	url = git@github.com:ebgenius/open_manipulator.git
+	branch = main
+[submodule "src/husky"]
+	path = src/husky
+	url = git@github.com:ebgenius/husky.git
+	branch = humble-devel
+[submodule "src/Universal_Robots_ROS2_Description"]
+	path = src/Universal_Robots_ROS2_Description
+	url = git@github.com:ebgenius/Universal_Robots_ROS2_Description.git
+	branch = rolling
+[submodule "src/xarm_ros2"]
+	path = src/xarm_ros2
+	url = git@github.com:ebgenius/xarm_ros2.git
+	branch = humble
+[submodule "src/moveit_resources"]
+	path = src/moveit_resources
+	url = git@github.com:ebgenius/moveit_resources.git
+	branch = ros2
+[submodule "src/anymal_c_simple_description"]
+	path = src/anymal_c_simple_description
+	url = git@github.com:ebgenius/anymal_c_simple_description.git
+	branch = master
+[submodule "src/spot_description"]
+	path = src/spot_description
+	url = git@github.com:ebgenius/spot_description.git
+	branch = main
+[submodule "src/SO-ARM100"]
+	path = src/SO-ARM100
+	url = git@github.com:ebgenius/SO-ARM100.git
+	branch = main
+[submodule "src/lbr_fri_ros2_stack"]
+	path = src/lbr_fri_ros2_stack
+	url = git@github.com:ebgenius/lbr_fri_ros2_stack.git
+	branch = jazzy
+[submodule "src/jackal"]
+	path = src/jackal
+	url = git@github.com:ebgenius/jackal.git
+	branch = foxy-devel
+[submodule "src/interbotix_ros_manipulators"]
+	path = src/interbotix_ros_manipulators
+	url = git@github.com:ebgenius/interbotix_ros_manipulators.git
+	branch = main
+[submodule "src/abb_ros2"]
+	path = src/abb_ros2
+	url = git@github.com:ebgenius/abb_ros2.git
+	branch = rolling
+[submodule "src/turtlebot4"]
+	path = src/turtlebot4
+	url = git@github.com:ebgenius/turtlebot4.git
+	branch = jazzy
+[submodule "src/ros2_kortex"]
+	path = src/ros2_kortex
+	url = git@github.com:ebgenius/ros2_kortex.git
+	branch = main
+[submodule "src/anymal_b_simple_description"]
+	path = src/anymal_b_simple_description
+	url = git@github.com:ebgenius/anymal_b_simple_description.git
+	branch = master
+[submodule "src/clearpath_common"]
+	path = src/clearpath_common
+	url = git@github.com:ebgenius/clearpath_common.git
+	branch = jazzy
