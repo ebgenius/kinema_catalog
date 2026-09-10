@@ -17,18 +17,34 @@
 
   Use -WslDistro to target a specific distro when you have more than one.
 
-.PARAMETER WslDistro
-  WSL distro to run in. Defaults to the WSL default distro (excluding the
-  docker-desktop helper distros, which cannot show a GUI).
+  To target a specific distro when you have more than one, pass -WslDistro <name>.
+
+.NOTES
+  This script deliberately declares no param() block and reads $args directly.
+  A typed parameter would bind the first positional argument ('spot') as the
+  distro name, and [CmdletBinding()] would swallow '-v' as an alias of -Verbose,
+  mangling '-v gz'. Reading $args keeps every argument verbatim for the Linux
+  launcher, which is the only thing that should be parsing them.
 #>
-[CmdletBinding()]
-param(
-    [string]$WslDistro,
-    [Parameter(ValueFromRemainingArguments = $true)]
-    [string[]]$Args
-)
 
 $ErrorActionPreference = 'Stop'
+
+# Pull out our own -WslDistro; everything else is forwarded untouched.
+$WslDistro = $null
+$forwardArgs = @()
+for ($i = 0; $i -lt $args.Count; $i++) {
+    if ($args[$i] -in @('-WslDistro', '--wsl-distro')) {
+        if ($i + 1 -ge $args.Count) {
+            Write-Host "error: $($args[$i]) needs a distro name" -ForegroundColor Red
+            exit 1
+        }
+        $WslDistro = $args[$i + 1]
+        $i++
+    }
+    else {
+        $forwardArgs += $args[$i]
+    }
+}
 
 function Write-Info { param([string]$m) Write-Host "==> $m" -ForegroundColor Cyan }
 function Write-Warn { param([string]$m) Write-Host "warning: $m" -ForegroundColor Yellow }
@@ -98,7 +114,7 @@ if ($LASTEXITCODE -ne 0) {
 
 # ------------------------------------------------------------------------- launch
 # Quote each argument for bash so things like 'ur_type:=ur5e' survive intact.
-$forwarded = ($Args | ForEach-Object { "'" + ($_ -replace "'", "'\''") + "'" }) -join ' '
+$forwarded = ($forwardArgs | ForEach-Object { "'" + ($_ -replace "'", "'\''") + "'" }) -join ' '
 $command = "cd '$wslPath' && bash ./kinema_catalog.sh $forwarded"
 
 & wsl.exe -d $WslDistro -e bash -lc $command
