@@ -16,6 +16,10 @@ DEFAULT_DISTRO=lyrical           # latest ROS 2 LTS (May 2026, Ubuntu 26.04)
 DEFAULT_VIEWER=rviz
 IMAGE_PREFIX=kinema-catalog
 
+# The container-side orchestrator is run from the mounted repo, never from a copy
+# baked into the image, so editing it takes effect without rebuilding.
+ORCHESTRATOR=/catalog/docker/entrypoint.sh
+
 # Gazebo release paired with each ROS 2 distro (gazebosim.org/docs/latest/ros_installation)
 gazebo_for() {
   case "$1" in
@@ -40,6 +44,43 @@ fi
 info() { printf '%s==>%s %s\n' "$C" "$N" "$*"; }
 warn() { printf '%swarning:%s %s\n' "$Y" "$N" "$*" >&2; }
 die()  { printf '%serror:%s %s\n' "$R" "$N" "$*" >&2; exit 1; }
+
+# --------------------------------------------------------------- git bash handoff
+# Under Git Bash/MSYS this script cannot work directly: MSYS rewrites arguments
+# that look like absolute paths, so the container path /catalog/docker/entrypoint.sh
+# arrives as C:/Program Files/Git/catalog/..., and there is no X socket to draw on
+# anyway. WSL has both, so re-run there — the same hand-off kinema_catalog.ps1 does.
+case "$(uname -s 2>/dev/null)" in
+  MINGW*|MSYS*|CYGWIN*)
+    command -v wsl.exe >/dev/null 2>&1 \
+      || die "running under Git Bash, which cannot host the GUI, and WSL was not found. Install it with:  wsl --install -d Ubuntu"
+
+    # Docker Desktop's helper distros ship no GUI stack, so never pick them.
+    # Both probes read from /dev/null: they inherit our stdin otherwise, and a
+    # wsl.exe probe will swallow piped input meant for the real run below.
+    msys_distro=$(wsl.exe -l -q 2>/dev/null </dev/null | tr -d '\r\0' \
+      | sed '/^[[:space:]]*$/d;/^docker-desktop/d' | head -1)
+    [ -n "$msys_distro" ] \
+      || die "no usable WSL distro found (Docker Desktop's own distros cannot show a GUI). Install one with:  wsl --install -d Ubuntu"
+
+    # MSYS would mangle the /mnt/... paths inside the command string too.
+    export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
+
+    msys_repo=$(wsl.exe -d "$msys_distro" -e wslpath -a "$(cygpath -w "$REPO_ROOT" 2>/dev/null || printf '%s' "$REPO_ROOT")" 2>/dev/null </dev/null | tr -d '\r\0')
+    if [ -z "$msys_repo" ]; then
+      # fall back on the /c/... -> /mnt/c/... shape Git Bash uses
+      msys_repo=$(printf '%s' "$REPO_ROOT" | sed -E 's|^/([a-zA-Z])/|/mnt/\l\1/|')
+    fi
+
+    info "Git Bash detected — re-running inside WSL ($msys_distro)"
+    # The directory and the arguments are passed as positional parameters rather
+    # than pasted into the command string, so a checkout path or argument holding
+    # a quote cannot break out of it. $0 is "bash", $1 the repo, the rest the args.
+    exec wsl.exe -d "$msys_distro" -e bash -lc \
+      'cd -- "$1" && shift && exec "$@"' \
+      bash "$msys_repo" ./kinema_catalog.sh "$@"
+    ;;
+esac
 
 usage() {
   cat <<EOF
@@ -201,6 +242,11 @@ display_args() {
          -e "PULSE_SERVER=${PULSE_SERVER:-/mnt/wslg/PulseServer}"
          -v /tmp/.X11-unix:/tmp/.X11-unix
          -v /mnt/wslg:/mnt/wslg)
+    # WAYLAND_DISPLAY (needed for WSLg audio/clipboard) makes Qt pick its wayland
+    # plugin, while RViz's Ogre renderer creates a GLX/X11 window — the mismatch
+    # aborts with "Invalid parentWindowHandle (wrong server or screen)". Pinning
+    # Qt to xcb keeps both on X11/Xwayland.
+    out+=(-e QT_QPA_PLATFORM=xcb)
   else
     [ -n "${DISPLAY:-}" ] || die "DISPLAY is not set — no X server to draw on"
     if command -v xhost >/dev/null 2>&1; then
@@ -258,8 +304,11 @@ if [ "$DO_CHECK" = 1 ]; then
   require_docker
   ensure_image "$IMAGE"
   info "checking the manifest against ROS 2 $DISTRO"
-  exec docker run --rm -t \
-    -v "$REPO_ROOT:/catalog" -e "KINEMA_ROBOT=all" -e "KINEMA_VIEWER=none" "$IMAGE"
+  check_tty=()
+  if [ -t 1 ]; then check_tty=(-t); fi
+  exec docker run --rm "${check_tty[@]}" \
+    -v "$REPO_ROOT:/catalog" -e "KINEMA_ROBOT=all" -e "KINEMA_VIEWER=none" \
+    --entrypoint bash "$IMAGE" "$ORCHESTRATOR"
 fi
 
 if [ "$DO_SHELL" = 1 ]; then
@@ -267,7 +316,12 @@ if [ "$DO_SHELL" = 1 ]; then
   ensure_image "$IMAGE"
   declare -a DISP; display_args DISP
   info "ROS 2 $DISTRO shell — the catalog is mounted at /catalog"
-  exec docker run --rm -it "${DISP[@]}" -v "$REPO_ROOT:/catalog" "$IMAGE" bash
+  # -i always, so a piped-in command still reaches bash; -t only for a real
+  # terminal, since docker refuses to start with -t when stdin is not one.
+  shell_tty=(-i)
+  if [ -t 0 ]; then shell_tty=(-it); fi
+  exec docker run --rm "${shell_tty[@]}" "${DISP[@]}" -v "$REPO_ROOT:/catalog" \
+    --entrypoint bash "$IMAGE" "$ORCHESTRATOR" bash
 fi
 
 [ -n "$ROBOT" ] || ROBOT=$(pick_robot)
@@ -288,10 +342,15 @@ declare -a DISP; display_args DISP
 cleanup() { [ "$XHOST_GRANTED" = 1 ] && xhost -local:root >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
-docker run --rm -it \
+# -t only when stdin really is a terminal, so piping or CI does not fail with
+# "cannot attach stdin to a TTY-enabled container"
+TTY_ARGS=()
+if [ -t 0 ]; then TTY_ARGS=(-it); fi
+
+docker run --rm "${TTY_ARGS[@]}" \
   "${DISP[@]}" \
   -v "$REPO_ROOT:/catalog" \
   -e "KINEMA_ROBOT=$ROBOT" \
   -e "KINEMA_VIEWER=$VIEWER" \
   -e "KINEMA_EXPORT=$DO_EXPORT" \
-  "$IMAGE"
+  --entrypoint bash "$IMAGE" "$ORCHESTRATOR"

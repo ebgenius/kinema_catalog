@@ -114,13 +114,16 @@ generate_urdf() {
     cp "$out" "$CATALOG/out/$KINEMA_ROBOT.urdf"
     info "exported out/$KINEMA_ROBOT.urdf"
   fi
-  echo "$out"
+
+  # Results go into globals rather than stdout on purpose: reading this through
+  # $(generate_urdf) would run it in a subshell, and ROOT_LINK would not survive.
+  GEN_URDF="$out"
 }
 
 # Flatten every robot in the manifest and report what breaks. One index build for
 # the whole run, so this is cheap enough to use as a CI check on the manifest.
 check_all() {
-  local id family sub type path args mesh label pass=0 fail=0
+  local id family sub type path args mesh label pass=0 fail=0 first_ok=""
   local -a failed=()
   while IFS=$'\t' read -r id family sub type path args mesh label; do
     case "$id" in ''|\#*) continue ;; esac
@@ -134,12 +137,24 @@ check_all() {
     if ( generate_urdf >/dev/null 2>&1 ); then
       printf '  %-14s \033[32mok\033[0m    %s\n' "$id" "$R_LABEL"
       pass=$((pass + 1))
+      first_ok="${first_ok:-$id}"
     else
       printf '  %-14s \033[31mFAIL\033[0m  %s\n' "$id" "$R_LABEL"
       failed+=("$id")
       fail=$((fail + 1))
     fi
   done < "$MANIFEST"
+
+  # Flattening alone never touches a viewer, which is how #1 shipped. Run the
+  # exact sequence main() uses — no subshell — so a value that fails to cross a
+  # scope boundary fails here instead of at launch.
+  if [ -n "${first_ok:-}" ]; then
+    lookup "$first_ok"
+    KINEMA_ROBOT=$first_ok
+    generate_urdf >/dev/null
+    render_rviz_config >/dev/null
+    printf '\n  viewer path ok (%s, fixed frame "%s")\n' "$first_ok" "$ROOT_LINK"
+  fi
 
   printf '\n%d ok, %d failed\n' "$pass" "$fail"
   if [ "$fail" -gt 0 ]; then
@@ -159,16 +174,36 @@ trap cleanup EXIT INT TERM
 
 start_state_publishers() {
   local urdf="$1"
-  ros2 run robot_state_publisher robot_state_publisher "$urdf" >/tmp/rsp.log 2>&1 &
+
+  # robot_state_publisher no longer accepts a URDF path as a positional argument
+  # (it aborts with "robot_description parameter must not be empty"), so the
+  # description is handed over as a parameter. It goes through a params file
+  # rather than -p because a single argv entry is capped at 128 KB and flattened
+  # descriptions run past that.
+  local params="$GEN_DIR/rsp_params.yaml"
+  {
+    printf '/**:\n  ros__parameters:\n    robot_description: |\n'
+    sed 's/^/      /' "$urdf"
+  } > "$params"
+
+  ros2 run robot_state_publisher robot_state_publisher \
+    --ros-args --params-file "$params" >/tmp/rsp.log 2>&1 &
   PIDS+=($!)
   ros2 run joint_state_publisher_gui joint_state_publisher_gui >/tmp/jsp.log 2>&1 &
   PIDS+=($!)
 }
 
-view_rviz() {
-  local urdf="$1"
+# Reads ROOT_LINK from the caller's scope — the exact coupling that broke in #1.
+render_rviz_config() {
   local cfg=$GEN_DIR/robot.rviz
   sed "s|__FIXED_FRAME__|$ROOT_LINK|" "$CATALOG/docker/rviz/robot.rviz" > "$cfg"
+  printf '%s' "$cfg"
+}
+
+view_rviz() {
+  local urdf="$1"
+  local cfg
+  cfg=$(render_rviz_config)
   start_state_publishers "$urdf"
   info "launching rviz2 — close the window to stop"
   rviz2 -d "$cfg"
@@ -227,8 +262,9 @@ main() {
 
   bold "$R_LABEL  [$R_FAMILY]  ROS 2 $ROS_DISTRO"
   build_index
-  local urdf
-  urdf=$(generate_urdf)
+  # called directly, not through $(...), so ROOT_LINK survives into the viewers
+  generate_urdf
+  local urdf="$GEN_URDF"
 
   case "${KINEMA_VIEWER:-rviz}" in
     rviz) view_rviz "$urdf" ;;
