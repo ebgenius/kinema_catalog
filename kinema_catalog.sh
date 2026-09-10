@@ -45,6 +45,41 @@ info() { printf '%s==>%s %s\n' "$C" "$N" "$*"; }
 warn() { printf '%swarning:%s %s\n' "$Y" "$N" "$*" >&2; }
 die()  { printf '%serror:%s %s\n' "$R" "$N" "$*" >&2; exit 1; }
 
+# --------------------------------------------------------------- git bash handoff
+# Under Git Bash/MSYS this script cannot work directly: MSYS rewrites arguments
+# that look like absolute paths, so the container path /catalog/docker/entrypoint.sh
+# arrives as C:/Program Files/Git/catalog/..., and there is no X socket to draw on
+# anyway. WSL has both, so re-run there — the same hand-off kinema_catalog.ps1 does.
+case "$(uname -s 2>/dev/null)" in
+  MINGW*|MSYS*|CYGWIN*)
+    command -v wsl.exe >/dev/null 2>&1 \
+      || die "running under Git Bash, which cannot host the GUI, and WSL was not found. Install it with:  wsl --install -d Ubuntu"
+
+    # Docker Desktop's helper distros ship no GUI stack, so never pick them.
+    msys_distro=$(wsl.exe -l -q 2>/dev/null | tr -d '\r\0' \
+      | sed '/^[[:space:]]*$/d;/^docker-desktop/d' | head -1)
+    [ -n "$msys_distro" ] \
+      || die "no usable WSL distro found (Docker Desktop's own distros cannot show a GUI). Install one with:  wsl --install -d Ubuntu"
+
+    # MSYS would mangle the /mnt/... paths inside the command string too.
+    export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
+
+    msys_repo=$(wsl.exe -d "$msys_distro" -e wslpath -a "$(cygpath -w "$REPO_ROOT" 2>/dev/null || printf '%s' "$REPO_ROOT")" 2>/dev/null | tr -d '\r\0')
+    if [ -z "$msys_repo" ]; then
+      # fall back on the /c/... -> /mnt/c/... shape Git Bash uses
+      msys_repo=$(printf '%s' "$REPO_ROOT" | sed -E 's|^/([a-zA-Z])/|/mnt/\l\1/|')
+    fi
+
+    msys_args=""
+    for msys_a in "$@"; do
+      msys_args="$msys_args '$(printf '%s' "$msys_a" | sed "s/'/'\\\\''/g")'"
+    done
+
+    info "Git Bash detected — re-running inside WSL ($msys_distro)"
+    exec wsl.exe -d "$msys_distro" -e bash -lc "cd '$msys_repo' && ./kinema_catalog.sh$msys_args"
+    ;;
+esac
+
 usage() {
   cat <<EOF
 ${B}kinema_catalog${N} — visualise the robot descriptions in this catalog
