@@ -197,6 +197,74 @@ try {
     Remove-Item -Recurse -Force $mainRepo, $featureRepo -ErrorAction SilentlyContinue
 }
 
+# --- a push that never names main, but lands on it ---------------------------
+# The suite used to test the refspec-less push only from main, where it is caught
+# for a reason that has nothing to do with the refspec. From a feature branch the
+# same command reaches main whenever configuration says so, and every check in
+# the hook passed it: the text holds no "main", and HEAD is not main.
+function New-RepoWithMain([hashtable]$Config) {
+    <#
+        A repo with a real commit, a main branch and a feat/x checkout.
+
+        A commit is needed here, unlike the empty repos above: these cases turn on
+        whether refs/heads/main exists, and on branch.<name>.merge, neither of
+        which means anything before something has been committed.
+    #>
+    $dir = Join-Path ([IO.Path]::GetTempPath()) ("guardtest-" + [guid]::NewGuid().ToString('N'))
+    & git init --quiet -b main $dir 2>&1 | Out-Null
+    Push-Location $dir
+    try {
+        & git config user.email 'test@example.invalid' 2>&1 | Out-Null
+        & git config user.name 'guard test' 2>&1 | Out-Null
+        Set-Content -Path (Join-Path $dir 'f.txt') -Value 'x'
+        & git add -A 2>&1 | Out-Null
+        & git commit -qm init 2>&1 | Out-Null
+        & git checkout -q -b feat/x 2>&1 | Out-Null
+        if ($Config) {
+            foreach ($key in $Config.Keys) { & git config $key $Config[$key] 2>&1 | Out-Null }
+        }
+    } finally {
+        Pop-Location
+    }
+    return $dir
+}
+
+$upstreamIsMain = New-RepoWithMain @{
+    'push.default'          = 'upstream'
+    'branch.feat/x.remote'  = 'origin'
+    'branch.feat/x.merge'   = 'refs/heads/main'
+}
+$upstreamIsSelf = New-RepoWithMain @{
+    'push.default'          = 'upstream'
+    'branch.feat/x.remote'  = 'origin'
+    'branch.feat/x.merge'   = 'refs/heads/feat/x'
+}
+$plainSimple = New-RepoWithMain @{ 'push.default' = 'simple' }
+$matching    = New-RepoWithMain @{ 'push.default' = 'matching' }
+
+try {
+    # The bypass: git reports this one as refs/heads/feat/x:refs/heads/main.
+    Check 'bare push whose upstream is main' 'git push' $true -In $upstreamIsMain
+
+    # The same setting must not condemn an ordinary branch.
+    Check 'bare push whose upstream is itself' 'git push' $false -In $upstreamIsSelf
+    Check 'bare push under push.default=simple' 'git push' $false -In $plainSimple
+
+    # matching pushes every branch that exists on the remote, main included,
+    # regardless of which one is checked out.
+    Check 'bare push under push.default=matching' 'git push' $true -In $matching
+
+    # --all and --mirror carry main from anywhere.
+    Check 'push --all from a feature branch' 'git push --all origin' $true -In $plainSimple
+    Check 'push --mirror from a feature branch' 'git push --mirror origin' $true -In $plainSimple
+
+    # Naming a branch explicitly still decides it, whatever the config says.
+    Check 'explicit branch beats an upstream of main' 'git push origin feat/x' $false -In $upstreamIsMain
+} finally {
+    Remove-Item -Recurse -Force $upstreamIsMain, $upstreamIsSelf, $plainSimple, $matching `
+        -ErrorAction SilentlyContinue
+}
+
 ""
 if ($script:failures -eq 0) {
     'all cases behaved'

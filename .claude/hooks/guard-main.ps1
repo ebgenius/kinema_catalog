@@ -132,6 +132,66 @@ function Targets-Main([string]$Command) {
     return $false
 }
 
+function Test-ExplicitRefspec([string]$Segment) {
+    # True when the push names where it is going, e.g. `git push origin main`.
+    # One trailing token is a remote (`git push origin`), none is a bare push --
+    # both leave the destination to git's configuration, which is what
+    # Get-ImplicitPushTarget then has to work out.
+    $tokens = @(Get-Args $Segment)
+    $i = [array]::IndexOf($tokens, 'push')
+    if ($i -lt 0) { return $false }
+    return (($tokens.Count - $i - 1) -ge 2)
+}
+
+function Get-ImplicitPushTarget {
+    <#
+        The branch a refspec-less `git push` would actually update, resolved from
+        configuration alone.
+
+        Necessary because "which branch am I on" is not the same question as
+        "which branch does this push write to". With push.default=upstream and an
+        upstream of origin/main, `git push` from feat/x updates main -- git
+        reports it as `refs/heads/feat/x:refs/heads/main`. Nothing in the command
+        text mentions main, and HEAD is not main, so both existing checks pass it.
+
+        Read from config rather than `git push --dry-run`: a hook must not reach
+        the network, where it could hang or prompt for credentials.
+    #>
+    $branch = (& git symbolic-ref --short --quiet HEAD 2>$null)
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($branch)) { return $null }
+    $branch = $branch.Trim()
+
+    $mode = (& git config --get push.default 2>$null)
+    if ([string]::IsNullOrWhiteSpace($mode)) { $mode = 'simple' }   # git >= 2.0
+    $mode = $mode.Trim()
+
+    switch ($mode) {
+        { $_ -in @('upstream', 'tracking') } {
+            # Goes to the configured upstream whatever the local name is.
+            $merge = (& git config --get "branch.$branch.merge" 2>$null)
+            if ([string]::IsNullOrWhiteSpace($merge)) { return $null }
+            return ($merge.Trim() -replace '^refs/heads/', '')
+        }
+        'matching' {
+            # Pushes every branch that already exists on the remote, so a local
+            # main rides along no matter which branch HEAD is on.
+            & git show-ref --verify --quiet refs/heads/main 2>$null
+            if ($LASTEXITCODE -eq 0) { return 'main' }
+            return $null
+        }
+        default {
+            # simple and current push to the branch of the same name; simple
+            # refuses outright when the upstream is named differently.
+            return $branch
+        }
+    }
+}
+
+function Test-PushesEverything([string]$Command) {
+    # --all and --mirror push every local branch, main included, from anywhere.
+    return ($Command -match '(^|\s)--(all|mirror)(\s|$)')
+}
+
 function Is-TagPush([string]$Command) {
     # Ask git, rather than guessing from the name. A pattern like `v\d` also
     # matches branches called v2 or v10-experiment, which would hand out a
@@ -202,6 +262,37 @@ See CLAUDE.md.
 # the branch check below -- so an unconfirmable tag is refused on main rather
 # than waved past.
 if ($isPush -and -not $isCommit -and (Is-TagPush $pushSegments)) { Allow }
+
+# A push that does not name its destination still has one, and it is not always
+# the current branch: push.default=upstream sends feat/x to main when that is its
+# upstream, and --all/--mirror carry main along from any branch. Both slipped
+# past the two checks around this one -- nothing in the command says "main", and
+# HEAD is not main -- so the destination is resolved from config instead.
+if ($isPush) {
+    try {
+        $implicitTarget = $null
+        if (Test-PushesEverything $pushSegments) {
+            & git show-ref --verify --quiet refs/heads/main 2>$null
+            if ($LASTEXITCODE -eq 0) { $implicitTarget = 'main' }
+        } elseif (-not (Test-ExplicitRefspec $pushSegments)) {
+            $implicitTarget = Get-ImplicitPushTarget
+        }
+    } catch {
+        $implicitTarget = $null   # fail open, as everywhere else here
+    }
+
+    if ($implicitTarget -eq 'main') {
+        Deny(@"
+This push updates 'main', even though the command does not name it. main only
+advances through a reviewed PR.
+
+Name the branch you mean instead:
+    git push -u origin <type>/<short-slug>
+
+See CLAUDE.md.
+"@)
+    }
+}
 
 # symbolic-ref, not `rev-parse --abbrev-ref HEAD`: rev-parse cannot name the
 # branch before the first commit exists (it errors and prints "HEAD"), so a
