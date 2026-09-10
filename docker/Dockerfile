@@ -38,9 +38,13 @@ RUN apt-get update \
 # wayland plugin (which it does whenever WAYLAND_DISPLAY is set, as under WSLg),
 # the render window aborts with "Invalid parentWindowHandle (wrong server or
 # screen)". The launcher passes the same value so existing images need no rebuild.
+# QT_QUICK_BACKEND is deliberately NOT set. Forcing Qt Quick's software backend
+# segfaults Gazebo: its GUI is QML, and the MinimalScene plugin embeds a real
+# OpenGL item, so the software scenegraph tears the GL context down underneath it
+# (crash in QOpenGLContext::doneCurrent — see issue #4). RViz is QWidgets and
+# never touched Qt Quick, which is why only Gazebo was affected.
 ENV QT_X11_NO_MITSHM=1 \
     QT_QPA_PLATFORM=xcb \
-    QT_QUICK_BACKEND=software \
     RCUTILS_COLORIZED_OUTPUT=1
 
 WORKDIR /catalog
