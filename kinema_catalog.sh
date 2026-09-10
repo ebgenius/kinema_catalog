@@ -16,6 +16,10 @@ DEFAULT_DISTRO=lyrical           # latest ROS 2 LTS (May 2026, Ubuntu 26.04)
 DEFAULT_VIEWER=rviz
 IMAGE_PREFIX=kinema-catalog
 
+# The container-side orchestrator is run from the mounted repo, never from a copy
+# baked into the image, so editing it takes effect without rebuilding.
+ORCHESTRATOR=/catalog/docker/entrypoint.sh
+
 # Gazebo release paired with each ROS 2 distro (gazebosim.org/docs/latest/ros_installation)
 gazebo_for() {
   case "$1" in
@@ -201,6 +205,11 @@ display_args() {
          -e "PULSE_SERVER=${PULSE_SERVER:-/mnt/wslg/PulseServer}"
          -v /tmp/.X11-unix:/tmp/.X11-unix
          -v /mnt/wslg:/mnt/wslg)
+    # WAYLAND_DISPLAY (needed for WSLg audio/clipboard) makes Qt pick its wayland
+    # plugin, while RViz's Ogre renderer creates a GLX/X11 window — the mismatch
+    # aborts with "Invalid parentWindowHandle (wrong server or screen)". Pinning
+    # Qt to xcb keeps both on X11/Xwayland.
+    out+=(-e QT_QPA_PLATFORM=xcb)
   else
     [ -n "${DISPLAY:-}" ] || die "DISPLAY is not set — no X server to draw on"
     if command -v xhost >/dev/null 2>&1; then
@@ -258,8 +267,11 @@ if [ "$DO_CHECK" = 1 ]; then
   require_docker
   ensure_image "$IMAGE"
   info "checking the manifest against ROS 2 $DISTRO"
-  exec docker run --rm -t \
-    -v "$REPO_ROOT:/catalog" -e "KINEMA_ROBOT=all" -e "KINEMA_VIEWER=none" "$IMAGE"
+  check_tty=()
+  if [ -t 1 ]; then check_tty=(-t); fi
+  exec docker run --rm "${check_tty[@]}" \
+    -v "$REPO_ROOT:/catalog" -e "KINEMA_ROBOT=all" -e "KINEMA_VIEWER=none" \
+    --entrypoint bash "$IMAGE" "$ORCHESTRATOR"
 fi
 
 if [ "$DO_SHELL" = 1 ]; then
@@ -267,7 +279,8 @@ if [ "$DO_SHELL" = 1 ]; then
   ensure_image "$IMAGE"
   declare -a DISP; display_args DISP
   info "ROS 2 $DISTRO shell — the catalog is mounted at /catalog"
-  exec docker run --rm -it "${DISP[@]}" -v "$REPO_ROOT:/catalog" "$IMAGE" bash
+  exec docker run --rm -it "${DISP[@]}" -v "$REPO_ROOT:/catalog" \
+    --entrypoint bash "$IMAGE" "$ORCHESTRATOR" bash
 fi
 
 [ -n "$ROBOT" ] || ROBOT=$(pick_robot)
@@ -288,10 +301,15 @@ declare -a DISP; display_args DISP
 cleanup() { [ "$XHOST_GRANTED" = 1 ] && xhost -local:root >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
-docker run --rm -it \
+# -t only when stdin really is a terminal, so piping or CI does not fail with
+# "cannot attach stdin to a TTY-enabled container"
+TTY_ARGS=()
+if [ -t 0 ]; then TTY_ARGS=(-it); fi
+
+docker run --rm "${TTY_ARGS[@]}" \
   "${DISP[@]}" \
   -v "$REPO_ROOT:/catalog" \
   -e "KINEMA_ROBOT=$ROBOT" \
   -e "KINEMA_VIEWER=$VIEWER" \
   -e "KINEMA_EXPORT=$DO_EXPORT" \
-  "$IMAGE"
+  --entrypoint bash "$IMAGE" "$ORCHESTRATOR"

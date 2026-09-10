@@ -33,13 +33,20 @@ RUN apt-get update \
       || echo "WARNING: ros-gz has no binary release for ${ROS_DISTRO}; 'gz' viewer disabled"; } \
  && rm -rf /var/lib/apt/lists/*
 
-# Qt/OpenGL defaults that behave under WSLg and plain X11 alike.
+# Qt/OpenGL defaults that behave under WSLg and plain X11 alike. QT_QPA_PLATFORM
+# is pinned to xcb because RViz renders through Ogre/GLX: if Qt selects its
+# wayland plugin (which it does whenever WAYLAND_DISPLAY is set, as under WSLg),
+# the render window aborts with "Invalid parentWindowHandle (wrong server or
+# screen)". The launcher passes the same value so existing images need no rebuild.
 ENV QT_X11_NO_MITSHM=1 \
+    QT_QPA_PLATFORM=xcb \
     QT_QUICK_BACKEND=software \
     RCUTILS_COLORIZED_OUTPUT=1
 
-COPY entrypoint.sh /usr/local/bin/kinema-entrypoint
-RUN chmod +x /usr/local/bin/kinema-entrypoint
-
 WORKDIR /catalog
-ENTRYPOINT ["/usr/local/bin/kinema-entrypoint"]
+
+# entrypoint.sh is deliberately NOT copied in. The launcher runs it from the
+# mounted repo (/catalog/docker/entrypoint.sh), so the checked-out script is
+# always what executes. Baking a copy in meant edits to the orchestrator were
+# silently ignored until someone thought to rebuild the image — see issue #1.
+CMD ["bash", "/catalog/docker/entrypoint.sh"]
