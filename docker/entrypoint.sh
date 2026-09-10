@@ -114,7 +114,10 @@ generate_urdf() {
     cp "$out" "$CATALOG/out/$KINEMA_ROBOT.urdf"
     info "exported out/$KINEMA_ROBOT.urdf"
   fi
-  echo "$out"
+
+  # Results go into globals rather than stdout on purpose: reading this through
+  # $(generate_urdf) would run it in a subshell, and ROOT_LINK would not survive.
+  GEN_URDF="$out"
 }
 
 # Flatten every robot in the manifest and report what breaks. One index build for
@@ -227,8 +230,9 @@ main() {
 
   bold "$R_LABEL  [$R_FAMILY]  ROS 2 $ROS_DISTRO"
   build_index
-  local urdf
-  urdf=$(generate_urdf)
+  # called directly, not through $(...), so ROOT_LINK survives into the viewers
+  generate_urdf
+  local urdf="$GEN_URDF"
 
   case "${KINEMA_VIEWER:-rviz}" in
     rviz) view_rviz "$urdf" ;;
