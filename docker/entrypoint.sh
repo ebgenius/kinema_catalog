@@ -174,7 +174,20 @@ trap cleanup EXIT INT TERM
 
 start_state_publishers() {
   local urdf="$1"
-  ros2 run robot_state_publisher robot_state_publisher "$urdf" >/tmp/rsp.log 2>&1 &
+
+  # robot_state_publisher no longer accepts a URDF path as a positional argument
+  # (it aborts with "robot_description parameter must not be empty"), so the
+  # description is handed over as a parameter. It goes through a params file
+  # rather than -p because a single argv entry is capped at 128 KB and flattened
+  # descriptions run past that.
+  local params="$GEN_DIR/rsp_params.yaml"
+  {
+    printf '/**:\n  ros__parameters:\n    robot_description: |\n'
+    sed 's/^/      /' "$urdf"
+  } > "$params"
+
+  ros2 run robot_state_publisher robot_state_publisher \
+    --ros-args --params-file "$params" >/tmp/rsp.log 2>&1 &
   PIDS+=($!)
   ros2 run joint_state_publisher_gui joint_state_publisher_gui >/tmp/jsp.log 2>&1 &
   PIDS+=($!)
