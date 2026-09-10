@@ -56,7 +56,9 @@ case "$(uname -s 2>/dev/null)" in
       || die "running under Git Bash, which cannot host the GUI, and WSL was not found. Install it with:  wsl --install -d Ubuntu"
 
     # Docker Desktop's helper distros ship no GUI stack, so never pick them.
-    msys_distro=$(wsl.exe -l -q 2>/dev/null | tr -d '\r\0' \
+    # Both probes read from /dev/null: they inherit our stdin otherwise, and a
+    # wsl.exe probe will swallow piped input meant for the real run below.
+    msys_distro=$(wsl.exe -l -q 2>/dev/null </dev/null | tr -d '\r\0' \
       | sed '/^[[:space:]]*$/d;/^docker-desktop/d' | head -1)
     [ -n "$msys_distro" ] \
       || die "no usable WSL distro found (Docker Desktop's own distros cannot show a GUI). Install one with:  wsl --install -d Ubuntu"
@@ -64,19 +66,19 @@ case "$(uname -s 2>/dev/null)" in
     # MSYS would mangle the /mnt/... paths inside the command string too.
     export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
 
-    msys_repo=$(wsl.exe -d "$msys_distro" -e wslpath -a "$(cygpath -w "$REPO_ROOT" 2>/dev/null || printf '%s' "$REPO_ROOT")" 2>/dev/null | tr -d '\r\0')
+    msys_repo=$(wsl.exe -d "$msys_distro" -e wslpath -a "$(cygpath -w "$REPO_ROOT" 2>/dev/null || printf '%s' "$REPO_ROOT")" 2>/dev/null </dev/null | tr -d '\r\0')
     if [ -z "$msys_repo" ]; then
       # fall back on the /c/... -> /mnt/c/... shape Git Bash uses
       msys_repo=$(printf '%s' "$REPO_ROOT" | sed -E 's|^/([a-zA-Z])/|/mnt/\l\1/|')
     fi
 
-    msys_args=""
-    for msys_a in "$@"; do
-      msys_args="$msys_args '$(printf '%s' "$msys_a" | sed "s/'/'\\\\''/g")'"
-    done
-
     info "Git Bash detected — re-running inside WSL ($msys_distro)"
-    exec wsl.exe -d "$msys_distro" -e bash -lc "cd '$msys_repo' && ./kinema_catalog.sh$msys_args"
+    # The directory and the arguments are passed as positional parameters rather
+    # than pasted into the command string, so a checkout path or argument holding
+    # a quote cannot break out of it. $0 is "bash", $1 the repo, the rest the args.
+    exec wsl.exe -d "$msys_distro" -e bash -lc \
+      'cd -- "$1" && shift && exec "$@"' \
+      bash "$msys_repo" ./kinema_catalog.sh "$@"
     ;;
 esac
 
@@ -314,7 +316,11 @@ if [ "$DO_SHELL" = 1 ]; then
   ensure_image "$IMAGE"
   declare -a DISP; display_args DISP
   info "ROS 2 $DISTRO shell — the catalog is mounted at /catalog"
-  exec docker run --rm -it "${DISP[@]}" -v "$REPO_ROOT:/catalog" \
+  # -i always, so a piped-in command still reaches bash; -t only for a real
+  # terminal, since docker refuses to start with -t when stdin is not one.
+  shell_tty=(-i)
+  if [ -t 0 ]; then shell_tty=(-it); fi
+  exec docker run --rm "${shell_tty[@]}" "${DISP[@]}" -v "$REPO_ROOT:/catalog" \
     --entrypoint bash "$IMAGE" "$ORCHESTRATOR" bash
 fi
 
