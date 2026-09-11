@@ -247,11 +247,6 @@ display_args() {
     # aborts with "Invalid parentWindowHandle (wrong server or screen)". Pinning
     # Qt to xcb keeps both on X11/Xwayland.
     out+=(-e QT_QPA_PLATFORM=xcb)
-    # Clear QT_QUICK_BACKEND for images built before it was dropped from the
-    # Dockerfile: forcing the software scenegraph segfaults Gazebo's QML GUI
-    # (issue #4). Empty reads the same as unset to Qt, and fixes an existing
-    # image without a rebuild.
-    out+=(-e QT_QUICK_BACKEND=)
   else
     [ -n "${DISPLAY:-}" ] || die "DISPLAY is not set — no X server to draw on"
     if command -v xhost >/dev/null 2>&1; then
@@ -261,6 +256,14 @@ display_args() {
     out=(-e "DISPLAY=$DISPLAY"
          -v /tmp/.X11-unix:/tmp/.X11-unix)
   fi
+  # Clear QT_QUICK_BACKEND for images built before it was dropped from the
+  # Dockerfile: forcing the software scenegraph segfaults Gazebo's QML GUI
+  # (issue #4). Empty reads the same as unset to Qt, so an existing image is
+  # fixed without a rebuild. Applies to every host, not just WSL — the setting
+  # is baked into the image, so a native Linux box with an older image has it
+  # too, and clearing it only on the WSLg branch would leave that one crashing.
+  out+=(-e QT_QUICK_BACKEND=)
+
   if [ "$SOFTWARE_GL" = 1 ]; then out+=(-e LIBGL_ALWAYS_SOFTWARE=1); fi
   if [ "$USE_GPU" = 1 ]; then out+=(--gpus all); fi
   return 0
