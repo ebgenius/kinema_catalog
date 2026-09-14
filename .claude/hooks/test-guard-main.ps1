@@ -354,6 +354,19 @@ $featureFwd = $featureRepo -replace '\\', '/'
 $parentFwd  = $parentDir -replace '\\', '/'
 $mainMsys   = if ($mainFwd -match '^([A-Za-z]):(.*)$') { '/' + $Matches[1].ToLower() + $Matches[2] } else { $mainFwd }
 
+# A repository whose path contains a space, so the quote-aware tokeniser is
+# tested on a real one rather than only on a temp root that happens to have none.
+$spacedParent = Join-Path ([IO.Path]::GetTempPath()) ("guard space " + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $spacedParent | Out-Null
+$spacedRepo = Join-Path $spacedParent 'repo on main'
+& git init --quiet -b main $spacedRepo 2>&1 | Out-Null
+& git -C $spacedRepo config user.email 'test@example.invalid' 2>&1 | Out-Null
+& git -C $spacedRepo config user.name 'guard test' 2>&1 | Out-Null
+Set-Content -Path (Join-Path $spacedRepo 'f.txt') -Value 'x'
+& git -C $spacedRepo add -A 2>&1 | Out-Null
+& git -C $spacedRepo commit -qm init 2>&1 | Out-Null
+$spacedFwd = $spacedRepo -replace '\\', '/'
+
 try {
     # A quoted flag is still the flag once the shell hands it to git.
     Check 'quoted --all' 'git push origin "--all"' $true -In $featureRepo
@@ -369,28 +382,39 @@ try {
     Check 'push -o --dry-run on main is not a dry run' 'git push -o --dry-run' $true -In $mainRepo
     Check 'a real -n dry run on main' 'git push -n' $false -In $mainRepo
 
-    # A cd earlier in the line decides which repository the commit lands in.
-    Check 'bash: cd into a repo on main, then commit' "cd $mainFwd && git commit -m wip" $true -In $featureRepo
-    Check 'pwsh: Set-Location into a repo on main; commit' "Set-Location $mainRepo; git commit -m wip" $true `
+    # A refspec the shell expands is unknowable, so refused.
+    Check 'push origin $BRANCH' 'git status; BRANCH=main; git push origin $BRANCH' $true -In $featureRepo
+    Check 'push origin ${BRANCH}' 'git push origin ${BRANCH}' $true -In $featureRepo
+    Check 'push origin $(cat b)' 'git push origin $(cat branchfile)' $true -In $featureRepo
+    # ...but a literal refspec next to an unrelated expansion elsewhere is fine.
+    Check 'expansion in a message, literal refspec' 'git push -u origin feat/x -o "run $CI"' $false -In $featureRepo
+
+    # Interpolated paths are single-quoted so a space in them survives, which is
+    # also what a careful caller would write.
+    Check 'bash: cd into a repo on main, then commit' "cd '$mainFwd' && git commit -m wip" $true -In $featureRepo
+    Check 'bash: cd into a path with spaces, then commit' "cd '$spacedFwd' && git commit -m wip" $true -In $featureRepo
+    Check 'pwsh: Set-Location into a repo on main; commit' "Set-Location '$mainRepo'; git commit -m wip" $true `
         -In $featureRepo -Shell 'PowerShell'
     # The other direction: leaving main for a feature repo must not be refused
     # because of where the command started.
-    Check 'bash: cd out of main into a feature repo, then commit' "cd $featureFwd && git commit -m wip" $false -In $mainRepo
+    Check 'bash: cd out of main into a feature repo, then commit' "cd '$featureFwd' && git commit -m wip" $false -In $mainRepo
 
     # A subshell's cd applies inside it and is undone after it.
-    Check 'bash: commit inside a subshell that cd-ed to main' "(cd $mainFwd && git commit -m wip)" $true -In $featureRepo
-    Check 'bash: subshell cd to main does not leak out' "(cd $mainFwd) && git commit -m wip" $false -In $featureRepo
-    Check 'bash: subshell cd away from main does not leak out' "(cd $featureFwd) && git commit -m wip" $true -In $mainRepo
+    Check 'bash: commit inside a subshell that cd-ed to main' "(cd '$mainFwd' && git commit -m wip)" $true -In $featureRepo
+    Check 'bash: subshell cd to main does not leak out' "(cd '$mainFwd') && git commit -m wip" $false -In $featureRepo
+    Check 'bash: subshell cd away from main does not leak out' "(cd '$featureFwd') && git commit -m wip" $true -In $mainRepo
+    # An escaped ) inside the subshell is echo's argument, not the end of it.
+    Check 'bash: escaped ) does not close the subshell early' "(cd '$mainFwd' && echo \) && git commit -m wip)" $true -In $featureRepo
 
     # pushd moves; popd moves back.
-    Check 'bash: pushd into a repo on main, then commit' "pushd $mainFwd && git commit -m wip" $true -In $featureRepo
-    Check 'bash: pushd then popd, then commit' "pushd $mainFwd && popd && git commit -m wip" $false -In $featureRepo
+    Check 'bash: pushd into a repo on main, then commit' "pushd '$mainFwd' && git commit -m wip" $true -In $featureRepo
+    Check 'bash: pushd then popd, then commit' "pushd '$mainFwd' && popd && git commit -m wip" $false -In $featureRepo
 
     # A relative -C is relative to wherever the cd left the shell.
-    Check 'bash: relative -C after cd' "cd $parentFwd && git -C $mainLeaf commit -m wip" $true -In $featureRepo
+    Check 'bash: relative -C after cd' "cd '$parentFwd' && git -C '$mainLeaf' commit -m wip" $true -In $featureRepo
 
     # Git Bash writes C:\... as /c/...; that is still the repository on main.
-    Check 'bash: cd using the /c/ path form' "cd $mainMsys && git commit -m wip" $true -In $featureRepo
+    Check 'bash: cd using the /c/ path form' "cd '$mainMsys' && git commit -m wip" $true -In $featureRepo
 
     # A cd that cannot be resolved without running the shell: refuse a commit or
     # push after it, but leave read-only commands alone.
@@ -399,7 +423,15 @@ try {
 
     # `a || b` runs b only if a failed, so both directories are candidates and
     # either one on main is enough to refuse.
-    Check 'bash: cd to main || commit is judged in both places' "cd $mainFwd || git commit -m wip" $true -In $featureRepo
+    Check 'bash: cd to main || commit is judged in both places' "cd '$mainFwd' || git commit -m wip" $true -In $featureRepo
+
+    # A conditional cd may be skipped, so the directory it would have left is
+    # still a candidate: on main, a skipped `cd feature` must not launder a
+    # commit into looking like a feature-branch one.
+    Check 'bash: skipped cd (&& false && cd) still judged on main' `
+        "git status && false && cd '$featureFwd'; git commit -m wip" $true -In $mainRepo
+    Check 'pwsh: skipped Set-Location still judged on main' `
+        "if (`$false) { Set-Location '$featureRepo' }; git commit -m wip" $true -In $mainRepo -Shell 'PowerShell'
 
     # The payload's cwd is where the shell really is, not where the hook starts.
     Check 'payload cwd on main, hook launched elsewhere' 'git commit -m wip' $true -In $featureRepo -Cwd $mainRepo
@@ -407,7 +439,7 @@ try {
     # A subshell around the whole push used to hide the subcommand.
     Check 'push to main wrapped in a subshell' '(git push origin main)' $true -In $featureRepo
 } finally {
-    Remove-Item -Recurse -Force $featureRepo, $mainRepo -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force $featureRepo, $mainRepo, $spacedParent -ErrorAction SilentlyContinue
 }
 
 ""

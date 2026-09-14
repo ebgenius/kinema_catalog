@@ -93,6 +93,46 @@ function Get-Args([string]$Segment) {
     @(Get-Tokens $Segment | Where-Object { $_ -notmatch '^-' } | ForEach-Object { $_ -replace '^\+', '' } | Where-Object { $_ })
 }
 
+function Test-HasShellExpansion([string]$Token) {
+    # A token whose value the shell computes before git sees it: $VAR, ${VAR},
+    # $(...), a backtick substitution. Its final text is unknowable here, so a
+    # refspec carrying one cannot be compared against main.
+    return ($Token -match '\$' -or $Token.Contains('`'))
+}
+
+function Measure-Structural([string]$Text) {
+    <#
+        Counts of parentheses, braces and backticks that are real shell
+        structure -- outside quotes and not backslash-escaped -- plus the last
+        such character seen.
+
+        A raw count treated `echo \)` as closing a subshell, because the escaped
+        `)` given to echo looked like a delimiter. Grouping has to be measured
+        the way the shell reads it, not by matching the character anywhere.
+    #>
+    $o = 0; $c = 0; $ob = 0; $cb = 0; $bt = 0; $last = ''
+    $quote = ''
+    for ($i = 0; $i -lt $Text.Length; $i++) {
+        $ch = [string]$Text[$i]
+        if ($quote -ne '') {
+            if ($ch -eq $quote) { $quote = '' }
+            elseif ($ch -eq '\' -and $quote -eq '"') { $i++ }   # \" inside double quotes
+            continue
+        }
+        if ($ch -eq '\') { $i++; continue }                     # escapes the next char
+        if ($ch -eq "'" -or $ch -eq '"') { $quote = $ch; continue }
+        switch ($ch) {
+            '(' { $o++;  $last = '(' }
+            ')' { $c++;  $last = ')' }
+            '{' { $ob++; $last = '{' }
+            '}' { $cb++; $last = '}' }
+            '`' { $bt++; $last = '`' }
+            default { if ($ch -notmatch '\s') { $last = 'x' } }
+        }
+    }
+    return @{ Open = $o; Close = $c; OpenBrace = $ob; CloseBrace = $cb; Backtick = $bt; Last = $last }
+}
+
 #: git push options that take their value as the *next* argument. Git consumes
 #: that argument whatever it looks like, including a leading dash.
 $script:PushOptionsWithValue = @('-o', '--push-option', '--receive-pack', '--exec', '--repo')
@@ -630,17 +670,16 @@ function Split-GroupMarks([string]$Text, [string]$Shell) {
         else { break }
     }
     while ($core.Length -gt 0) {
-        $openParens = ([regex]::Matches($core, '\(')).Count
-        $closeParens = ([regex]::Matches($core, '\)')).Count
-        $openBraces = ([regex]::Matches($core, '\{')).Count
-        $closeBraces = ([regex]::Matches($core, '\}')).Count
-        if ($core.EndsWith(')') -and $closeParens -gt $openParens) {
+        # Structural counts, so an escaped or quoted `)` inside a command (an
+        # `echo \)` argument, say) is not mistaken for the end of a subshell.
+        $m = Measure-Structural $core
+        if ($m.Last -eq ')' -and $m.Close -gt $m.Open) {
             $core = $core.Substring(0, $core.Length - 1).TrimEnd(); $closes++
         }
-        elseif ($core.EndsWith('}') -and $closeBraces -gt $openBraces) {
+        elseif ($m.Last -eq '}' -and $m.CloseBrace -gt $m.OpenBrace) {
             $core = $core.Substring(0, $core.Length - 1).TrimEnd()
         }
-        elseif ($bash -and $core.EndsWith('`')) {
+        elseif ($bash -and $m.Last -eq '`' -and ($m.Backtick % 2 -eq 1)) {
             $core = $core.Substring(0, $core.Length - 1).TrimEnd(); $closes++
         }
         else { break }
@@ -702,14 +741,21 @@ function Get-DenyReason([string]$Command, [string]$Shell, [string]$StartDir) {
         whatever came before it, so `cd ../repo-on-main && git commit` committed
         onto main while the guard looked at a feature branch.
 
-        $dirs is a list, not one directory, because some constructs leave the
-        answer open -- `cd x || git push` pushes only if the cd failed -- and
-        every candidate is judged. $unknown records a change that could not be
-        resolved at all; after it, a commit or push is refused rather than
-        guessed at.
+        $dirs is a list, not one directory, because control flow leaves the
+        answer open. Within a `&&` / `||` chain a command runs only if the ones
+        before it succeeded, so a `cd` there is deterministic *for a command
+        still in the same chain*: if the cd was skipped, so is that command. But
+        an unconditional separator (`;` or a newline) starts a fresh command
+        that runs whatever happened before -- so the shell could be wherever the
+        chain finished, or wherever it aborted. $abortDirs carries those
+        aborted-chain directories and is merged back in at each `;`.
+
+        $unknown records a change that could not be resolved at all; after it, a
+        commit or push is refused rather than guessed at.
     #>
     $dirs = @($StartDir)
     $prev = @()
+    $abortDirs = @()
     $unknown = $false
     $dirStack = New-Object System.Collections.Stack
     $groupStack = New-Object System.Collections.Stack
@@ -718,24 +764,38 @@ function Get-DenyReason([string]$Command, [string]$Shell, [string]$StartDir) {
     foreach ($part in @(Get-SegmentsWithSeparators $cmd $Shell)) {
         $marks = Split-GroupMarks $part.Text $Shell
         $core = $marks.Core
+        $before = $part.Before
+        $isConditional = ($before -eq '&&') -or ($before -eq '||')
+        $isUnconditional = ($before -eq '') -or ($before -eq ';') -or ($before -match '[\r\n]')
+
+        # A fresh unconditional command could run after the chain aborted, so
+        # the directories it might have stopped in become candidates again. A
+        # conditional command records the current directory as one such stopping
+        # point, in case the chain breaks right here.
+        if ($isUnconditional -and @($abortDirs).Count -gt 0) {
+            $dirs = @(Merge-Directories $dirs $abortDirs)
+            $abortDirs = @()
+        }
+        elseif ($isConditional) {
+            $abortDirs = @(Merge-Directories $abortDirs $dirs)
+        }
 
         for ($o = 0; $o -lt $marks.Opens; $o++) {
-            $groupStack.Push(@{ Dirs = $dirs; Prev = $prev; Unknown = $unknown; DirStack = $dirStack.Clone() })
+            $groupStack.Push(@{ Dirs = $dirs; Prev = $prev; Abort = $abortDirs; Unknown = $unknown; DirStack = $dirStack.Clone() })
         }
 
         $change = if ($core) { Get-DirectoryChange $core $Shell } else { $null }
         if ($change) {
             # Each side of a bash pipeline is its own subshell, so a cd there
             # moves nothing that follows.
-            $inPipeline = ($Shell -eq 'Bash') -and (($part.Before -eq '|') -or ($part.After -eq '|'))
+            $inPipeline = ($Shell -eq 'Bash') -and (($before -eq '|') -or ($part.After -eq '|'))
             if (-not $inPipeline -and -not $unknown) {
                 $result = Resolve-DirectoryChange $change $dirs $prev $dirStack $Shell
                 if ($result.Unknown) {
                     $unknown = $true
                 } else {
                     $prev = $dirs
-                    if ($part.After -eq '||') { $dirs = @(Merge-Directories $dirs $result.Dirs) }
-                    else { $dirs = @($result.Dirs) }
+                    $dirs = @($result.Dirs)
                 }
             }
         }
@@ -750,7 +810,11 @@ function Get-DenyReason([string]$Command, [string]$Shell, [string]$StartDir) {
                     }
                 }
             } else {
-                foreach ($dir in $dirs) {
+                # A command after `||` runs only when the one before it failed,
+                # so a preceding cd may not have taken effect -- its start (prev)
+                # is a candidate alongside where it would have gone.
+                $judgeDirs = if ($before -eq '||') { @(Merge-Directories $dirs $prev) } else { @($dirs) }
+                foreach ($dir in $judgeDirs) {
                     $base = @('-C', $dir)
                     # Aliases are per repository, so expand where the command runs.
                     $expanded = Expand-GitAlias $core (@($base) + $segCtx)
@@ -766,7 +830,7 @@ function Get-DenyReason([string]$Command, [string]$Shell, [string]$StartDir) {
         for ($c = 0; $c -lt $marks.Closes; $c++) {
             if ($groupStack.Count -gt 0) {
                 $saved = $groupStack.Pop()
-                $dirs = $saved.Dirs; $prev = $saved.Prev; $unknown = $saved.Unknown; $dirStack = $saved.DirStack
+                $dirs = $saved.Dirs; $prev = $saved.Prev; $abortDirs = $saved.Abort; $unknown = $saved.Unknown; $dirStack = $saved.DirStack
             }
         }
     }
@@ -802,6 +866,25 @@ See CLAUDE.md. (Tag pushes and --dry-run are allowed on main.)
     foreach ($seg in $pushSegments) {
         $ctx = $seg.Ctx
         $refspecs = @(Get-PushRefspecs $seg.Text $ctx)
+
+        # A refspec the shell expands -- `git push origin $BRANCH` -- reaches
+        # git as whatever the variable held, main included, while the token here
+        # is the literal `$BRANCH`. The value cannot be known without running the
+        # shell, so the destination is treated as unresolved and refused.
+        foreach ($r in $refspecs) {
+            if (Test-HasShellExpansion $r) {
+                return @"
+This push names its destination through a shell expansion ($r), so the guard
+cannot tell whether it resolves to 'main'. main only advances through a reviewed
+PR.
+
+Name the branch literally instead:
+    git push -u origin <type>/<short-slug>
+
+See CLAUDE.md.
+"@
+            }
+        }
 
         # Named outright, in any spelling: main, refs/heads/main, HEAD:main, +main.
         if (Test-RefspecsTargetMain $refspecs) {
