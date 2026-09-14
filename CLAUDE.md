@@ -15,11 +15,19 @@ further. Do not merge, and do not switch back to `main` to keep working.
 Tag pushes (`git push origin v0.1.0`) are fine on `main` — they cut a release and do not
 advance the branch.
 
-This is enforced in two places.
+There are two intended enforcement points, but **only the local hook is live today** — the
+GitHub ruleset described below is not configured on this repository. Treat a direct terminal
+push as possible, not blocked.
 
-**Locally**, `.claude/hooks/guard-main.ps1` refuses `git commit` and `git push` while HEAD is
-`main`, and refuses any push naming `main` as its target from any branch. It fails open: if
-it cannot determine the branch, the command proceeds.
+**Locally**, `.claude/hooks/guard-main.ps1` refuses `git commit` and `git push` when they
+would advance `main` — while HEAD is `main`, when a push names `main` in any spelling, and
+when a push reaches `main` without naming it at all (an upstream of `main`, `push.default` of
+`matching`, `--all`/`--branches`/`--mirror`, a `:` or wildcard refspec, or `remote.<name>.push`).
+It resolves git aliases first and follows `-C` into whichever repository the command names.
+It fails open: if it cannot determine the branch, the command proceeds.
+
+This binds an agent going through Claude Code's tool calls. It does nothing about a person
+typing `git push` in a terminal.
 
 Failing open is also how it hides a break — a hook that crashes emits no decision, and no
 decision means allow, so a broken guard and a working one look identical from outside. After

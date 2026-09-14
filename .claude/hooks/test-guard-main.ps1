@@ -27,7 +27,7 @@ Set-StrictMode -Version Latest
 
 $script:failures = 0
 
-function Invoke-Hook([string]$Command) {
+function Invoke-Hook([string]$Command, [string]$Shell = 'Bash') {
     <#
         Returns 'allow', 'deny', or a description of why neither.
 
@@ -40,7 +40,9 @@ function Invoke-Hook([string]$Command) {
         the wording misses whatever phrasing was not anticipated, and
         `Cannot find path ...` is one that would have slipped through.
     #>
-    $payload = @{ tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
+    # tool_name is part of the real payload and decides which character
+    # continues a line, so the cases have to carry it too.
+    $payload = @{ tool_name = $Shell; tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
     $out = $payload | & pwsh -NoProfile -File $Hook 2>&1 | Out-String
     $code = $LASTEXITCODE
 
@@ -56,11 +58,11 @@ function Invoke-Hook([string]$Command) {
     return "unexpected decision '$decision'"
 }
 
-function Check([string]$Name, [string]$Command, [bool]$ShouldDeny, [string]$In) {
+function Check([string]$Name, [string]$Command, [bool]$ShouldDeny, [string]$In, [string]$Shell = 'Bash') {
     $expected = if ($ShouldDeny) { 'deny' } else { 'allow' }
     if ($In) { Push-Location $In }
     try {
-        $actual = Invoke-Hook $Command
+        $actual = Invoke-Hook $Command $Shell
     } finally {
         if ($In) { Pop-Location }
     }
@@ -150,10 +152,12 @@ Check 'push continued with a backslash (bash)' (@(
     'main'
 ) -join "`n") $true
 
+# Declared as PowerShell input: the backtick only continues a line there, and
+# the hook now applies each shell's own rule rather than both at once.
 Check 'push continued with a backtick (PowerShell)' (@(
     "git push origin $backtick"
     'main'
-) -join "`n") $true
+) -join "`n") $true -Shell 'PowerShell'
 
 Check 'continuation with trailing space before the newline' (@(
     "git push origin $backslash  "
@@ -262,6 +266,73 @@ try {
     Check 'explicit branch beats an upstream of main' 'git push origin feat/x' $false -In $upstreamIsMain
 } finally {
     Remove-Item -Recurse -Force $upstreamIsMain, $upstreamIsSelf, $plainSimple, $matching `
+        -ErrorAction SilentlyContinue
+}
+
+# --- review findings -------------------------------------------------------
+# Every case below is a command that reached main while the guard said allow.
+
+$aliasRepo = New-RepoWithMain @{
+    'alias.p'    = 'push'
+    'alias.yolo' = '!git push origin main'
+}
+$otherOnMain = New-RepoWithMain @{}          # left checked out on feat/x
+$pushConfig  = New-RepoWithMain @{
+    'remote.origin.push' = 'refs/heads/*:refs/heads/*'
+}
+
+# Checked out on main, and carrying a real tag: the tag carve-out has to be
+# tested against a tag git can actually verify.
+$mainWithTag = New-RepoWithMain @{}
+& git -C $mainWithTag checkout -q main 2>&1 | Out-Null
+& git -C $mainWithTag tag v1.0 2>&1 | Out-Null
+
+# The repository `git -C` points at, sitting on main while the caller is not.
+$mainRepoForC = New-RepoWithMain @{}
+& git -C $mainRepoForC checkout -q main 2>&1 | Out-Null
+
+try {
+    # An alias hid the subcommand: `git p ...` was neither commit nor push.
+    Check 'alias expands to a push to main' 'git p origin main' $true -In $aliasRepo
+    Check 'shell alias hiding a push to main' 'git yolo' $true -In $aliasRepo
+    Check 'an alias that is not a push is still fine' 'git p origin feat/x' $false -In $aliasRepo
+
+    # Every form that carries all branches, none of which names main.
+    Check 'push --branches' 'git push --branches origin' $true -In $otherOnMain
+    Check 'matching refspec ":"' 'git push origin :' $true -In $otherOnMain
+    Check 'wildcard refspec' 'git push origin refs/heads/*:refs/heads/*' $true -In $otherOnMain
+
+    # remote.<name>.push decides a bare push before push.default is consulted.
+    Check 'bare push with a wildcard remote.push' 'git push' $true -In $pushConfig
+
+    # A tag anywhere used to exempt the whole push, HEAD included.
+    Check 'tag plus HEAD on main' 'git push origin v1.0 HEAD' $true -In $mainWithTag
+    Check 'a genuine tag-only push on main' 'git push origin v1.0' $false -In $mainWithTag
+    Check 'pushing only tags on main' 'git push --tags origin' $false -In $mainWithTag
+
+    # --dry-run was matched against the whole command, prose included.
+    Check 'commit whose message mentions --dry-run' `
+        'git commit -m "remember to --dry-run first"' $true -In $mainWithTag
+    Check 'a real dry run is still allowed' 'git push --dry-run origin main' $false -In $mainWithTag
+
+    # -C names another repository; the probes must follow it there.
+    Check 'commit into another repo that is on main' `
+        "git -C `"$mainRepoForC`" commit -m wip" $true -In $otherOnMain
+
+    # PowerShell does not continue a line on a backslash, so the two halves are
+    # separate commands and the push must still be seen.
+    Check 'backslash newline under PowerShell' (@(
+        'git status \'
+        'git push origin main'
+    ) -join "`n") $true -In $otherOnMain -Shell 'PowerShell'
+
+    # ...while bash does continue, and the joined line is one push to main.
+    Check 'backslash newline under bash' (@(
+        'git push origin \'
+        'main'
+    ) -join "`n") $true -In $otherOnMain -Shell 'Bash'
+} finally {
+    Remove-Item -Recurse -Force $aliasRepo, $otherOnMain, $pushConfig, $mainWithTag, $mainRepoForC `
         -ErrorAction SilentlyContinue
 }
 
