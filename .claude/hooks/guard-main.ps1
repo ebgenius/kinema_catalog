@@ -37,20 +37,86 @@ $ErrorActionPreference = 'Stop'
 # ---------------------------------------------------------------- tokenising
 
 function Get-Tokens([string]$Segment) {
-    # Whitespace-separated tokens with every shell quote removed.
-    #
-    # Removed throughout the token, not just trimmed from its ends. The shell
-    # concatenates around quotes, so `HEAD:"main"` and even `m"ai"n` reach git
-    # as `main`; a guard that only strips the outside sees neither.
-    #
-    # Safe to do unconditionally: git refuses a ref name containing a quote, so
-    # removing them cannot merge two distinct refs into one.
-    @($Segment -split '\s+' | Where-Object { $_ } | ForEach-Object { $_ -replace '["'']', '' } | Where-Object { $_ })
+    <#
+        The arguments git would actually receive: split on whitespace outside
+        quotes, with the quotes themselves removed.
+
+        Quote-aware on purpose. Splitting on every space first and stripping
+        quotes afterwards got both directions wrong:
+
+          - `git push origin "--all"` became the token `"--all"`, which no flag
+            check recognised, although the shell hands git a plain --all.
+          - `--push-option "skip --all checks"` became three tokens, one of
+            them --all, although git receives a single option value.
+
+        Quotes are still removed throughout a word, since the shell concatenates
+        around them: `HEAD:"main"` and `m"ai"n` both reach git as main. That is
+        safe because git refuses a ref name containing a quote.
+
+        Backslash is literal outside quotes -- Windows paths depend on it -- and
+        escapes only a double quote inside one (`\"`, or PowerShell's `` `" ``).
+    #>
+    $words = New-Object System.Collections.Generic.List[string]
+    $word = New-Object System.Text.StringBuilder
+    $inWord = $false
+    $quote = ''
+    for ($i = 0; $i -lt $Segment.Length; $i++) {
+        $ch = [string]$Segment[$i]
+        $next = if (($i + 1) -lt $Segment.Length) { [string]$Segment[$i + 1] } else { '' }
+        if ($quote -eq '') {
+            if ($ch -match '\s') {
+                if ($inWord) { $words.Add($word.ToString()); [void]$word.Clear(); $inWord = $false }
+            } elseif ($ch -eq "'" -or $ch -eq '"') {
+                $quote = $ch; $inWord = $true
+            } else {
+                [void]$word.Append($ch); $inWord = $true
+            }
+        } elseif ($quote -eq "'") {
+            if ($ch -eq "'") {
+                if ($next -eq "'") { [void]$word.Append("'"); $i++ }     # PowerShell's ''
+                else { $quote = '' }
+            } else {
+                [void]$word.Append($ch)
+            }
+        } else {
+            if (($ch -eq '\' -or $ch -eq '`') -and $next -eq '"') { [void]$word.Append('"'); $i++ }
+            elseif ($ch -eq '"') { $quote = '' }
+            else { [void]$word.Append($ch) }
+        }
+    }
+    if ($inWord) { $words.Add($word.ToString()) }
+    @($words | Where-Object { $_ })
 }
 
 function Get-Args([string]$Segment) {
     # Non-flag tokens, with a leading '+' (force refspec) removed.
     @(Get-Tokens $Segment | Where-Object { $_ -notmatch '^-' } | ForEach-Object { $_ -replace '^\+', '' } | Where-Object { $_ })
+}
+
+#: git push options that take their value as the *next* argument. Git consumes
+#: that argument whatever it looks like, including a leading dash.
+$script:PushOptionsWithValue = @('-o', '--push-option', '--receive-pack', '--exec', '--repo')
+
+function Get-PushTokens([string]$Segment) {
+    <#
+        Tokens of a push with the values of value-taking options dropped.
+
+        `git push -o -n` sends "-n" as a push option; it is not a dry run. Read
+        token by token without this, the -n looked like the flag and the whole
+        push was exempted as changing nothing.
+    #>
+    $tokens = @(Get-Tokens $Segment)
+    $kept = @()
+    for ($i = 0; $i -lt $tokens.Count; $i++) {
+        $kept += $tokens[$i]
+        if ($tokens[$i] -in $script:PushOptionsWithValue) { $i++ }
+    }
+    return $kept
+}
+
+function Get-PushArgs([string]$Segment) {
+    # Non-flag push arguments, option values excluded, leading '+' removed.
+    @(Get-PushTokens $Segment | Where-Object { $_ -notmatch '^-' } | ForEach-Object { $_ -replace '^\+', '' } | Where-Object { $_ })
 }
 
 function Remove-HereStrings([string]$Command) {
@@ -123,7 +189,7 @@ function Get-Segments([string]$Command, [string]$Shell) {
 
 # ------------------------------------------------------------- git invocation
 
-function Get-GitContextArgs([string]$Segment) {
+function Get-GitContextArgs([string]$Segment, [string]$Shell) {
     <#
         The -C / --git-dir / --work-tree options from this segment, so every
         probe runs against the repository the command actually names.
@@ -131,20 +197,30 @@ function Get-GitContextArgs([string]$Segment) {
         Without this the hook asks about its own working directory while the
         command operates elsewhere: `git -C ../other push` was judged by this
         checkout's branch and configuration, which is the wrong repository.
+
+        Paths go through the same host translation as `cd`, so a Git Bash
+        `-C /c/work/repo` is probed where git really finds it.
     #>
     $tokens = @(Get-Tokens $Segment)
     $ctx = @()
     for ($i = 0; $i -lt $tokens.Count; $i++) {
         $t = $tokens[$i]
         if (($t -eq '-C' -or $t -eq '--git-dir' -or $t -eq '--work-tree') -and ($i + 1) -lt $tokens.Count) {
-            $ctx += @($t, $tokens[$i + 1])
+            $value = ConvertTo-HostPath $tokens[$i + 1] $Shell
+            if (-not $value) { $value = $tokens[$i + 1] }
+            $ctx += @($t, $value)
             $i++
         }
         elseif ($t -match '^(--git-dir|--work-tree)=(.+)$') {
-            $ctx += @($Matches[1], $Matches[2])
+            $name = $Matches[1]
+            $value = ConvertTo-HostPath $Matches[2] $Shell
+            if (-not $value) { $value = $Matches[2] }
+            $ctx += @($name, $value)
         }
     }
-    return , $ctx
+    # Unrolled on purpose: callers wrap the result in @(), which gives the same
+    # array for zero, one or many options. `return , $ctx` did not survive that.
+    return $ctx
 }
 
 function Invoke-Git([string[]]$Ctx, [string[]]$GitArgs) {
@@ -214,7 +290,7 @@ function Expand-GitAlias([string]$Segment, [string[]]$Ctx) {
 
 function Get-PushRefspecs([string]$Segment, [string[]]$Ctx) {
     # The refspec arguments of a push, with the remote name or URL dropped.
-    $argv = @(Get-Args $Segment)
+    $argv = @(Get-PushArgs $Segment)
     $i = [array]::IndexOf($argv, 'push')
     if ($i -lt 0 -or ($i + 1) -ge $argv.Count) { return @() }
 
@@ -270,8 +346,17 @@ function Test-PushesAllBranches([string]$Segment, [string[]]$Refspecs) {
         --branches is the modern spelling of --all and was missed entirely; the
         matching refspec ':' and wildcards like refs/heads/*:refs/heads/* were
         read as ordinary refspecs whose destination simply was not "main".
+
+        The flags are compared as exact tokens, as git receives them. A regex
+        over the raw segment wanted whitespace before "--", so the quoted
+        `git push origin "--all"` slipped past it -- and it matched the words
+        inside `--push-option "skip --all checks"`, refusing a push that
+        carries nothing but feat/x.
     #>
-    if ($Segment -match '(^|\s)--(all|branches|mirror)(\s|$)') { return $true }
+    $tokens = @(Get-PushTokens $Segment)
+    foreach ($flag in @('--all', '--branches', '--mirror')) {
+        if ($tokens -contains $flag) { return $true }
+    }
     foreach ($r in $Refspecs) {
         if ($r -eq ':') { return $true }
         if ((Get-RefspecDestination $r) -match '\*') { return $true }
@@ -289,7 +374,7 @@ function Get-ConfiguredPushRefspecs([string[]]$Ctx, [string]$Remote) {
 }
 
 function Get-PushRemote([string]$Segment, [string[]]$Ctx, [string]$Branch) {
-    $argv = @(Get-Args $Segment)
+    $argv = @(Get-PushArgs $Segment)
     $i = [array]::IndexOf($argv, 'push')
     if ($i -ge 0 -and ($i + 1) -lt $argv.Count) {
         $remotes = @()
@@ -364,7 +449,7 @@ function Test-TagOnlyPush([string]$Segment, [string[]]$Refspecs, [string[]]$Ctx)
         Ask git rather than guessing from the name -- a pattern like `v\d` also
         matches branches called v2 or v10-experiment.
     #>
-    $hasTagsFlag = ((Get-Tokens $Segment) -contains '--tags')
+    $hasTagsFlag = (@(Get-PushTokens $Segment) -contains '--tags')
     if ($Refspecs.Count -eq 0) { return $hasTagsFlag }
 
     foreach ($r in $Refspecs) {
@@ -378,29 +463,311 @@ function Test-TagOnlyPush([string]$Segment, [string[]]$Refspecs, [string[]]$Ctx)
 }
 
 function Test-SegmentIsDryRun([string]$Segment) {
-    # An exact option token, never a substring of the command.
+    # An exact option token, never a substring of the command -- and never the
+    # value of an option that takes one.
     #
     # `$command -match '--dry-run'` let `git commit -m "remember to --dry-run
-    # first"` through on main: prose matched the flag. Same shape as the tag
-    # bug -- a whole-command regex over data.
-    $tokens = @(Get-Tokens $Segment)
+    # first"` through on main: prose matched the flag. And `git push -o -n`
+    # sends "-n" as a push option: git really pushes, but a plain token scan
+    # read it as a dry run and exempted the push.
+    $tokens = @(Get-PushTokens $Segment)
     return (($tokens -contains '--dry-run') -or ($tokens -contains '-n'))
 }
 
+# ----------------------------------------------------- where each command runs
+
+$script:OnWindows = ([IO.Path]::DirectorySeparatorChar -eq '\')
+
+function ConvertTo-HostPath([string]$Path, [string]$Shell) {
+    <#
+        A path as written in the command, translated to one this process can
+        test. $null when it cannot be translated.
+
+        Only Git Bash on Windows needs this. It writes C:\work as /c/work, and a
+        mount such as /tmp points somewhere only cygpath knows. Tested as-is,
+        neither exists, and a cd into a repository on main would look like a cd
+        into nothing.
+    #>
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $null }
+    if (-not $script:OnWindows -or $Shell -ne 'Bash' -or -not $Path.StartsWith('/')) { return $Path }
+    if ($Path -match '^/([A-Za-z])(/.*)?$') {
+        $rest = if ($Matches[2]) { $Matches[2] } else { '/' }
+        return ($Matches[1].ToUpperInvariant() + ':' + $rest)
+    }
+    try {
+        $translated = (& cygpath -w $Path 2>$null | Out-String).Trim()
+        if ($LASTEXITCODE -eq 0 -and $translated) { return $translated }
+    } catch { }
+    return $null
+}
+
+function Resolve-Directory([string]$Base, [string]$Target, [string]$Shell) {
+    <#
+        Where `cd <Target>` from <Base> lands, or $null when that cannot be known
+        without running the shell.
+
+        $null is the answer for anything expanded at run time -- variables,
+        globs, substitutions, ~user -- and for a directory that does not exist
+        here. In each case the alternative is to keep judging the old directory,
+        which is exactly the bypass this tracking exists to close.
+    #>
+    if ([string]::IsNullOrWhiteSpace($Target)) { return $null }
+    if ($Target -match '[$`%*?{}()<>!\[\]]') { return $null }
+    if ($Target -eq '~' -or $Target.StartsWith('~/') -or $Target.StartsWith('~\')) {
+        $Target = $HOME + $Target.Substring(1)
+    } elseif ($Target.StartsWith('~')) {
+        return $null
+    }
+    $hostTarget = ConvertTo-HostPath $Target $Shell
+    if (-not $hostTarget) { return $null }
+    try {
+        $full = [IO.Path]::GetFullPath([IO.Path]::Combine($Base, $hostTarget))
+    } catch {
+        return $null
+    }
+    if (Test-Path -LiteralPath $full -PathType Container) { return $full }
+    return $null
+}
+
+#: Commands that move the working directory, per shell, and what each does.
+$script:DirectoryCommands = @{
+    Bash       = @{ 'cd' = 'set'; 'pushd' = 'push'; 'popd' = 'pop' }
+    PowerShell = @{
+        'cd' = 'set'; 'chdir' = 'set'; 'sl' = 'set'; 'set-location' = 'set'
+        'pushd' = 'push'; 'push-location' = 'push'; 'popd' = 'pop'; 'pop-location' = 'pop'
+    }
+}
+
+function Get-DirectoryChange([string]$Core, [string]$Shell) {
+    # A cd / pushd / popd (or its PowerShell cmdlet) and its target, or $null.
+    $table = $script:DirectoryCommands[$Shell]
+    if (-not $table) { return $null }
+    $tokens = @(Get-Tokens $Core)
+    if ($tokens.Count -eq 0) { return $null }
+    $i = 0
+    if ($tokens[0] -eq 'builtin' -and $tokens.Count -gt 1) { $i = 1 }
+    $kind = $table[$tokens[$i].ToLowerInvariant()]
+    if (-not $kind) { return $null }
+
+    for ($j = $i + 1; $j -lt $tokens.Count; $j++) {
+        $t = $tokens[$j]
+        if ($t -eq '-') { return @{ Kind = $kind; Target = '-' } }
+        if ($Shell -eq 'PowerShell' -and $t -match '^-(Path|LiteralPath)$') {
+            if (($j + 1) -lt $tokens.Count) { return @{ Kind = $kind; Target = $tokens[$j + 1] } }
+            return @{ Kind = $kind; Target = $null }
+        }
+        if ($Shell -eq 'PowerShell' -and $t -match '^-StackName$') { $j++; continue }
+        if ($t.StartsWith('-')) { continue }
+        return @{ Kind = $kind; Target = $t }
+    }
+    return @{ Kind = $kind; Target = $null }
+}
+
+function Merge-Directories([object[]]$First, [object[]]$Second) {
+    # Union, first occurrence kept. Emitted unrolled; callers wrap in @().
+    $seen = @{}
+    foreach ($d in (@($First) + @($Second))) {
+        if ($d -and -not $seen.ContainsKey([string]$d)) {
+            $seen[[string]$d] = $true
+            $d
+        }
+    }
+}
+
+function Resolve-DirectoryChange($Change, [object[]]$Dirs, [object[]]$Prev, $DirStack, [string]$Shell) {
+    # Where the candidate directories go after one cd / pushd / popd.
+    if ($Change.Kind -eq 'pop') {
+        if ($DirStack.Count -eq 0) { return @{ Unknown = $true } }
+        return @{ Unknown = $false; Dirs = @($DirStack.Pop()) }
+    }
+
+    $target = $Change.Target
+    if ($null -eq $target) {
+        # A bare `cd` goes home in bash. A bare pushd swaps the stack, and
+        # PowerShell's bare Set-Location is version-dependent: not guessed.
+        if ($Shell -eq 'Bash' -and $Change.Kind -eq 'set') { $target = $HOME }
+        else { return @{ Unknown = $true } }
+    }
+
+    if ($target -eq '-') {
+        if (@($Prev).Count -eq 0) { return @{ Unknown = $true } }
+        $resolved = @($Prev)
+    } else {
+        $resolved = @()
+        foreach ($d in $Dirs) {
+            $r = Resolve-Directory $d $target $Shell
+            if (-not $r) { return @{ Unknown = $true } }
+            $resolved += $r
+        }
+    }
+
+    if ($Change.Kind -eq 'push') { $DirStack.Push(@($Dirs)) }
+    return @{ Unknown = $false; Dirs = @(Merge-Directories @() $resolved) }
+}
+
+function Split-GroupMarks([string]$Text, [string]$Shell) {
+    <#
+        The command inside any grouping, and how many subshells it opens and
+        closes.
+
+        `(git push origin main)` used to be read as a command whose first token
+        was "(git", so there was no git subcommand and the push went unseen.
+
+        Only bash scopes the directory: `(cd x && ...)`, `$(...)` and a backtick
+        substitution all leave the outer shell where it was. A PowerShell group
+        or subexpression runs in the same session, where Set-Location persists,
+        so there it strips the marks but opens nothing.
+    #>
+    $core = $Text.Trim()
+    $opens = 0
+    $closes = 0
+    $bash = ($Shell -eq 'Bash')
+    while ($core.Length -gt 0) {
+        if ($core.StartsWith('$(')) { $core = $core.Substring(2).TrimStart(); $opens++ }
+        elseif ($core.StartsWith('(')) { $core = $core.Substring(1).TrimStart(); $opens++ }
+        elseif ($core.StartsWith('{')) { $core = $core.Substring(1).TrimStart() }
+        elseif ($bash -and $core.StartsWith('`')) { $core = $core.Substring(1).TrimStart(); $opens++ }
+        else { break }
+    }
+    while ($core.Length -gt 0) {
+        $openParens = ([regex]::Matches($core, '\(')).Count
+        $closeParens = ([regex]::Matches($core, '\)')).Count
+        $openBraces = ([regex]::Matches($core, '\{')).Count
+        $closeBraces = ([regex]::Matches($core, '\}')).Count
+        if ($core.EndsWith(')') -and $closeParens -gt $openParens) {
+            $core = $core.Substring(0, $core.Length - 1).TrimEnd(); $closes++
+        }
+        elseif ($core.EndsWith('}') -and $closeBraces -gt $openBraces) {
+            $core = $core.Substring(0, $core.Length - 1).TrimEnd()
+        }
+        elseif ($bash -and $core.EndsWith('`')) {
+            $core = $core.Substring(0, $core.Length - 1).TrimEnd(); $closes++
+        }
+        else { break }
+    }
+    if (-not $bash) { $opens = 0; $closes = 0 }
+    return @{ Core = $core; Opens = $opens; Closes = $closes }
+}
+
+function Get-SegmentsWithSeparators([string]$Command, [string]$Shell) {
+    # Get-Segments, keeping the operator on each side of every segment: a cd
+    # means something different before `&&`, before `||`, and inside a bash
+    # pipeline. Emitted unrolled; callers wrap in @().
+    $parts = @((Join-LineContinuations $Command $Shell) -split '(&&|\|\||[;|]|\r?\n)')
+    $before = ''
+    for ($k = 0; $k -lt $parts.Count; $k += 2) {
+        $text = $parts[$k]
+        $after = if (($k + 1) -lt $parts.Count) { $parts[$k + 1] } else { '' }
+        if ($text -and $text.Trim()) {
+            @{ Text = $text; Before = $before; After = $after }
+        }
+        $before = $after
+    }
+}
+
+function Test-RootedGitContext([object[]]$Ctx) {
+    # True when -C or --git-dir names an absolute location, which git uses
+    # whatever directory the command started in.
+    $list = @($Ctx)
+    for ($i = 0; ($i + 1) -lt $list.Count; $i += 2) {
+        if ($list[$i] -in @('-C', '--git-dir') -and [IO.Path]::IsPathRooted([string]$list[$i + 1])) { return $true }
+    }
+    return $false
+}
+
+$script:UnresolvedDirectoryReason = @"
+This git command runs after a directory change the guard cannot resolve -- a cd
+to a variable or substitution, a path that does not exist here, or a popd past
+where the command started -- so it cannot tell which repository, or which
+branch, it would change.
+
+Name the repository explicitly instead:
+    git -C <path/to/repo> commit ...
+    git -C <path/to/repo> push -u origin <type>/<short-slug>
+
+See CLAUDE.md.
+"@
+
 # --------------------------------------------------------------- the decision
 
-function Get-DenyReason([string]$Command, [string]$Shell) {
+function Get-DenyReason([string]$Command, [string]$Shell, [string]$StartDir) {
     # Returns a reason to refuse, or $null to allow.
     $cmd = Remove-HereStrings $Command
+    if ([string]::IsNullOrWhiteSpace($StartDir)) { $StartDir = (Get-Location).ProviderPath }
 
-    # Expand aliases first: the subcommand is what everything below keys on.
+    <#
+        Where each command runs, tracked through the command line.
+
+        A later `git commit` used to be judged in the hook's own directory
+        whatever came before it, so `cd ../repo-on-main && git commit` committed
+        onto main while the guard looked at a feature branch.
+
+        $dirs is a list, not one directory, because some constructs leave the
+        answer open -- `cd x || git push` pushes only if the cd failed -- and
+        every candidate is judged. $unknown records a change that could not be
+        resolved at all; after it, a commit or push is refused rather than
+        guessed at.
+    #>
+    $dirs = @($StartDir)
+    $prev = @()
+    $unknown = $false
+    $dirStack = New-Object System.Collections.Stack
+    $groupStack = New-Object System.Collections.Stack
+
     $segments = @()
-    foreach ($raw in (Get-Segments $cmd $Shell)) {
-        $ctx = Get-GitContextArgs $raw
-        $expanded = Expand-GitAlias $raw $ctx
-        # A shell alias body can itself be several commands.
-        foreach ($piece in (Get-Segments $expanded $Shell)) {
-            $segments += , @{ Text = $piece; Ctx = (Get-GitContextArgs $piece) }
+    foreach ($part in @(Get-SegmentsWithSeparators $cmd $Shell)) {
+        $marks = Split-GroupMarks $part.Text $Shell
+        $core = $marks.Core
+
+        for ($o = 0; $o -lt $marks.Opens; $o++) {
+            $groupStack.Push(@{ Dirs = $dirs; Prev = $prev; Unknown = $unknown; DirStack = $dirStack.Clone() })
+        }
+
+        $change = if ($core) { Get-DirectoryChange $core $Shell } else { $null }
+        if ($change) {
+            # Each side of a bash pipeline is its own subshell, so a cd there
+            # moves nothing that follows.
+            $inPipeline = ($Shell -eq 'Bash') -and (($part.Before -eq '|') -or ($part.After -eq '|'))
+            if (-not $inPipeline -and -not $unknown) {
+                $result = Resolve-DirectoryChange $change $dirs $prev $dirStack $Shell
+                if ($result.Unknown) {
+                    $unknown = $true
+                } else {
+                    $prev = $dirs
+                    if ($part.After -eq '||') { $dirs = @(Merge-Directories $dirs $result.Dirs) }
+                    else { $dirs = @($result.Dirs) }
+                }
+            }
+        }
+        elseif ($core -and (Get-GitSubcommand $core)) {
+            $segCtx = @(Get-GitContextArgs $core $Shell)
+            if ($unknown -and -not (Test-RootedGitContext $segCtx)) {
+                # Only a commit or a push needs to know where it is; anything
+                # else changes nothing this guard protects.
+                foreach ($piece in @(Get-Segments (Expand-GitAlias $core $segCtx) $Shell)) {
+                    if ((Get-GitSubcommand $piece) -in @('commit', 'push')) {
+                        return $script:UnresolvedDirectoryReason
+                    }
+                }
+            } else {
+                foreach ($dir in $dirs) {
+                    $base = @('-C', $dir)
+                    # Aliases are per repository, so expand where the command runs.
+                    $expanded = Expand-GitAlias $core (@($base) + $segCtx)
+                    # A shell alias body can itself be several commands.
+                    foreach ($piece in @(Get-Segments $expanded $Shell)) {
+                        $pieceCore = (Split-GroupMarks $piece $Shell).Core
+                        $segments += , @{ Text = $pieceCore; Ctx = (@($base) + @(Get-GitContextArgs $pieceCore $Shell)) }
+                    }
+                }
+            }
+        }
+
+        for ($c = 0; $c -lt $marks.Closes; $c++) {
+            if ($groupStack.Count -gt 0) {
+                $saved = $groupStack.Pop()
+                $dirs = $saved.Dirs; $prev = $saved.Prev; $unknown = $saved.Unknown; $dirStack = $saved.DirStack
+            }
         }
     }
 
@@ -525,9 +892,21 @@ try {
 
     $toolName = ''
     if ($payload.PSObject.Properties.Name -contains 'tool_name') { $toolName = [string]$payload.tool_name }
+    $payloadCwd = ''
+    if ($payload.PSObject.Properties.Name -contains 'cwd') { $payloadCwd = [string]$payload.cwd }
 } catch {
     Allow
 }
+
+# Where the shell really is. The Bash tool keeps its working directory between
+# calls, so the payload's cwd -- not wherever this hook process happened to be
+# started -- is where the first command of the line runs.
+$startDir = (Get-Location).ProviderPath
+try {
+    if ($payloadCwd -and (Test-Path -LiteralPath $payloadCwd -PathType Container)) {
+        $startDir = (Resolve-Path -LiteralPath $payloadCwd).ProviderPath
+    }
+} catch { }
 
 # Which shell ran this decides what continues a line. When the payload does not
 # say, judge it as both and refuse if either reading would advance main --
@@ -540,7 +919,7 @@ $shells = switch -regex ($toolName) {
 
 foreach ($shell in $shells) {
     try {
-        $reason = Get-DenyReason $command $shell
+        $reason = Get-DenyReason $command $shell $startDir
     } catch {
         # Fail open, as everywhere else here -- but a guard that crashes is
         # indistinguishable from one that approves, so make it possible to see.

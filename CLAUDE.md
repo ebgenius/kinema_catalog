@@ -23,8 +23,12 @@ push as possible, not blocked.
 would advance `main` — while HEAD is `main`, when a push names `main` in any spelling, and
 when a push reaches `main` without naming it at all (an upstream of `main`, `push.default` of
 `matching`, `--all`/`--branches`/`--mirror`, a `:` or wildcard refspec, or `remote.<name>.push`).
-It resolves git aliases first and follows `-C` into whichever repository the command names.
-It fails open: if it cannot determine the branch, the command proceeds.
+It resolves git aliases first, reads arguments the way the shell hands them to git (a quoted
+`"--all"` is `--all`; the value of `-o` is not a flag), and follows the command into whichever
+repository it names — `-C`, and `cd`/`pushd`/`Set-Location` earlier on the same line, with
+bash subshells undoing theirs. After a directory change it cannot resolve (a variable, a
+missing path), it refuses a commit or push rather than guess. Otherwise it fails open: if it
+cannot determine the branch, the command proceeds.
 
 This binds an agent going through Claude Code's tool calls. It does nothing about a person
 typing `git push` in a terminal.

@@ -27,7 +27,7 @@ Set-StrictMode -Version Latest
 
 $script:failures = 0
 
-function Invoke-Hook([string]$Command, [string]$Shell = 'Bash') {
+function Invoke-Hook([string]$Command, [string]$Shell = 'Bash', [string]$Cwd) {
     <#
         Returns 'allow', 'deny', or a description of why neither.
 
@@ -40,9 +40,11 @@ function Invoke-Hook([string]$Command, [string]$Shell = 'Bash') {
         the wording misses whatever phrasing was not anticipated, and
         `Cannot find path ...` is one that would have slipped through.
     #>
-    # tool_name is part of the real payload and decides which character
-    # continues a line, so the cases have to carry it too.
-    $payload = @{ tool_name = $Shell; tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
+    # tool_name and cwd are part of the real payload: the first decides which
+    # character continues a line, the second is where a `cd` starts from. The
+    # cases carry both, with cwd defaulting to where the hook is launched.
+    if (-not $Cwd) { $Cwd = (Get-Location).ProviderPath }
+    $payload = @{ tool_name = $Shell; cwd = $Cwd; tool_input = @{ command = $Command } } | ConvertTo-Json -Compress
     $out = $payload | & pwsh -NoProfile -File $Hook 2>&1 | Out-String
     $code = $LASTEXITCODE
 
@@ -58,11 +60,11 @@ function Invoke-Hook([string]$Command, [string]$Shell = 'Bash') {
     return "unexpected decision '$decision'"
 }
 
-function Check([string]$Name, [string]$Command, [bool]$ShouldDeny, [string]$In, [string]$Shell = 'Bash') {
+function Check([string]$Name, [string]$Command, [bool]$ShouldDeny, [string]$In, [string]$Shell = 'Bash', [string]$Cwd) {
     $expected = if ($ShouldDeny) { 'deny' } else { 'allow' }
     if ($In) { Push-Location $In }
     try {
-        $actual = Invoke-Hook $Command $Shell
+        $actual = Invoke-Hook $Command $Shell $Cwd
     } finally {
         if ($In) { Pop-Location }
     }
@@ -334,6 +336,78 @@ try {
 } finally {
     Remove-Item -Recurse -Force $aliasRepo, $otherOnMain, $pushConfig, $mainWithTag, $mainRepoForC `
         -ErrorAction SilentlyContinue
+}
+
+# --- round three: quoting, option values, and where a command runs ----------
+# Each of these reached main, or was refused for text git never sees.
+
+$featureRepo = New-RepoWithMain @{}                     # on feat/x, main exists
+$mainRepo    = New-RepoWithMain @{}
+& git -C $mainRepo checkout -q main 2>&1 | Out-Null     # on main
+$parentDir   = Split-Path -Parent $mainRepo
+$mainLeaf    = Split-Path -Leaf $mainRepo
+
+# Paths the way a bash command writes them: forward slashes, and the /c/...
+# form Git Bash uses on Windows.
+$mainFwd    = $mainRepo -replace '\\', '/'
+$featureFwd = $featureRepo -replace '\\', '/'
+$parentFwd  = $parentDir -replace '\\', '/'
+$mainMsys   = if ($mainFwd -match '^([A-Za-z]):(.*)$') { '/' + $Matches[1].ToLower() + $Matches[2] } else { $mainFwd }
+
+try {
+    # A quoted flag is still the flag once the shell hands it to git.
+    Check 'quoted --all' 'git push origin "--all"' $true -In $featureRepo
+    Check 'quoted --mirror' "git push origin '--mirror'" $true -In $featureRepo
+    Check 'quoted --branches' 'git push "--branches" origin' $true -In $featureRepo
+
+    # ...and a flag's name inside one quoted value is not the flag.
+    Check 'push option whose value mentions --all' `
+        'git push -u origin feat/x --push-option "skip --all checks"' $false -In $featureRepo
+
+    # After -o, "-n" is the option's value and git really pushes.
+    Check 'push -o -n on main is not a dry run' 'git push -o -n' $true -In $mainRepo
+    Check 'push -o --dry-run on main is not a dry run' 'git push -o --dry-run' $true -In $mainRepo
+    Check 'a real -n dry run on main' 'git push -n' $false -In $mainRepo
+
+    # A cd earlier in the line decides which repository the commit lands in.
+    Check 'bash: cd into a repo on main, then commit' "cd $mainFwd && git commit -m wip" $true -In $featureRepo
+    Check 'pwsh: Set-Location into a repo on main; commit' "Set-Location $mainRepo; git commit -m wip" $true `
+        -In $featureRepo -Shell 'PowerShell'
+    # The other direction: leaving main for a feature repo must not be refused
+    # because of where the command started.
+    Check 'bash: cd out of main into a feature repo, then commit' "cd $featureFwd && git commit -m wip" $false -In $mainRepo
+
+    # A subshell's cd applies inside it and is undone after it.
+    Check 'bash: commit inside a subshell that cd-ed to main' "(cd $mainFwd && git commit -m wip)" $true -In $featureRepo
+    Check 'bash: subshell cd to main does not leak out' "(cd $mainFwd) && git commit -m wip" $false -In $featureRepo
+    Check 'bash: subshell cd away from main does not leak out' "(cd $featureFwd) && git commit -m wip" $true -In $mainRepo
+
+    # pushd moves; popd moves back.
+    Check 'bash: pushd into a repo on main, then commit' "pushd $mainFwd && git commit -m wip" $true -In $featureRepo
+    Check 'bash: pushd then popd, then commit' "pushd $mainFwd && popd && git commit -m wip" $false -In $featureRepo
+
+    # A relative -C is relative to wherever the cd left the shell.
+    Check 'bash: relative -C after cd' "cd $parentFwd && git -C $mainLeaf commit -m wip" $true -In $featureRepo
+
+    # Git Bash writes C:\... as /c/...; that is still the repository on main.
+    Check 'bash: cd using the /c/ path form' "cd $mainMsys && git commit -m wip" $true -In $featureRepo
+
+    # A cd that cannot be resolved without running the shell: refuse a commit or
+    # push after it, but leave read-only commands alone.
+    Check 'bash: cd to a variable, then commit' 'cd "$REPO" && git commit -m wip' $true -In $featureRepo
+    Check 'bash: cd to a variable, then a read-only command' 'cd "$REPO" && git status' $false -In $featureRepo
+
+    # `a || b` runs b only if a failed, so both directories are candidates and
+    # either one on main is enough to refuse.
+    Check 'bash: cd to main || commit is judged in both places' "cd $mainFwd || git commit -m wip" $true -In $featureRepo
+
+    # The payload's cwd is where the shell really is, not where the hook starts.
+    Check 'payload cwd on main, hook launched elsewhere' 'git commit -m wip' $true -In $featureRepo -Cwd $mainRepo
+
+    # A subshell around the whole push used to hide the subcommand.
+    Check 'push to main wrapped in a subshell' '(git push origin main)' $true -In $featureRepo
+} finally {
+    Remove-Item -Recurse -Force $featureRepo, $mainRepo -ErrorAction SilentlyContinue
 }
 
 ""
