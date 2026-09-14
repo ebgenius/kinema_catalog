@@ -7,16 +7,7 @@
           {
             "type": "command",
             "shell": "powershell",
-            "command": "pwsh -NoProfile -File \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-main.ps1\"",
-            "if": "Bash(git *)",
-            "timeout": 10,
-            "statusMessage": "Checking branch..."
-          },
-          {
-            "type": "command",
-            "shell": "powershell",
-            "command": "pwsh -NoProfile -File \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-main.ps1\"",
-            "if": "PowerShell(git *)",
+            "command": "powershell -NoProfile -File \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard-main.ps1\"",
             "timeout": 10,
             "statusMessage": "Checking branch..."
           }

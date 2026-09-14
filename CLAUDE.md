@@ -30,6 +30,15 @@ bash subshells undoing theirs. After a directory change it cannot resolve (a var
 missing path), it refuses a commit or push rather than guess. Otherwise it fails open: if it
 cannot determine the branch, the command proceeds.
 
+The hook fires on **every** `Bash` and `PowerShell` tool call, not only ones that begin with
+`git` — a line like `cd ../other-repo && git commit` starts with `cd`, so a `git *` matcher
+would never see it. It exits immediately for anything with no commit or push in it. It is
+launched with `powershell` (Windows PowerShell 5.1, present on every Windows machine) rather
+than `pwsh`, because a missing `pwsh` is a launch failure that emits nothing and so reads as
+allow — the tests confirm the script runs under both. On a non-Windows clone the `command` in
+`settings.json` must be changed to `pwsh`, and `main_protect` (below) is what should carry the
+policy there regardless.
+
 This binds an agent going through Claude Code's tool calls. It does nothing about a person
 typing `git push` in a terminal.
 
