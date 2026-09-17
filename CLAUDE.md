@@ -15,9 +15,8 @@ further. Do not merge, and do not switch back to `main` to keep working.
 Tag pushes (`git push origin v0.1.0`) are fine on `main` — they cut a release and do not
 advance the branch.
 
-There are two intended enforcement points, but **only the local hook is live today** — the
-GitHub ruleset described below is not configured on this repository. Treat a direct terminal
-push as possible, not blocked.
+Both enforcement points are live: the local hook below, and the `main_protect` ruleset on
+GitHub. A direct push to `main` is refused by the server, for everyone.
 
 **Locally**, `.claude/hooks/guard-main.ps1` refuses `git commit` and `git push` when they
 would advance `main` — while HEAD is `main`, when a push names `main` in any spelling, and
@@ -39,8 +38,10 @@ allow — the tests confirm the script runs under both. On a non-Windows clone t
 `settings.json` must be changed to `pwsh`, and `main_protect` (below) is what should carry the
 policy there regardless.
 
-This binds an agent going through Claude Code's tool calls. It does nothing about a person
-typing `git push` in a terminal.
+This binds an agent going through Claude Code's tool calls, and nothing else — a person
+typing `git push` in a terminal never reaches it. That case is the ruleset's job, which is
+why both exist: the hook explains the rule early, at the point of the mistake; the ruleset
+is what actually holds.
 
 Failing open is also how it hides a break — a hook that crashes emits no decision, and no
 decision means allow, so a broken guard and a working one look identical from outside. After
@@ -54,15 +55,24 @@ They cover both directions, because both have gone wrong: a commit message menti
 was refused as though it were a push, and `git add` on the line above a `git commit` hid the
 commit entirely.
 
-**On GitHub**, a `main_protect` ruleset should require a pull request and block force-pushes
-and deletion on the default branch, with **no bypass actors** — direct pushes refused for
-everyone, including the owner. Merges limited to rebase and squash. Zero approvals required,
-since GitHub does not allow self-approval; the PR is the gate, not the count.
+**On GitHub**, the `main_protect` ruleset (id 22773751) requires a pull request and blocks
+force-pushes and deletion on the default branch, with **no bypass actors** — direct pushes
+refused for everyone, including the owner. Merges limited to rebase and squash. Zero
+approvals required, since GitHub does not allow self-approval; the PR is the gate, not the
+count.
 
-> **Not yet configured on this repository.** `gh api repos/ebgenius/kinema_catalog/rulesets`
-> returns empty and `main` has no branch protection, so the local hook is currently the only
-> thing enforcing any of this — and a hook only binds the agent, not a person with a terminal.
-> Until the ruleset exists, treat the rule above as a convention rather than a guarantee.
+Check it with:
+
+```bash
+gh api repos/ebgenius/kinema_catalog/rules/branches/main --jq '[.[].type] | join(", ")'
+# deletion, non_fast_forward, pull_request
+```
+
+`require_extra_approval_for_unattributed_changes` is left at GitHub's default (on). The name
+invites a wrong reading, so: it covers pull requests **Copilot opens under its own app
+identity**, not commits carrying a `Co-Authored-By` trailer, and GitHub documents it as having
+*no effect while a ruleset requires zero approvals*. It is inert here. It only starts to
+matter if the required approval count ever rises above zero.
 
 The absence of a bypass is deliberate. A coding agent working here uses the owner's
 credentials, so GitHub cannot distinguish the two — an owner bypass would be an agent bypass.
