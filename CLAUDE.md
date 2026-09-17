@@ -61,12 +61,30 @@ refused for everyone, including the owner. Merges limited to rebase and squash. 
 approvals required, since GitHub does not allow self-approval; the PR is the gate, not the
 count.
 
-Check it with:
+Checking it takes two commands, because neither covers the claim alone:
 
 ```bash
+# 1. What is actually in force on main. Catches the ruleset being disabled or
+#    retargeted away from the default branch — a disabled ruleset's rules do not
+#    appear here.
 gh api repos/ebgenius/kinema_catalog/rules/branches/main --jq '[.[].type] | join(", ")'
 # deletion, non_fast_forward, pull_request
+
+# 2. On what terms, and for whom. This is the half the first command cannot see.
+gh api repos/ebgenius/kinema_catalog/rulesets/22773751 --jq \
+  '{name, enforcement, bypass_actors: (.bypass_actors | length)}
+   + (.rules[] | select(.type == "pull_request") | .parameters
+      | {approvals: .required_approving_review_count, merge: .allowed_merge_methods})'
+# {"approvals":0,"bypass_actors":0,"enforcement":"active",
+#  "merge":["squash","rebase"],"name":"main_protect"}
 ```
+
+The first command lists rule *types* only. It cannot show bypass actors, and any
+other active ruleset carrying the same three rules would print the same line — so on
+its own it can never support "for everyone". **`bypass_actors: 0` in the second
+command is what that phrase rests on.** (Enforcement mode is not a loophole here:
+`evaluate` is an Enterprise-plan feature and this repository cannot use it, so a rule
+listed by the first command is in force, not merely being observed.)
 
 `require_extra_approval_for_unattributed_changes` is left at GitHub's default (on). The name
 invites a wrong reading, so: it covers pull requests **Copilot opens under its own app
