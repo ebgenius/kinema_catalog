@@ -1,0 +1,2 @@
+# A patch must apply to kinema byte for byte; never let a checkout turn it CRLF.
+*.patch text eol=lf

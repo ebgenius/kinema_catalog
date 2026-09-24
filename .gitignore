@@ -20,3 +20,6 @@ log/
 
 # URDFs flattened by ./kinema_catalog.sh --export
 out/
+
+# pytest
+.pytest_cache/
