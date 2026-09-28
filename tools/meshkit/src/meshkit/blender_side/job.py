@@ -269,13 +269,15 @@ def write(path: Path, payload: dict) -> None:
 def main() -> int:
     args = parse_args()
     collada = load_pinned_collada(args.site)
-    importer = load_importer(args.importer)
     payload = {"environment": environment(collada), "results": []}
 
     if args.probe:
+        # The probe only reports the environment. It has no use for the
+        # importer, and must not run one that doctor reports as drifted.
         write(args.results, payload)
         return 0
 
+    importer = load_importer(args.importer)
     jobs = json.loads(args.jobs.read_text(encoding="utf-8"))
     for job in jobs:
         payload["results"].append(run_one(importer, job))

@@ -2,6 +2,7 @@
 
 import pytest
 
+import meshkit._vendor
 from meshkit.cli import main
 
 
@@ -44,3 +45,19 @@ def test_malformed_manifest_row_is_an_error_not_a_skip(tmp_path):
         encoding="utf-8")
     with pytest.raises(SystemExit, match=r"robots\.tsv:2: 1 tab-separated column"):
         main(["--root", str(tmp_path), "scan"])
+
+
+@pytest.mark.blender
+def test_doctor_reports_drift_without_running_the_importer(tmp_path, monkeypatch, capsys):
+    # The probe only reports the environment. It has no use for the importer,
+    # and must not execute one that doctor is about to report as drifted.
+    marker = tmp_path / "importer-ran"
+    drifted = tmp_path / "kinema_dae.py"
+    drifted.write_text(f"from pathlib import Path\nPath({str(marker)!r}).write_text('ran')\n",
+                       encoding="utf-8")
+    monkeypatch.setattr(meshkit._vendor, "VENDORED_FILE", drifted)
+
+    assert main(["doctor"]) == 1
+    out = capsys.readouterr().out
+    assert "DIFFERS from the pinned copy" in out and "NOT ready" in out
+    assert not marker.exists()
