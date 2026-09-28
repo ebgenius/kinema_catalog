@@ -5,8 +5,9 @@ import numpy as np
 import pytest
 
 from meshkit.external import _corners, dae_stats, normal_deviation
-from test_convert_blender import (flat_box_dae, with_broken_texture, with_prefixed_bindings,
-                                  with_second_instance)
+from test_convert_blender import (flat_box_dae, with_broken_texture,
+                                  with_degenerate_and_duplicate_faces, with_lines,
+                                  with_prefixed_bindings, with_second_instance)
 
 
 def cube_corners(flat: bool):
@@ -89,12 +90,14 @@ def test_broken_texture_is_read_the_way_the_importer_reads_it(tmp_path):
     assert found["normal_deviation"] == pytest.approx(expected["normal_deviation"], abs=1e-9)
 
 
-def test_one_broken_material_is_measured_like_the_rest(tmp_path):
+@pytest.mark.parametrize("broken_first, offset_cm", [(False, 100), (True, 100), (True, 0)])
+def test_one_broken_material_is_measured_like_the_rest(tmp_path, broken_first, offset_cm):
     # pycollada drops only the instance whose material fails to bind; the
     # scene walk still finds the other, and must not stop there.
     path = tmp_path / "box.dae"
     flat_box_dae(path)
-    with_second_instance(path, broken_material=True)
+    with_second_instance(path, broken_material=True, broken_first=broken_first,
+                         offset_cm=offset_cm)
     assert dae_stats(path)["triangles"] == 24
 
 
@@ -107,3 +110,19 @@ def test_prefixed_bindings_are_removed_too(tmp_path):
     with_broken_texture(path)
     with_prefixed_bindings(path)
     assert dae_stats(path)["triangles"] == 24
+
+
+def test_count_is_of_the_triangles_blender_keeps(tmp_path):
+    # 14 in the file; mesh.validate() drops the one repeating a vertex and the
+    # reversed duplicate, so an exact comparison has to count 12.
+    path = tmp_path / "box.dae"
+    flat_box_dae(path)
+    with_degenerate_and_duplicate_faces(path)
+    assert dae_stats(path)["triangles"] == 12
+
+
+def test_lines_are_not_triangles(tmp_path):
+    path = tmp_path / "box.dae"
+    flat_box_dae(path)
+    with_lines(path)
+    assert dae_stats(path)["triangles"] == 12

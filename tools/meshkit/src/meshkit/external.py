@@ -178,6 +178,18 @@ def _without_bindings(path: Path) -> io.BytesIO:
     return io.BytesIO(ElementTree.tostring(root, encoding="utf-8"))
 
 
+def _kept_faces(index: np.ndarray) -> int:
+    """How many of these (n, 3) faces a Blender mesh keeps.
+
+    The importer builds one mesh per triangle set and calls ``mesh.validate()``,
+    which drops a face that repeats a vertex, and all but one of the faces on
+    the same three vertices, in any order or winding. CAD exports carry both.
+    """
+    distinct = index[(index[:, 0] != index[:, 1]) & (index[:, 1] != index[:, 2])
+                     & (index[:, 0] != index[:, 2])]
+    return len(np.unique(np.sort(distinct, axis=1), axis=0))
+
+
 def _read_dae(path: Path, *, bind_materials: bool = True):
     """The document, loaded the way the importer's ``_load_collada`` loads it."""
     import collada
@@ -194,6 +206,9 @@ def _read_dae(path: Path, *, bind_materials: bool = True):
 def dae_stats(path: Path) -> dict:
     """Triangle count and normal deviation of a .dae as written, read by pycollada.
 
+    The count is of the triangles a Blender import keeps (``_kept_faces``), so
+    it can be held against the import's exactly.
+
     Reads the file the way kinema's importer does, or the check would reject
     meshes the importer converts fine: the same ``ignore`` list and the bound
     scene geometry first. A material that fails to bind -- a texture whose
@@ -209,6 +224,7 @@ def dae_stats(path: Path) -> dict:
     document = _read_dae(path)
     triangles: list[np.ndarray] = []
     normals: list[np.ndarray] = []
+    kept: list[int] = []
 
     def add(primitives, matrix: np.ndarray | None = None) -> None:
         for primitive in _triangle_sets(primitives):
@@ -216,6 +232,7 @@ def dae_stats(path: Path) -> dict:
             if corners is not None:
                 triangles.append(corners[0])
                 normals.append(corners[1])
+                kept.append(_kept_faces(primitive.vertex_index))
 
     placed = []
     for bound in document.scene.objects("geometry"):
@@ -237,9 +254,8 @@ def dae_stats(path: Path) -> dict:
     loader = f"pycollada {getattr(collada, '__version__', 'unknown')}"
     if not triangles:
         return {"triangles": 0, "normal_deviation": None, "loader": loader}
-    tri = np.concatenate(triangles)
     return {
-        "triangles": int(len(tri)),
-        "normal_deviation": normal_deviation(tri, np.concatenate(normals)),
+        "triangles": sum(kept),
+        "normal_deviation": normal_deviation(np.concatenate(triangles), np.concatenate(normals)),
         "loader": loader,
     }

@@ -90,15 +90,16 @@ it hadn't finished are reported as failed.
 
 ### The gate
 
-A GLB is promoted out of staging only if all three checks pass:
+A GLB is promoted out of staging only if all four checks pass:
 
 | check | compares | catches |
 |---|---|---|
 | round trip | kinema's import of the `.dae` against Blender's re-import of the `.glb`: triangles (exact), area, centroid, bounds | lost node transforms, units, axis rotations, dropped primitives |
 | trimesh | the `.glb` read by trimesh, no Blender: triangles, area | an exporter bug that Blender's own importer would mirror |
+| count | the raw `.dae` read by pycollada against kinema's import: triangles, counted as Blender keeps them | geometry the import loses or invents, which every other check inherits |
 | shading | the raw `.dae` read by pycollada against the `.glb` read by trimesh: the spread of angles between each corner normal and its face | normals lost or averaged on the way through |
 
-The shading check exists because the first two passed while kinema's importer was
+The shading check exists because the geometry checks passed while kinema's importer was
 averaging away every file's normals (see below). Tolerances are flags:
 `--tolerance-position`, `--tolerance-area`, `--tolerance-normals`.
 
@@ -127,6 +128,11 @@ if the file differs from pinned-plus-patches (`--allow-importer-drift` overrides
   without bindings and imports each instance it lost where its node puts it,
   without material; instances that did bind keep theirs. Like 0001, it applies to
   kinema as is and belongs upstream.
+- **`0003-dae-skip-line-primitives.patch`**: kinema read every primitive's indices
+  three at a time, `<lines>` included, so their edge endpoints became triangles the
+  file never had. franka's `link7.dae` has three edges, and its GLB gained two
+  triangles. The count check caught it. The patch skips line primitives. It is
+  upstream-bound like the others.
 
 ## Tests
 

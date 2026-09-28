@@ -35,9 +35,12 @@ PATCHES = (
     # and its node with it: lost outright if other instances survived, and
     # otherwise imported from the library alone, unplaced and only once.
     "0002-dae-fallback-keeps-node-placement.patch",
+    # <lines> were read three indices at a time, as if they were triangles:
+    # franka's link7 gained two triangles the file never had.
+    "0003-dae-skip-line-primitives.patch",
 )
 # COMMIT's file with PATCHES applied -- what VENDORED_FILE must hash to.
-SHA256 = "dc029a1d056d29eb640fac014c964999940d2df52228838816ea00881d7712b5"
+SHA256 = "80963a10ddd803de032ad667fcfd0e7688344a2df540cfdc48d332f5bd3dfc08"
 
 VENDORED_FILE = Path(__file__).parent / "blender_side" / "kinema_dae.py"
 

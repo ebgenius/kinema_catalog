@@ -1,11 +1,13 @@
 """``meshkit convert``: .dae visual meshes to .glb, gated.
 
 Every GLB is produced in a staging directory and only moved next to its source
-once it has passed all three checks:
+once it has passed all four checks:
 
 1. the round trip inside Blender (``gate.compare``),
-2. the independent trimesh reading of the GLB (``external.glb_stats``), and
-3. the shading, raw .dae against GLB with no Blender in between
+2. the independent trimesh reading of the GLB (``external.glb_stats``),
+3. the triangle count of the raw .dae against the import's -- the one count
+   that does not start from the import (``external.dae_stats``), and
+4. the shading, raw .dae against GLB with no Blender in between
    (``gate.compare_normals``).
 
 A file that fails any of them stays out of the tree, and the report says why. Nothing
@@ -112,7 +114,7 @@ def _publish(staged: Path, output: Path) -> None:
 
 
 def _judge(result: dict, tolerance: Tolerance) -> tuple[list[str], dict | None]:
-    """Both checks for one Blender result: problems found, and trimesh's numbers."""
+    """The checks for one Blender result: problems found, and the outside numbers."""
     if not result.get("ok"):
         return [result.get("error", "Blender job failed without a message")], None
     problems = [f"round trip: {p}" for p in
@@ -128,6 +130,12 @@ def _judge(result: dict, tolerance: Tolerance) -> tuple[list[str], dict | None]:
     try:
         source = dae_stats(Path(result["source"]))
         external["source_normal_deviation"] = source["normal_deviation"]
+        external["source_triangles"] = source["triangles"]
+        # Every other count starts from the import; this one is the file's own.
+        imported = (result.get("source_stats") or {}).get("triangles")
+        if source["triangles"] != imported:
+            problems.append(f"import: the .dae holds {source['triangles']} triangles, "
+                            f"kinema's import {imported}")
         problems += [f"shading: {p}" for p in compare_normals(
             source["normal_deviation"], external["normal_deviation"], tolerance)]
     except Exception as exc:  # noqa: BLE001

@@ -245,6 +245,10 @@ def _build_mesh(name: str, triangle_set, material_cache) -> bpy.types.Mesh | Non
     indices = getattr(triangle_set, "vertex_index", None)
     if vertices is None or indices is None or len(indices) == 0:
         return None
+    if indices.ndim == 2 and indices.shape[1] != 3:
+        # <lines>: two indices per element. Read three at a time below, they
+        # would make triangles out of edge endpoints that the file never had.
+        return None
 
     mesh = bpy.data.meshes.new(name)
     faces = indices.reshape(-1, 3)

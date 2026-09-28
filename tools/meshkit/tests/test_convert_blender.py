@@ -66,24 +66,59 @@ def _break_texture(text):
                   count=1, flags=re.S)
 
 
-def with_second_instance(path, *, broken_material=False):
-    """Instance the box's geometry again, from a second node 1 m along x.
+def with_second_instance(path, *, broken_material=False, broken_first=False, offset_cm=100):
+    """Instance the box's geometry again, from a second node ``offset_cm`` along x.
 
-    ``broken_material`` gives that node a material of its own, whose texture
-    names an image the file never declares: only the second instance fails to
-    bind, so the scene still yields the first.
+    ``broken_material`` gives one node -- the second, or with ``broken_first``
+    the first -- a material of its own, whose texture names an image the file
+    never declares: only that instance fails to bind, and the scene still
+    yields the other.
     """
     text = path.read_text(encoding="utf-8")
     node = re.search(r'<node id="box".*?</node>', text, re.S).group(0)
-    second = re.sub(r"<translate>\S+", "<translate>100", node.replace('id="box"', 'id="box2"', 1),
-                    count=1)
+    first = node
+    second = re.sub(r"<translate>\S+", f"<translate>{offset_cm}",
+                    node.replace('id="box"', 'id="box2"', 1), count=1)
     if broken_material:
         effect = re.search(r'<effect id="fx".*?</effect>', text, re.S).group(0)
         text = text.replace(effect, effect + _break_texture(effect.replace('id="fx"', 'id="fx2"')))
         text = text.replace("</library_materials>", '<material id="mat2" name="mat2">'
                             '<instance_effect url="#fx2"/></material></library_materials>', 1)
-        second = second.replace('target="#mat"', 'target="#mat2"')
-    path.write_text(text.replace(node, node + second), encoding="utf-8")
+        if broken_first:
+            first = first.replace('target="#mat"', 'target="#mat2"')
+        else:
+            second = second.replace('target="#mat"', 'target="#mat2"')
+    path.write_text(text.replace(node, first + second), encoding="utf-8")
+
+
+def with_lines(path):
+    """Add a <lines> primitive, three of the box's vertical edges, as some CAD
+    exports do.
+
+    Read three indices at a time, (0-1, 2-3, 4-5) make the faces (0, 1, 2) and
+    (3, 4, 5): real triangles, which mesh.validate() keeps. Edges that share
+    endpoints would repeat a vertex and be dropped anyway.
+    """
+    text = path.read_text(encoding="utf-8")
+    lines = ('<lines count="3"><input offset="0" semantic="VERTEX" source="#v-vertices" />'
+             '<p>0 1 2 3 4 5</p></lines>')
+    path.write_text(text.replace("</triangles>", "</triangles>" + lines, 1), encoding="utf-8")
+
+
+def with_degenerate_and_duplicate_faces(path):
+    """Add a face that repeats a vertex, and the first face again, reversed and
+    facing the other way, as a double-sided export has it.
+
+    CAD exports carry both. Blender's mesh.validate() drops them, so the box
+    still imports as 12 triangles.
+    """
+    text = path.read_text(encoding="utf-8").replace('<triangles count="12"',
+                                                    '<triangles count="14"', 1)
+    # (0, 0, 1) repeats vertex 0; (3, 1, 0) is face (0, 1, 3) reversed, with
+    # normal 1, the box's +x, where face 0 has -x.
+    text = re.sub(r"(<triangles\b.*?<p>.*?)(</p>)", r"\1 0 0 0 0 1 0 3 1 1 1 0 1\2", text,
+                  count=1, flags=re.S)
+    path.write_text(text, encoding="utf-8")
 
 
 def with_prefixed_bindings(path):
@@ -166,7 +201,15 @@ def test_broken_texture_keeps_every_instance_where_its_node_puts_it(tmp_path, bl
     assert stats["centroid"] == pytest.approx([0.5, 0.0, 0.192 + 0.10], abs=1e-6)
 
 
-def test_one_broken_material_loses_no_instance(tmp_path, blender):
+@pytest.mark.parametrize("broken_first, offset_cm, centroid_x", [
+    (False, 100, 0.5),
+    (True, 100, 0.5),
+    # Same geometry, same place: the two instances share a key, and which of
+    # them the recovery counts as lost cannot change a single triangle.
+    (True, 0, 0.0),
+], ids=["bound-first", "lost-first", "lost-first-same-place"])
+def test_one_broken_material_loses_no_instance(tmp_path, blender, broken_first, offset_cm,
+                                               centroid_x):
     # Only the second node's material fails to bind. pycollada drops that one
     # instance, the scene walk is not empty, and the recovery must not wait
     # for it to be: the second box was dropped without a warning.
@@ -174,7 +217,8 @@ def test_one_broken_material_loses_no_instance(tmp_path, blender):
     dae = root / "src" / "fork" / "box.dae"
     dae.parent.mkdir(parents=True)
     flat_box_dae(dae)
-    with_second_instance(dae, broken_material=True)
+    with_second_instance(dae, broken_material=True, broken_first=broken_first,
+                         offset_cm=offset_cm)
 
     report = convert(plan([dae], root, tmp_path / "out"), blender,
                      report_path=tmp_path / "report.json", progress=lambda _: None)
@@ -184,5 +228,40 @@ def test_one_broken_material_loses_no_instance(tmp_path, blender):
     assert any("1 instance(s)" in w for w in item["importer_warnings"])
     stats = item["source_stats"]
     assert stats["triangles"] == 24
-    assert stats["centroid"] == pytest.approx([0.5, 0.0, 0.192 + 0.10], abs=1e-6)
+    assert stats["centroid"] == pytest.approx([centroid_x, 0.0, 0.192 + 0.10], abs=1e-6)
     assert "mat" in stats["materials"]   # the instance that bound keeps its material
+
+
+def test_lines_do_not_become_triangles(tmp_path, blender):
+    # Read three indices at a time, three edges made two triangles the file
+    # never had (franka's link7 carries such a <lines>). The count check is the
+    # one that sees it; the others all start from the import.
+    root = tmp_path / "catalog"
+    dae = root / "src" / "fork" / "box.dae"
+    dae.parent.mkdir(parents=True)
+    flat_box_dae(dae)
+    with_lines(dae)
+
+    report = convert(plan([dae], root, tmp_path / "out"), blender,
+                     report_path=tmp_path / "report.json", progress=lambda _: None)
+
+    (item,) = report["items"]
+    assert item["status"] == "converted", item["problems"]
+    assert item["source_stats"]["triangles"] == 12
+
+
+def test_faces_blender_drops_do_not_fail_the_count(tmp_path, blender):
+    # The .dae says 14 triangles; Blender keeps 12. The count check has to
+    # count the way Blender does, or it rejects every CAD mesh that has these.
+    root = tmp_path / "catalog"
+    dae = root / "src" / "fork" / "box.dae"
+    dae.parent.mkdir(parents=True)
+    flat_box_dae(dae)
+    with_degenerate_and_duplicate_faces(dae)
+
+    report = convert(plan([dae], root, tmp_path / "out"), blender,
+                     report_path=tmp_path / "report.json", progress=lambda _: None)
+
+    (item,) = report["items"]
+    assert item["status"] == "converted", item["problems"]
+    assert item["source_stats"]["triangles"] == 12

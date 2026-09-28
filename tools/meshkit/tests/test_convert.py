@@ -1,6 +1,7 @@
 """convert()'s bookkeeping, with a stand-in for the Blender job: no Blender needed."""
 
 import json
+import sys
 from pathlib import Path
 
 from meshkit import convert as convert_module
@@ -99,3 +100,24 @@ def test_failed_copy_leaves_the_previous_glb_whole(tmp_path, monkeypatch):
     assert item["status"] == "failed" and "No space left" in item["reason"]
     assert target.output.read_bytes() == b"the previous, verified glb"
     assert sorted(p.name for p in target.output.parent.iterdir()) == ["a.dae", "a.glb"]
+
+
+def test_an_import_that_lost_triangles_fails_the_count(tmp_path, monkeypatch):
+    # Round trip and trimesh agree with an import that lost an instance --
+    # they start from it. The .dae's own count is what shows the loss.
+    sys.path.insert(0, str(Path(__file__).parent))
+    from test_convert_blender import flat_box_dae, with_second_instance
+
+    dae = tmp_path / "src" / "fork" / "box.dae"
+    dae.parent.mkdir(parents=True)
+    flat_box_dae(dae)
+    with_second_instance(dae)                  # 24 triangles in the file
+    one_box = dict(STATS, triangles=12)
+    monkeypatch.setattr(convert_module, "glb_stats", lambda path: dict(
+        one_box, normal_deviation=[0.0, 0.0, 0.0]))
+    result = {"ok": True, "source": str(dae), "staged": str(tmp_path / "x.glb"),
+              "source_stats": one_box, "roundtrip_stats": one_box}
+
+    problems, external = convert_module._judge(result, convert_module.DEFAULT)
+    assert problems == ["import: the .dae holds 24 triangles, kinema's import 12"]
+    assert external["source_triangles"] == 24
