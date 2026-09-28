@@ -35,6 +35,9 @@ needs on demand, so a fresh checkout needs no setup beyond Docker.
 `--check` is the one to run after editing a description or swapping meshes: it
 processes every robot in the manifest and tells you which ones stopped resolving.
 
+Gazebo opens paused, so the robot holds its spawn pose while you look it over. Press
+Play to run physics: nothing drives the joints, so it then falls and folds up.
+
 On Windows use the PowerShell wrapper, which forwards into WSL (where WSLg
 supplies the display):
 
