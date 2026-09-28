@@ -1,5 +1,7 @@
 """End to end through a real Blender: skipped where none is installed."""
 
+import re
+
 import numpy as np
 import pytest
 import collada
@@ -53,6 +55,32 @@ def flat_box_dae(path, *, offset_z=0.192, unit_meter=0.01):
     mesh.write(str(path))
 
 
+def with_second_instance(path):
+    """Instance the box's geometry again, from a second node 1 m along x."""
+    text = path.read_text(encoding="utf-8")
+    node = re.search(r'<node id="box".*?</node>', text, re.S).group(0)
+    second = re.sub(r"<translate>\S+", "<translate>100", node.replace('id="box"', 'id="box2"', 1),
+                    count=1)
+    path.write_text(text.replace(node, node + second), encoding="utf-8")
+
+
+def with_broken_texture(path):
+    """Point the box's material at a texture whose image the file never declares.
+
+    Common in CAD exports. Strict pycollada refuses such a file; the tolerant
+    read cannot bind the material, and drops each <instance_geometry> with it.
+    """
+    text = path.read_text(encoding="utf-8")
+    text = text.replace('<technique sid="common">', (
+        '<newparam sid="surf"><surface type="2D"><init_from>no_such_image</init_from>'
+        '</surface></newparam><newparam sid="samp"><sampler2D><source>surf</source>'
+        '</sampler2D></newparam><technique sid="common">'), 1)
+    text = re.sub(r"<diffuse>.*?</diffuse>",
+                  '<diffuse><texture texture="samp" texcoord="UVMap"/></diffuse>', text,
+                  count=1, flags=re.S)
+    path.write_text(text, encoding="utf-8")
+
+
 def test_convert_keeps_geometry_placement_and_shading(tmp_path, blender):
     root = tmp_path / "catalog"
     dae = root / "src" / "fork" / "pkg" / "meshes" / "visual" / "box.dae"
@@ -88,3 +116,25 @@ def test_existing_output_is_skipped_without_force(tmp_path, blender):
                      report_path=tmp_path / "report.json", progress=lambda _: None)
     assert report["items"][0]["status"] == "skipped"
     assert dae.with_suffix(".glb").read_bytes() == b"not touched"
+
+
+def test_broken_texture_keeps_every_instance_where_its_node_puts_it(tmp_path, blender):
+    # The importer used to fall back to the library geometry alone: the node's
+    # offset and the second instance were lost, and every check still passed,
+    # because they all start from what the importer produced (patches/0002).
+    root = tmp_path / "catalog"
+    dae = root / "src" / "fork" / "box.dae"
+    dae.parent.mkdir(parents=True)
+    flat_box_dae(dae)
+    with_second_instance(dae)
+    with_broken_texture(dae)
+
+    report = convert(plan([dae], root, tmp_path / "out"), blender,
+                     report_path=tmp_path / "report.json", progress=lambda _: None)
+
+    (item,) = report["items"]
+    assert item["status"] == "converted", item["problems"]
+    assert any("material binding failed" in w for w in item["importer_warnings"])
+    stats = item["source_stats"]
+    assert stats["triangles"] == 24
+    assert stats["centroid"] == pytest.approx([0.5, 0.0, 0.192 + 0.10], abs=1e-6)

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import tempfile
 import time
@@ -87,6 +88,27 @@ def plan(sources: list[Path], root: Path, out_dir: Path | None) -> list[Target]:
             output = (out_dir / source.relative_to(root)).with_suffix(".glb")
         targets.append(Target(f"{index:05d}", source, output))
     return targets
+
+
+def _publish(staged: Path, output: Path) -> None:
+    """Put a verified GLB at ``output`` whole, or leave ``output`` as it was.
+
+    Staging sits in the system temp directory, often another filesystem, where
+    a move is a copy -- and a copy that dies half-way leaves a truncated .glb
+    that the next run skips as done, or under --force, a good one truncated.
+    So the copy is made beside the destination, and renamed over it once whole.
+    """
+    output.parent.mkdir(parents=True, exist_ok=True)
+    handle, name = tempfile.mkstemp(prefix=f".{output.name}.", suffix=".tmp",
+                                    dir=output.parent)
+    os.close(handle)
+    temporary = Path(name)
+    try:
+        shutil.copy2(staged, temporary)   # copy2: the mode too, not mkstemp's 0600
+        os.replace(temporary, output)
+    except BaseException:
+        temporary.unlink(missing_ok=True)
+        raise
 
 
 def _judge(result: dict, tolerance: Tolerance) -> tuple[list[str], dict | None]:
@@ -208,13 +230,11 @@ def convert(
                         item.reason += ("; this Blender has no glTF export option(s) "
                                         + ", ".join(item.dropped_export_options))
                 else:
-                    staged = Path(result["staged"])
                     try:
-                        target.output.parent.mkdir(parents=True, exist_ok=True)
-                        shutil.move(str(staged), target.output)
+                        _publish(Path(result["staged"]), target.output)
                     except OSError as exc:
                         # One unwritable destination must not end the run: the
-                        # GLBs already moved into place need their report.
+                        # GLBs already in place need their report.
                         item.reason = f"passed verification, but could not be written: {exc}"
                     else:
                         item.status = "converted"

@@ -22,6 +22,8 @@ side" bugs seen in other importers, and both are handled here:
 
 from __future__ import annotations
 
+import io
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -34,6 +36,10 @@ _UP_AXIS_TO_ZUP: dict[str, Matrix] = {
     "Z_UP": Matrix.Identity(4),
     "X_UP": Matrix.Rotation(1.5707963267948966, 4, "Z"),
 }
+
+_BIND_MATERIAL = re.compile(
+    rb"<bind_material\b[^>]*/>|<bind_material\b.*?</bind_material\s*>", re.S
+)
 
 
 class DaeImportError(RuntimeError):
@@ -52,7 +58,7 @@ class DaeImportResult:
         return [obj.data for obj in self.objects]
 
 
-def _load_collada(filepath: Path):
+def _load_collada(filepath: Path, *, bind_materials: bool = True):
     try:
         import collada
     except ImportError as exc:  # pragma: no cover - dependency is bundled
@@ -60,12 +66,18 @@ def _load_collada(filepath: Path):
             "pycollada is not available; Kinema cannot read .dae files"
         ) from exc
 
+    source = str(filepath)
+    if not bind_materials:
+        # With no <bind_material> left, no binding can fail: pycollada keeps
+        # every <instance_geometry>, placed by its node, just without material.
+        source = io.BytesIO(_BIND_MATERIAL.sub(b"", filepath.read_bytes()))
+
     try:
         # ignore=... keeps a single malformed effect or unsupported controller
         # from aborting the whole file. Robot meshes are frequently exported by
         # CAD tools that emit slightly non-conformant COLLADA.
         return collada.Collada(
-            str(filepath),
+            source,
             ignore=[
                 collada.common.DaeUnsupportedError,
                 collada.common.DaeBrokenRefError,
@@ -184,7 +196,7 @@ def _node_transforms(document) -> dict[int, Matrix]:
 
 
 def _iter_unbound_geometries(document):
-    """Fallback: read geometry straight from the library, ignoring materials.
+    """Last resort: read geometry straight from the library, ignoring materials.
 
     ``scene.objects('geometry')`` resolves each ``<instance_geometry>`` through
     its ``<bind_material>``. If an effect fails to load -- most often a
@@ -194,7 +206,10 @@ def _iter_unbound_geometries(document):
     triangles are perfectly readable.
 
     Reading ``document.geometries`` directly bypasses material resolution
-    entirely, so a missing texture costs the material rather than the mesh.
+    entirely, so a missing texture costs the material rather than the mesh --
+    but a geometry whose instance pycollada dropped also loses its node, and
+    lands once, unplaced. So ``import_dae`` first re-reads the file without
+    bindings, and only comes here when even that finds no geometry.
     """
     transforms = _node_transforms(document)
     for geometry in getattr(document, "geometries", ()) or ():
@@ -339,6 +354,16 @@ def import_dae(
             f"{path.name}: material binding failed (often a missing texture); "
             f"imported geometry without materials"
         )
+        # pycollada drops an <instance_geometry> whose binding failed, and the
+        # node placing it goes with it, so the library geometry alone would
+        # lose its placement and every instance but one. Read the file again
+        # without bindings: the scene then resolves as it should, minus materials.
+        unbound = _load_collada(path, bind_materials=False)
+        for bound_geometry in unbound.scene.objects("geometry"):
+            for triangle_set in _iter_triangle_sets(bound_geometry):
+                emit(triangle_set, Matrix.Identity(4))
+
+    if not result.objects and getattr(document, "geometries", None):
         for triangle_set, matrix in _iter_unbound_geometries(document):
             emit(triangle_set, matrix)
 

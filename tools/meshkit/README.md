@@ -117,6 +117,14 @@ if the file differs from pinned-plus-patches (`--allow-importer-drift` overrides
   panel seams and edges. The patch swaps the two steps. It applies to kinema as is,
   and belongs upstream. Once kinema merges it, re-vendor from that commit and delete
   the patch.
+- **`0002-dae-fallback-keeps-node-placement.patch`**: when a material fails to bind
+  (a texture whose image the file never declares, common in CAD exports), pycollada
+  drops the `<instance_geometry>` and the node placing it. kinema's fallback then
+  imported the library geometry alone: at the origin, and once however many nodes
+  instanced it. No check could see it, because they all start from the import. The
+  patch reads the file again without bindings, so every instance lands where its
+  node puts it, without material. Like 0001, it applies to kinema as is and belongs
+  upstream.
 
 ## Tests
 

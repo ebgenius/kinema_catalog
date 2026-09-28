@@ -21,6 +21,8 @@ same way -- see ``normal_deviation``.
 
 from __future__ import annotations
 
+import io
+import re
 from pathlib import Path
 
 import numpy as np
@@ -28,6 +30,10 @@ import trimesh
 
 # Percentiles of the normal-deviation distribution the gate compares.
 QUANTILES = (50, 90, 99)
+
+_BIND_MATERIAL = re.compile(
+    rb"<bind_material\b[^>]*/>|<bind_material\b.*?</bind_material\s*>", re.S
+)
 
 
 def normal_deviation(triangles: np.ndarray, normals: np.ndarray) -> list[float]:
@@ -160,23 +166,34 @@ def _corners(primitive, matrix: np.ndarray | None = None
     return tri, nor
 
 
+def _read_dae(path: Path, *, bind_materials: bool = True):
+    """The document, loaded the way the importer's ``_load_collada`` loads it."""
+    import collada
+
+    source = str(path)
+    if not bind_materials:
+        source = io.BytesIO(_BIND_MATERIAL.sub(b"", path.read_bytes()))
+    return collada.Collada(source, ignore=[
+        collada.common.DaeUnsupportedError,
+        collada.common.DaeBrokenRefError,
+    ])
+
+
 def dae_stats(path: Path) -> dict:
-    """Normal deviation of a .dae as written, read by pycollada.
+    """Triangle count and normal deviation of a .dae as written, read by pycollada.
 
     Reads the file the way kinema's importer does, or the check would reject
-    meshes the importer converts fine: the same ``ignore`` list, the bound
-    scene geometry first, and when that yields nothing -- what a texture whose
-    image the file never declares does to the material binding -- the library
-    geometry, placed by its nodes, like the importer's unbound fallback.
+    meshes the importer converts fine: the same ``ignore`` list and the bound
+    scene geometry first. When that yields nothing -- what a texture whose
+    image the file never declares does to the material binding -- the file is
+    read again without bindings, and as a last resort the library geometry is
+    placed by whatever nodes survived, as in the importer's fallbacks.
     Triangle sets without normals are given their face normals -- which is
     what Blender shows for them, since the importer leaves such faces flat.
     """
     import collada
 
-    document = collada.Collada(str(path), ignore=[
-        collada.common.DaeUnsupportedError,
-        collada.common.DaeBrokenRefError,
-    ])
+    document = _read_dae(path)
     triangles: list[np.ndarray] = []
     normals: list[np.ndarray] = []
 
@@ -189,15 +206,21 @@ def dae_stats(path: Path) -> dict:
 
     for bound in document.scene.objects("geometry"):
         add(bound.primitives())
-    if not triangles:
+    geometries = getattr(document, "geometries", ()) or ()
+    if not triangles and geometries:
+        for bound in _read_dae(path, bind_materials=False).scene.objects("geometry"):
+            add(bound.primitives())
+    if not triangles and geometries:
         transforms = _node_transforms(document)
-        for geometry in getattr(document, "geometries", ()) or ():
+        for geometry in geometries:
             add(getattr(geometry, "primitives", ()) or (), transforms.get(id(geometry)))
 
     loader = f"pycollada {getattr(collada, '__version__', 'unknown')}"
     if not triangles:
-        return {"normal_deviation": None, "loader": loader}
+        return {"triangles": 0, "normal_deviation": None, "loader": loader}
+    tri = np.concatenate(triangles)
     return {
-        "normal_deviation": normal_deviation(np.concatenate(triangles), np.concatenate(normals)),
+        "triangles": int(len(tri)),
+        "normal_deviation": normal_deviation(tri, np.concatenate(normals)),
         "loader": loader,
     }

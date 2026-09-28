@@ -76,3 +76,26 @@ def test_timed_out_batch_says_so(tmp_path, monkeypatch):
     monkeypatch.setattr(convert_module, "run_script", lambda *args, **kwargs: TIMED_OUT)
     (item,) = run(plan([source(tmp_path, "a.dae")], tmp_path, None), tmp_path)["items"]
     assert item["status"] == "failed" and "timed out" in item["reason"]
+
+
+def test_failed_copy_leaves_the_previous_glb_whole(tmp_path, monkeypatch):
+    # Staging is often on another filesystem, where a move is a copy. One that
+    # dies half-way must leave the old .glb as it was -- never a truncated one
+    # that the next run would skip as done.
+    fake_job(monkeypatch, lambda job: dict(job, ok=True))
+    monkeypatch.setattr(convert_module, "_judge", lambda result, tolerance: ([], None))
+
+    def copy_half(source, destination, **_):
+        Path(destination).write_bytes(Path(source).read_bytes()[:1])
+        raise OSError(28, "No space left on device")
+    monkeypatch.setattr(convert_module.shutil, "copy2", copy_half)
+
+    (target,) = plan([source(tmp_path, "a.dae")], tmp_path, None)
+    target.output.write_bytes(b"the previous, verified glb")
+    report = convert([target], BLENDER, report_path=tmp_path / "report.json", force=True,
+                     progress=lambda _: None)
+
+    (item,) = report["items"]
+    assert item["status"] == "failed" and "No space left" in item["reason"]
+    assert target.output.read_bytes() == b"the previous, verified glb"
+    assert sorted(p.name for p in target.output.parent.iterdir()) == ["a.dae", "a.glb"]

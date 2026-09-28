@@ -1,4 +1,3 @@
-import re
 from types import SimpleNamespace
 
 import collada
@@ -6,7 +5,7 @@ import numpy as np
 import pytest
 
 from meshkit.external import _corners, dae_stats, normal_deviation
-from test_convert_blender import flat_box_dae
+from test_convert_blender import flat_box_dae, with_broken_texture, with_second_instance
 
 
 def cube_corners(flat: bool):
@@ -72,25 +71,18 @@ def test_node_transform_keeps_flat_normals_flat():
 
 
 def test_broken_texture_is_read_the_way_the_importer_reads_it(tmp_path):
-    # A texture whose image the file never declares, common in CAD exports:
-    # strict pycollada refuses the file, and the tolerant read binds no
-    # geometry at all. kinema's importer falls back to the library geometry,
-    # and the shading check has to as well, or the mesh can never pass.
+    # Strict pycollada refuses the file, and the tolerant read binds no
+    # geometry at all. kinema's importer reads it again without bindings, and
+    # the shading check has to as well, or the mesh could never pass.
     intact = tmp_path / "intact.dae"
     flat_box_dae(intact)
-    text = intact.read_text(encoding="utf-8")
-    text = text.replace('<technique sid="common">', (
-        '<newparam sid="surf"><surface type="2D"><init_from>no_such_image</init_from>'
-        '</surface></newparam><newparam sid="samp"><sampler2D><source>surf</source>'
-        '</sampler2D></newparam><technique sid="common">'), 1)
-    text = re.sub(r"<diffuse>.*?</diffuse>",
-                  '<diffuse><texture texture="samp" texcoord="UVMap"/></diffuse>', text,
-                  count=1, flags=re.S)
+    with_second_instance(intact)
     broken = tmp_path / "broken.dae"
-    broken.write_text(text, encoding="utf-8")
+    broken.write_bytes(intact.read_bytes())
+    with_broken_texture(broken)
 
     with pytest.raises(collada.common.DaeBrokenRefError):
         collada.Collada(str(broken))
-    expected = dae_stats(intact)["normal_deviation"]
-    assert expected is not None
-    assert dae_stats(broken)["normal_deviation"] == pytest.approx(expected, abs=1e-9)
+    expected, found = dae_stats(intact), dae_stats(broken)
+    assert expected["triangles"] == found["triangles"] == 24   # both instances
+    assert found["normal_deviation"] == pytest.approx(expected["normal_deviation"], abs=1e-9)
