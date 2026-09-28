@@ -85,7 +85,8 @@ deleted, and existing `.glb` files are skipped unless you pass `--force`. Pointi
 descriptions at the new files is a separate step, reviewed as its own PR in each fork.
 A JSON report (default `out/meshkit/convert-<time>.json`) records the Blender version,
 the importer, every measurement and every problem. Blender's log for each batch sits
-next to it.
+next to it. If Blender is still on a batch after an hour, it is stopped, and the meshes
+it hadn't finished are reported as failed.
 
 ### The gate
 

@@ -126,7 +126,15 @@ class Inventory:
     refs: list[MeshRef]
 
     def forks(self) -> list[str]:
-        return sorted({mesh.fork for mesh in self.meshes.values()})
+        """Forks holding a .dae, or referencing one.
+
+        A fork whose .dae references all fail -- a package the catalog does not
+        carry, a robot that does not render -- can hold no .dae at all, and its
+        unresolved references are exactly what ``scan`` must report.
+        """
+        names = {mesh.fork for mesh in self.meshes.values()}
+        names.update(self.fork_of(ref.source) for ref in self.refs)
+        return sorted(names)
 
     def in_fork(self, fork: str | None) -> list[MeshFile]:
         items = self.meshes.values()

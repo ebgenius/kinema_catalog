@@ -150,6 +150,12 @@ def cmd_convert(args) -> int:
         missing = [s for s in sources if not s.is_file()]
         if missing:
             raise SystemExit("meshkit: no such file: " + ", ".join(map(str, missing)))
+        if args.out:
+            # --out mirrors each source's path under the catalog root.
+            outside = [s for s in sources if not s.is_relative_to(root)]
+            if outside:
+                raise SystemExit(f"meshkit: --out mirrors paths inside {root}, and these "
+                                 "are outside it: " + ", ".join(map(str, outside)))
     else:
         if not args.fork:
             raise SystemExit("meshkit convert: name at least one --fork, or --file")
@@ -198,6 +204,18 @@ def cmd_convert(args) -> int:
 
 # ------------------------------------------------------------------------- main
 
+def _batch_size(text: str) -> int:
+    """At least 1: a zero step crashes the batching, and a negative one converts
+    nothing and reports success."""
+    try:
+        value = int(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"not a whole number: {text!r}") from None
+    if value < 1:
+        raise argparse.ArgumentTypeError(f"must be at least 1, not {value}")
+    return value
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="meshkit",
@@ -222,7 +240,7 @@ def build_parser() -> argparse.ArgumentParser:
     conv.add_argument("--file", action="append", help="convert specific .dae files")
     conv.add_argument("--out", type=Path, help="write under this directory instead of in place")
     conv.add_argument("--report", type=Path, help="report path (default: out/meshkit/)")
-    conv.add_argument("--batch-size", type=int, default=25)
+    conv.add_argument("--batch-size", type=_batch_size, default=25)
     conv.add_argument("--force", action="store_true", help="redo meshes whose .glb exists")
     conv.add_argument("--dry-run", action="store_true")
     conv.add_argument("--tolerance-position", type=float, default=Tolerance().position)

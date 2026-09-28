@@ -131,3 +131,19 @@ def test_rendered_manifest_robot_resolves_exactly(catalog):
     found = roles(scan(catalog), "param_fork")
     assert found["param_fork/param_description/meshes/b.dae"] == {"visual"}
     assert found["param_fork/param_description/meshes/a.dae"] == set()
+
+
+def test_fork_with_only_unresolved_references_is_listed(catalog):
+    # No .dae of its own, and its one reference names a package the catalog
+    # does not carry: exactly the fork `scan --unresolved` has to show.
+    ghost = "src/ghost_fork/ghost_description"
+    write(catalog, f"{ghost}/package.xml", "<package><name>ghost_description</name></package>")
+    write(catalog, f"{ghost}/urdf/ghost.urdf", """<?xml version="1.0"?>
+<robot name="ghost"><link name="base"><visual><geometry>
+  <mesh filename="package://missing_description/meshes/base.dae"/>
+</geometry></visual></link></robot>
+""")
+    inventory = scan(catalog, render=False)
+    assert "ghost_fork" in inventory.forks()
+    assert [r.problem for r in inventory.unresolved("ghost_fork")] == [
+        "package 'missing_description' is not in the catalog"]

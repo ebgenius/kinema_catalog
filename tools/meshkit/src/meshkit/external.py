@@ -89,39 +89,115 @@ def glb_stats(path: Path) -> dict:
     }
 
 
+def _triangle_sets(primitives):
+    """Polylists converted to triangle sets; one that will not convert, as it is.
+
+    The importer's ``_iter_triangle_sets`` does the same, so a polylist whose
+    ``triangleset()`` raises is measured rather than failing the whole file.
+    """
+    for primitive in primitives:
+        converter = getattr(primitive, "triangleset", None)
+        if callable(converter):
+            try:
+                yield converter()
+                continue
+            except Exception:  # noqa: BLE001 - fall through to the raw primitive
+                pass
+        yield primitive
+
+
+def _node_transforms(document) -> dict[int, np.ndarray]:
+    """``id()`` of each library geometry -> world matrix of the node instancing it.
+
+    The importer's ``_node_transforms`` in numpy, for the unbound walk below.
+    """
+    transforms: dict[int, np.ndarray] = {}
+
+    def walk(nodes, parent: np.ndarray) -> None:
+        for node in nodes:
+            matrix = parent
+            raw = getattr(node, "matrix", None)
+            if raw is not None:
+                try:
+                    matrix = parent @ np.asarray(raw, dtype=np.float64).reshape(4, 4)
+                except Exception:  # noqa: BLE001
+                    matrix = parent
+            geometry = getattr(node, "geometry", None)
+            if geometry is not None:
+                transforms.setdefault(id(geometry), matrix)
+            walk(getattr(node, "children", ()) or (), matrix)
+
+    try:
+        walk(getattr(document.scene, "nodes", ()) or (), np.identity(4))
+    except Exception:  # noqa: BLE001
+        pass
+    return transforms
+
+
+def _corners(primitive, matrix: np.ndarray | None = None
+             ) -> tuple[np.ndarray, np.ndarray] | None:
+    """(n, 3, 3) triangles and corner normals of one triangle set, or None.
+
+    ``matrix`` places them; only its linear part can change an angle.
+    """
+    index = getattr(primitive, "vertex_index", None)
+    if index is None or index.ndim != 2 or index.shape[1] != 3 or not len(index):
+        return None  # lines, or nothing
+    tri = primitive.vertex[index]
+    normal = getattr(primitive, "normal", None)
+    normal_index = getattr(primitive, "normal_index", None)
+    has_normals = normal is not None and normal_index is not None and len(normal)
+    nor = normal[normal_index] if has_normals else None
+    if matrix is not None:
+        linear = matrix[:3, :3]
+        tri = tri @ linear.T
+        if nor is not None:
+            # Normals transform by the inverse transpose; row vectors, so no .T.
+            nor = nor @ np.linalg.inv(linear)
+    if nor is None:
+        face = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
+        nor = np.repeat(face[:, None, :], 3, axis=1)
+    return tri, nor
+
+
 def dae_stats(path: Path) -> dict:
     """Normal deviation of a .dae as written, read by pycollada.
 
-    Walks the same bound scene geometry kinema's importer does. Triangle sets
-    without normals are given their face normals -- which is what Blender shows
-    for them, since the importer leaves such faces flat.
+    Reads the file the way kinema's importer does, or the check would reject
+    meshes the importer converts fine: the same ``ignore`` list, the bound
+    scene geometry first, and when that yields nothing -- what a texture whose
+    image the file never declares does to the material binding -- the library
+    geometry, placed by its nodes, like the importer's unbound fallback.
+    Triangle sets without normals are given their face normals -- which is
+    what Blender shows for them, since the importer leaves such faces flat.
     """
     import collada
 
-    document = collada.Collada(str(path))
+    document = collada.Collada(str(path), ignore=[
+        collada.common.DaeUnsupportedError,
+        collada.common.DaeBrokenRefError,
+    ])
     triangles: list[np.ndarray] = []
     normals: list[np.ndarray] = []
+
+    def add(primitives, matrix: np.ndarray | None = None) -> None:
+        for primitive in _triangle_sets(primitives):
+            corners = _corners(primitive, matrix)
+            if corners is not None:
+                triangles.append(corners[0])
+                normals.append(corners[1])
+
     for bound in document.scene.objects("geometry"):
-        for primitive in bound.primitives():
-            converter = getattr(primitive, "triangleset", None)
-            if callable(converter):
-                primitive = converter()
-            index = getattr(primitive, "vertex_index", None)
-            if index is None or index.ndim != 2 or index.shape[1] != 3 or not len(index):
-                continue  # lines, or nothing
-            tri = primitive.vertex[index]
-            normal = getattr(primitive, "normal", None)
-            normal_index = getattr(primitive, "normal_index", None)
-            if normal is not None and normal_index is not None and len(normal):
-                nor = normal[normal_index]
-            else:
-                face = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
-                nor = np.repeat(face[:, None, :], 3, axis=1)
-            triangles.append(tri)
-            normals.append(nor)
+        add(bound.primitives())
     if not triangles:
-        return {"normal_deviation": None, "loader": f"pycollada {getattr(collada, '__version__', 'unknown')}"}
+        transforms = _node_transforms(document)
+        for geometry in getattr(document, "geometries", ()) or ():
+            add(getattr(geometry, "primitives", ()) or (), transforms.get(id(geometry)))
+
+    loader = f"pycollada {getattr(collada, '__version__', 'unknown')}"
+    if not triangles:
+        return {"normal_deviation": None, "loader": loader}
     return {
         "normal_deviation": normal_deviation(np.concatenate(triangles), np.concatenate(normals)),
-        "loader": f"pycollada {getattr(collada, '__version__', 'unknown')}",
+        "loader": loader,
     }

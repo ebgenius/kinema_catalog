@@ -34,6 +34,13 @@ MIN_VERSION = (5, 2, 0)
 
 _VERSION_RE = re.compile(r"Blender\s+(\d+)\.(\d+)(?:\.(\d+))?")
 
+# A batch of 25 robot meshes takes well under a minute. An hour means Blender
+# is stuck -- an endless loop on a malformed file -- and waiting longer would
+# only hide it.
+DEFAULT_TIMEOUT = 3600.0
+# What run_script returns for a Blender it had to stop; timeout(1)'s status.
+TIMED_OUT = 124
+
 
 class BlenderNotFound(RuntimeError):
     """No usable Blender was found, or the one named explicitly is unusable."""
@@ -79,13 +86,25 @@ def _exe_name() -> str:
     return "blender.exe" if sys.platform == "win32" else "blender"
 
 
+def _newest_first(paths) -> list[Path]:
+    """Sort install paths newest first, reading each run of digits as a number.
+
+    Plain string order puts blender-5.2.9 ahead of blender-5.2.10, and LTS
+    point releases do reach two digits.
+    """
+    def key(path: Path) -> list:
+        return [int(part) if part.isdigit() else part
+                for part in re.split(r"(\d+)", str(path))]
+    return sorted(paths, key=key, reverse=True)
+
+
 def _launcher_candidates(home: Path) -> list[Path]:
     root = home / "blender" / "blender_releases"
     found: list[Path] = []
     for channel in ("stable", "lts"):
         base = root / channel
         if base.is_dir():
-            found.extend(sorted(base.glob(f"*/{_exe_name()}"), reverse=True))
+            found.extend(_newest_first(base.glob(f"*/{_exe_name()}")))
     return found
 
 
@@ -95,12 +114,12 @@ def _system_candidates() -> list[Path]:
         found: list[Path] = []
         for root in roots:
             found.extend(
-                sorted(Path(root, "Blender Foundation").glob("Blender */blender.exe"), reverse=True)
+                _newest_first(Path(root, "Blender Foundation").glob("Blender */blender.exe"))
             )
         return found
     if sys.platform == "darwin":
         return [Path("/Applications/Blender.app/Contents/MacOS/Blender")]
-    return sorted(Path("/opt").glob("blender*/blender"), reverse=True) + [Path("/usr/bin/blender")]
+    return _newest_first(Path("/opt").glob("blender*/blender")) + [Path("/usr/bin/blender")]
 
 
 def find_blender(
@@ -161,13 +180,17 @@ def run_script(
     script_args: list[str],
     *,
     log_path: Path,
-    timeout: float | None = None,
+    timeout: float | None = DEFAULT_TIMEOUT,
 ) -> int:
     """Run ``script`` inside Blender, headless, and log everything it prints.
 
     ``--factory-startup`` keeps a contributor's preferences and enabled add-ons
     from changing the result: the same inputs must give the same GLB on any
     machine.
+
+    A Blender still running after ``timeout`` seconds is stopped, and
+    ``TIMED_OUT`` returned like any other failing status: whatever the job had
+    already written to its results file is still there to read.
     """
     command = [
         str(blender.path),
@@ -179,12 +202,18 @@ def run_script(
         *script_args,
     ]
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    with log_path.open("w", encoding="utf-8", errors="replace") as log:
-        completed = subprocess.run(
-            command,
-            stdout=log,
-            stderr=subprocess.STDOUT,
-            timeout=timeout,
-            check=False,
-        )
+    try:
+        with log_path.open("w", encoding="utf-8", errors="replace") as log:
+            completed = subprocess.run(
+                command,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                timeout=timeout,
+                check=False,
+            )
+    except subprocess.TimeoutExpired:
+        # subprocess.run has already killed Blender by the time this is raised.
+        with log_path.open("a", encoding="utf-8") as log:
+            log.write(f"\nmeshkit: stopped Blender after {timeout:g} s\n")
+        return TIMED_OUT
     return completed.returncode

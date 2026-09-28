@@ -28,7 +28,7 @@ import collada
 
 from meshkit import __version__
 from meshkit._vendor import VENDORED_FILE, importer_provenance
-from meshkit.blender import Blender, run_script
+from meshkit.blender import TIMED_OUT, Blender, run_script
 from meshkit.external import dae_stats, glb_stats
 from meshkit.gate import DEFAULT, Tolerance, compare, compare_normals
 
@@ -68,6 +68,9 @@ class Item:
     up_axis: str | None = None
     unit_meter: float | None = None
     importer_warnings: list[str] = field(default_factory=list)
+    # glTF export options this Blender does not have, so the export ran without them.
+    dropped_export_options: list[str] = field(default_factory=list)
+    traceback: str | None = None    # of a Blender job that raised
     source_stats: dict | None = None
     roundtrip_stats: dict | None = None
     external_stats: dict | None = None
@@ -180,13 +183,16 @@ def convert(
                 item = Item(target.id, str(target.source), str(target.output), "failed",
                             source_sha256=sha256(target.source))
                 if result is None:
-                    item.reason = (f"no result -- Blender exited {code}; "
+                    timed_out = " (timed out)" if code == TIMED_OUT else ""
+                    item.reason = (f"no result -- Blender exited {code}{timed_out}; "
                                    f"see {logs / f'batch-{number}.log'}")
                     items.append(item)
                     continue
                 item.up_axis = result.get("up_axis")
                 item.unit_meter = result.get("unit_meter")
                 item.importer_warnings = result.get("importer_warnings", [])
+                item.dropped_export_options = result.get("dropped_export_options", [])
+                item.traceback = result.get("traceback")
                 item.source_stats = result.get("source_stats")
                 item.roundtrip_stats = result.get("roundtrip_stats")
                 item.seconds = result.get("seconds")
@@ -196,16 +202,28 @@ def convert(
                 item.problems = problems
                 if problems:
                     item.reason = "failed verification"
+                    if item.dropped_export_options:
+                        # A renamed option (export_yup, say) fails every mesh the
+                        # same way; this is the line that says why.
+                        item.reason += ("; this Blender has no glTF export option(s) "
+                                        + ", ".join(item.dropped_export_options))
                 else:
                     staged = Path(result["staged"])
-                    target.output.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.move(str(staged), target.output)
-                    item.status = "converted"
-                    item.output_sha256 = sha256(target.output)
+                    try:
+                        target.output.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.move(str(staged), target.output)
+                    except OSError as exc:
+                        # One unwritable destination must not end the run: the
+                        # GLBs already moved into place need their report.
+                        item.reason = f"passed verification, but could not be written: {exc}"
+                    else:
+                        item.status = "converted"
+                        item.output_sha256 = sha256(target.output)
                 items.append(item)
                 mark = "ok  " if item.status == "converted" else "FAIL"
+                detail = problems[0] if problems else item.reason
                 progress(f"  {mark} {target.source.name}"
-                         + ("" if not problems else f" -- {problems[0]}"))
+                         + (f" -- {detail}" if item.status != "converted" else ""))
 
     report["items"] = [asdict(i) for i in sorted(items, key=lambda i: i.id)]
     return _finish(report, report_path)

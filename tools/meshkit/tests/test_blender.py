@@ -3,7 +3,8 @@ import sys
 import pytest
 
 from meshkit import blender
-from meshkit.blender import ENV_VAR, BlenderNotFound, find_blender, parse_version
+from meshkit.blender import (ENV_VAR, TIMED_OUT, Blender, BlenderNotFound, find_blender,
+                             parse_version, run_script)
 
 
 def test_parse_version():
@@ -46,3 +47,27 @@ def test_too_old_is_reported(tmp_path, monkeypatch):
     monkeypatch.setattr(blender, "probe", lambda path: ((4, 2, 0), "Blender 4.2.0"))
     with pytest.raises(BlenderNotFound, match="too old"):
         find_blender(env={}, home=tmp_path)
+
+
+def test_newest_launcher_build_comes_first(tmp_path):
+    # As strings, blender-5.2.9 sorts after blender-5.2.10.
+    name = "blender.exe" if sys.platform == "win32" else "blender"
+    for version in ("5.2.9", "5.2.10"):
+        exe = tmp_path / "blender" / "blender_releases" / "lts" / f"blender-{version}-lts.abc" / name
+        exe.parent.mkdir(parents=True)
+        exe.write_text("")
+    first = blender._launcher_candidates(tmp_path)[0]
+    assert first.parent.name == "blender-5.2.10-lts.abc"
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the stand-in Blender is a shell script")
+def test_a_hung_blender_is_stopped(tmp_path):
+    exe = tmp_path / "blender"
+    exe.write_text("#!/bin/sh\necho started\nexec sleep 30\n")
+    exe.chmod(0o755)
+    log = tmp_path / "job.log"
+    code = run_script(Blender(exe, (5, 2, 0), "Blender 5.2.0", "test"), tmp_path / "job.py", [],
+                      log_path=log, timeout=0.5)
+    assert code == TIMED_OUT
+    text = log.read_text(encoding="utf-8")
+    assert "started" in text and "stopped Blender after 0.5 s" in text
