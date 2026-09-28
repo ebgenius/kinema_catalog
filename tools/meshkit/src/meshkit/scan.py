@@ -84,6 +84,10 @@ def _construct_any(loader: yaml.SafeLoader, _suffix: str, node: yaml.Node):
 _TolerantLoader.add_multi_constructor("!", _construct_any)
 
 
+class ManifestError(ValueError):
+    """A docker/robots.tsv row meshkit cannot read."""
+
+
 @dataclass(frozen=True)
 class Package:
     name: str
@@ -448,13 +452,17 @@ class Scanner:
         manifest = self.root / "docker" / "robots.tsv"
         if not manifest.is_file():
             return
-        for line in manifest.read_text(encoding="utf-8").splitlines():
+        for number, line in enumerate(manifest.read_text(encoding="utf-8").splitlines(), 1):
             if not line.strip() or line.startswith("#"):
                 continue
             cols = line.split("\t")
-            if len(cols) >= 6:
-                yield {"id": cols[0], "fork": cols[2], "type": cols[3],
-                       "path": cols[4], "args": cols[5]}
+            if len(cols) < 6:
+                # Skipped, the robot's rendered references would vanish without
+                # a word and its meshes read as unreferenced.
+                raise ManifestError(f"{manifest}:{number}: {len(cols)} tab-separated "
+                                    "column(s), and a robot row needs at least 6")
+            yield {"id": cols[0], "fork": cols[2], "type": cols[3],
+                   "path": cols[4], "args": cols[5]}
 
     def _render(self, row: dict) -> str:
         """The robot's URDF, with xacro evaluated.

@@ -31,13 +31,13 @@ PATCHES = (
     # then averaged them across every hard edge: authored normals were lost on
     # every .dae kinema imported.
     "0001-dae-keep-custom-normals.patch",
-    # When a material failed to bind, pycollada dropped the <instance_geometry>
-    # and its node with it, and the fallback imported the library geometry
-    # alone: unplaced, and once however many nodes instanced it.
+    # When a material failed to bind, pycollada dropped that <instance_geometry>
+    # and its node with it: lost outright if other instances survived, and
+    # otherwise imported from the library alone, unplaced and only once.
     "0002-dae-fallback-keeps-node-placement.patch",
 )
 # COMMIT's file with PATCHES applied -- what VENDORED_FILE must hash to.
-SHA256 = "dcd2f4da20e0876e586de4f18e0f226326f145e302f864db6d6eb3acdba385f5"
+SHA256 = "5faf1af3a6d14fb3aa748732d024ff15c975043b6e05a3752285b030ccb85d3c"
 
 VENDORED_FILE = Path(__file__).parent / "blender_side" / "kinema_dae.py"
 

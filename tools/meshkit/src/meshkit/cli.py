@@ -28,6 +28,15 @@ def _root(args) -> Path:
     return (args.root or find_root(Path.cwd())).resolve()
 
 
+def _scan(root: Path):
+    from meshkit.scan import ManifestError, scan
+
+    try:
+        return scan(root)
+    except ManifestError as exc:
+        raise SystemExit(f"meshkit: {exc}") from None
+
+
 # ----------------------------------------------------------------------- doctor
 
 def cmd_doctor(args) -> int:
@@ -72,10 +81,8 @@ def cmd_doctor(args) -> int:
 # ------------------------------------------------------------------------- scan
 
 def cmd_scan(args) -> int:
-    from meshkit.scan import scan
-
     root = _root(args)
-    inventory = scan(root)
+    inventory = _scan(root)
     forks = args.fork or inventory.forks()
 
     if args.json:
@@ -142,7 +149,6 @@ def cmd_scan(args) -> int:
 
 def cmd_convert(args) -> int:
     from meshkit.convert import convert, plan
-    from meshkit.scan import scan
 
     root = _root(args)
     if args.file:
@@ -159,7 +165,7 @@ def cmd_convert(args) -> int:
     else:
         if not args.fork:
             raise SystemExit("meshkit convert: name at least one --fork, or --file")
-        inventory = scan(root)
+        inventory = _scan(root)
         unknown = sorted(set(args.fork) - set(inventory.forks()))
         if unknown:
             raise SystemExit("meshkit: unknown fork(s): " + ", ".join(unknown))
@@ -229,15 +235,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     scan_p = sub.add_parser("scan", help="classify .dae files as visual / collision")
     scan_p.add_argument("--fork", action="append", help="limit to a submodule (repeatable)")
-    scan_p.add_argument("--list", choices=["visual", "collision", "unreferenced"])
+    output = scan_p.add_mutually_exclusive_group()
+    output.add_argument("--list", choices=["visual", "collision", "unreferenced"])
     scan_p.add_argument("--unresolved", action="store_true",
                         help="also list references that could not be resolved")
-    scan_p.add_argument("--json", action="store_true")
+    output.add_argument("--json", action="store_true")
     scan_p.set_defaults(func=cmd_scan)
 
     conv = sub.add_parser("convert", help="convert visual .dae meshes to verified .glb")
-    conv.add_argument("--fork", action="append", help="convert a submodule's visual meshes")
-    conv.add_argument("--file", action="append", help="convert specific .dae files")
+    # One or the other: given both, one selection would be silently dropped.
+    which = conv.add_mutually_exclusive_group()
+    which.add_argument("--fork", action="append", help="convert a submodule's visual meshes")
+    which.add_argument("--file", action="append", help="convert specific .dae files")
     conv.add_argument("--out", type=Path, help="write under this directory instead of in place")
     conv.add_argument("--report", type=Path, help="report path (default: out/meshkit/)")
     conv.add_argument("--batch-size", type=_batch_size, default=25)

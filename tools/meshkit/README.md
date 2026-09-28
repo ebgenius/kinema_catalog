@@ -119,12 +119,14 @@ if the file differs from pinned-plus-patches (`--allow-importer-drift` overrides
   the patch.
 - **`0002-dae-fallback-keeps-node-placement.patch`**: when a material fails to bind
   (a texture whose image the file never declares, common in CAD exports), pycollada
-  drops the `<instance_geometry>` and the node placing it. kinema's fallback then
-  imported the library geometry alone: at the origin, and once however many nodes
-  instanced it. No check could see it, because they all start from the import. The
-  patch reads the file again without bindings, so every instance lands where its
-  node puts it, without material. Like 0001, it applies to kinema as is and belongs
-  upstream.
+  drops that `<instance_geometry>` and the node placing it. If other instances
+  survived, kinema imported those and silently lost the rest; if none did, its
+  fallback imported the library geometry alone, at the origin, once however many
+  nodes instanced it. No check could see either, because they all start from the
+  import. When the first read reports errors, the patch reads the file again
+  without bindings and imports each instance it lost where its node puts it,
+  without material; instances that did bind keep theirs. Like 0001, it applies to
+  kinema as is and belongs upstream.
 
 ## Tests
 

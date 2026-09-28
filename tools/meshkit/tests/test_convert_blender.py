@@ -55,12 +55,34 @@ def flat_box_dae(path, *, offset_z=0.192, unit_meter=0.01):
     mesh.write(str(path))
 
 
-def with_second_instance(path):
-    """Instance the box's geometry again, from a second node 1 m along x."""
+def _break_texture(text):
+    """Point the first effect in ``text`` at a texture whose image is never declared."""
+    text = text.replace('<technique sid="common">', (
+        '<newparam sid="surf"><surface type="2D"><init_from>no_such_image</init_from>'
+        '</surface></newparam><newparam sid="samp"><sampler2D><source>surf</source>'
+        '</sampler2D></newparam><technique sid="common">'), 1)
+    return re.sub(r"<diffuse>.*?</diffuse>",
+                  '<diffuse><texture texture="samp" texcoord="UVMap"/></diffuse>', text,
+                  count=1, flags=re.S)
+
+
+def with_second_instance(path, *, broken_material=False):
+    """Instance the box's geometry again, from a second node 1 m along x.
+
+    ``broken_material`` gives that node a material of its own, whose texture
+    names an image the file never declares: only the second instance fails to
+    bind, so the scene still yields the first.
+    """
     text = path.read_text(encoding="utf-8")
     node = re.search(r'<node id="box".*?</node>', text, re.S).group(0)
     second = re.sub(r"<translate>\S+", "<translate>100", node.replace('id="box"', 'id="box2"', 1),
                     count=1)
+    if broken_material:
+        effect = re.search(r'<effect id="fx".*?</effect>', text, re.S).group(0)
+        text = text.replace(effect, effect + _break_texture(effect.replace('id="fx"', 'id="fx2"')))
+        text = text.replace("</library_materials>", '<material id="mat2" name="mat2">'
+                            '<instance_effect url="#fx2"/></material></library_materials>', 1)
+        second = second.replace('target="#mat"', 'target="#mat2"')
     path.write_text(text.replace(node, node + second), encoding="utf-8")
 
 
@@ -70,15 +92,7 @@ def with_broken_texture(path):
     Common in CAD exports. Strict pycollada refuses such a file; the tolerant
     read cannot bind the material, and drops each <instance_geometry> with it.
     """
-    text = path.read_text(encoding="utf-8")
-    text = text.replace('<technique sid="common">', (
-        '<newparam sid="surf"><surface type="2D"><init_from>no_such_image</init_from>'
-        '</surface></newparam><newparam sid="samp"><sampler2D><source>surf</source>'
-        '</sampler2D></newparam><technique sid="common">'), 1)
-    text = re.sub(r"<diffuse>.*?</diffuse>",
-                  '<diffuse><texture texture="samp" texcoord="UVMap"/></diffuse>', text,
-                  count=1, flags=re.S)
-    path.write_text(text, encoding="utf-8")
+    path.write_text(_break_texture(path.read_text(encoding="utf-8")), encoding="utf-8")
 
 
 def test_convert_keeps_geometry_placement_and_shading(tmp_path, blender):
@@ -138,3 +152,25 @@ def test_broken_texture_keeps_every_instance_where_its_node_puts_it(tmp_path, bl
     stats = item["source_stats"]
     assert stats["triangles"] == 24
     assert stats["centroid"] == pytest.approx([0.5, 0.0, 0.192 + 0.10], abs=1e-6)
+
+
+def test_one_broken_material_loses_no_instance(tmp_path, blender):
+    # Only the second node's material fails to bind. pycollada drops that one
+    # instance, the scene walk is not empty, and the recovery must not wait
+    # for it to be: the second box was dropped without a warning.
+    root = tmp_path / "catalog"
+    dae = root / "src" / "fork" / "box.dae"
+    dae.parent.mkdir(parents=True)
+    flat_box_dae(dae)
+    with_second_instance(dae, broken_material=True)
+
+    report = convert(plan([dae], root, tmp_path / "out"), blender,
+                     report_path=tmp_path / "report.json", progress=lambda _: None)
+
+    (item,) = report["items"]
+    assert item["status"] == "converted", item["problems"]
+    assert any("1 instance(s)" in w for w in item["importer_warnings"])
+    stats = item["source_stats"]
+    assert stats["triangles"] == 24
+    assert stats["centroid"] == pytest.approx([0.5, 0.0, 0.192 + 0.10], abs=1e-6)
+    assert "mat" in stats["materials"]   # the instance that bound keeps its material

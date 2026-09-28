@@ -166,6 +166,12 @@ def _corners(primitive, matrix: np.ndarray | None = None
     return tri, nor
 
 
+def _instance_key(bound) -> tuple:
+    """Which geometry, placed where: the importer's ``_instance_key``."""
+    return (getattr(bound.original, "id", None),
+            tuple(round(float(v), 9) for v in np.asarray(bound.matrix).flat))
+
+
 def _read_dae(path: Path, *, bind_materials: bool = True):
     """The document, loaded the way the importer's ``_load_collada`` loads it."""
     import collada
@@ -184,10 +190,11 @@ def dae_stats(path: Path) -> dict:
 
     Reads the file the way kinema's importer does, or the check would reject
     meshes the importer converts fine: the same ``ignore`` list and the bound
-    scene geometry first. When that yields nothing -- what a texture whose
-    image the file never declares does to the material binding -- the file is
-    read again without bindings, and as a last resort the library geometry is
-    placed by whatever nodes survived, as in the importer's fallbacks.
+    scene geometry first. A material that fails to bind -- a texture whose
+    image the file never declares -- drops its instances from that walk, so
+    when the read reported errors, the file is read again without bindings for
+    the instances it lost; and as a last resort the library geometry is placed
+    by whatever nodes survived, as in the importer's fallbacks.
     Triangle sets without normals are given their face normals -- which is
     what Blender shows for them, since the importer leaves such faces flat.
     """
@@ -204,12 +211,18 @@ def dae_stats(path: Path) -> dict:
                 triangles.append(corners[0])
                 normals.append(corners[1])
 
+    placed = []
     for bound in document.scene.objects("geometry"):
+        placed.append(_instance_key(bound))
         add(bound.primitives())
-    geometries = getattr(document, "geometries", ()) or ()
-    if not triangles and geometries:
+    if getattr(document, "errors", None):
         for bound in _read_dae(path, bind_materials=False).scene.objects("geometry"):
-            add(bound.primitives())
+            key = _instance_key(bound)
+            if key in placed:
+                placed.remove(key)
+            else:
+                add(bound.primitives())
+    geometries = getattr(document, "geometries", ()) or ()
     if not triangles and geometries:
         transforms = _node_transforms(document)
         for geometry in geometries:

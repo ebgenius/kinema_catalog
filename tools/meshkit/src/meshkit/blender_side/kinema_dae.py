@@ -152,6 +152,14 @@ def _material_for(primitive, cache: dict[str, bpy.types.Material]):
     return blender_material
 
 
+def _instance_key(bound_geometry) -> tuple:
+    """Which geometry, placed where: one instance, whichever read found it."""
+    return (
+        getattr(bound_geometry.original, "id", None),
+        tuple(round(float(v), 9) for v in bound_geometry.matrix.flat),
+    )
+
+
 def _iter_triangle_sets(bound_geometry):
     """Yield bound triangle sets, converting polylists as needed."""
     for primitive in bound_geometry.primitives():
@@ -208,8 +216,8 @@ def _iter_unbound_geometries(document):
     Reading ``document.geometries`` directly bypasses material resolution
     entirely, so a missing texture costs the material rather than the mesh --
     but a geometry whose instance pycollada dropped also loses its node, and
-    lands once, unplaced. So ``import_dae`` first re-reads the file without
-    bindings, and only comes here when even that finds no geometry.
+    lands once, unplaced. So ``import_dae`` re-reads the file without
+    bindings first, and only comes here when even that places nothing.
     """
     transforms = _node_transforms(document)
     for geometry in getattr(document, "geometries", ()) or ():
@@ -345,25 +353,39 @@ def import_dae(
 
     # Preferred path: scene traversal bakes each node's transform into the
     # vertices and resolves materials, so only the file-level correction remains.
+    placed = []
     for bound_geometry in document.scene.objects("geometry"):
+        placed.append(_instance_key(bound_geometry))
         for triangle_set in _iter_triangle_sets(bound_geometry):
             emit(triangle_set, Matrix.Identity(4))
 
-    if not result.objects and getattr(document, "geometries", None):
-        result.warnings.append(
-            f"{path.name}: material binding failed (often a missing texture); "
-            f"imported geometry without materials"
-        )
-        # pycollada drops an <instance_geometry> whose binding failed, and the
-        # node placing it goes with it, so the library geometry alone would
-        # lose its placement and every instance but one. Read the file again
-        # without bindings: the scene then resolves as it should, minus materials.
+    # pycollada drops each <instance_geometry> whose material fails to bind --
+    # one node or all of them -- and the node placing it goes with it. The
+    # failure is among document.errors, so when there are any, read the file
+    # again without bindings and import what the first read lost, where its
+    # node puts it, without material.
+    if getattr(document, "errors", None):
+        lost = 0
         unbound = _load_collada(path, bind_materials=False)
         for bound_geometry in unbound.scene.objects("geometry"):
+            key = _instance_key(bound_geometry)
+            if key in placed:
+                placed.remove(key)
+                continue
+            lost += 1
             for triangle_set in _iter_triangle_sets(bound_geometry):
                 emit(triangle_set, Matrix.Identity(4))
+        if lost:
+            result.warnings.append(
+                f"{path.name}: material binding failed for {lost} instance(s) "
+                f"(often a missing texture); imported them without materials"
+            )
 
     if not result.objects and getattr(document, "geometries", None):
+        result.warnings.append(
+            f"{path.name}: no geometry instance could be read; imported the "
+            f"library geometry without placement or materials"
+        )
         for triangle_set, matrix in _iter_unbound_geometries(document):
             emit(triangle_set, matrix)
 

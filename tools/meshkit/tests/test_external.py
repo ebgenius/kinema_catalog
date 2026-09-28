@@ -86,3 +86,12 @@ def test_broken_texture_is_read_the_way_the_importer_reads_it(tmp_path):
     expected, found = dae_stats(intact), dae_stats(broken)
     assert expected["triangles"] == found["triangles"] == 24   # both instances
     assert found["normal_deviation"] == pytest.approx(expected["normal_deviation"], abs=1e-9)
+
+
+def test_one_broken_material_is_measured_like_the_rest(tmp_path):
+    # pycollada drops only the instance whose material fails to bind; the
+    # scene walk still finds the other, and must not stop there.
+    path = tmp_path / "box.dae"
+    flat_box_dae(path)
+    with_second_instance(path, broken_material=True)
+    assert dae_stats(path)["triangles"] == 24
