@@ -222,7 +222,10 @@ view_gz() {
   else die "ros_gz_sim launch files not found"; fi
 
   info "starting Gazebo ($launch)"
-  ros2 launch ros_gz_sim "$launch" gz_args:="-r empty.sdf" >/tmp/gz.log 2>&1 &
+  # No -r: the world starts paused. Nothing drives the joints and nothing fixes
+  # the robot to the world, so once physics runs it drops from its spawn height
+  # and folds up -- paused, it holds its pose long enough to look at.
+  ros2 launch ros_gz_sim "$launch" gz_args:="empty.sdf" >/tmp/gz.log 2>&1 &
   PIDS+=($!)
   start_state_publishers "$urdf"
 
@@ -236,7 +239,7 @@ view_gz() {
   info "spawning $KINEMA_ROBOT"
   ros2 run ros_gz_sim create -topic robot_description -name "$KINEMA_ROBOT" -z 0.6 \
     || die "spawn failed — see /tmp/gz.log"
-  info "spawned. close the Gazebo window to stop"
+  info "spawned, paused: press Play to run physics. close the Gazebo window to stop"
   wait -n "${PIDS[@]}" 2>/dev/null || true
 }
 
