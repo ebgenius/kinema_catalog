@@ -133,6 +133,13 @@ if the file differs from pinned-plus-patches (`--allow-importer-drift` overrides
   file never had. franka's `link7.dae` has three edges, and its GLB gained two
   triangles. The count check caught it. The patch skips line primitives. It is
   upstream-bound like the others.
+- **`0004-dae-keep-corners-on-kept-faces.patch`**: `mesh.validate()` removes a face
+  that repeats a vertex, and all but one of the faces on the same three vertices. CAD
+  exports carry both. kinema read the normals and UVs by position after that, so each
+  face after a removed one took the next face's. Of the checks, only shading can see
+  it. The patch leaves those faces out, with their corners, before building the mesh,
+  keeping the first of each set; the count and shading checks leave out the same
+  ones. Upstream-bound as well.
 
 ## Tests
 

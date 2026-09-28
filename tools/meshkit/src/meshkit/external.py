@@ -136,20 +136,37 @@ def _node_transforms(document) -> dict[int, np.ndarray]:
     return transforms
 
 
+def _kept_faces(index: np.ndarray) -> np.ndarray:
+    """The importer's ``_kept_faces``: which of these (n, 3) faces a Blender mesh keeps.
+
+    ``mesh.validate()`` removes a face that repeats a vertex, and all but one
+    of the faces on the same three vertices, in any order or winding. CAD
+    exports carry both. The importer leaves them out before building the mesh,
+    keeping the first of each, and with them their normals.
+    """
+    ordered = np.sort(index, axis=1)
+    keep = np.zeros(len(index), dtype=bool)
+    keep[np.unique(ordered, axis=0, return_index=True)[1]] = True
+    return keep & (ordered[:, 0] != ordered[:, 1]) & (ordered[:, 1] != ordered[:, 2])
+
+
 def _corners(primitive, matrix: np.ndarray | None = None
              ) -> tuple[np.ndarray, np.ndarray] | None:
     """(n, 3, 3) triangles and corner normals of one triangle set, or None.
 
-    ``matrix`` places them; only its linear part can change an angle.
+    Only the faces the import keeps (``_kept_faces``), so the count and the
+    shading are both of the mesh Blender builds. ``matrix`` places them; only
+    its linear part can change an angle.
     """
     index = getattr(primitive, "vertex_index", None)
     if index is None or index.ndim != 2 or index.shape[1] != 3 or not len(index):
         return None  # lines, or nothing
-    tri = primitive.vertex[index]
+    kept = _kept_faces(index)
+    tri = primitive.vertex[index[kept]]
     normal = getattr(primitive, "normal", None)
     normal_index = getattr(primitive, "normal_index", None)
     has_normals = normal is not None and normal_index is not None and len(normal)
-    nor = normal[normal_index] if has_normals else None
+    nor = normal[normal_index[kept]] if has_normals else None
     if matrix is not None:
         linear = matrix[:3, :3]
         tri = tri @ linear.T
@@ -178,18 +195,6 @@ def _without_bindings(path: Path) -> io.BytesIO:
     return io.BytesIO(ElementTree.tostring(root, encoding="utf-8"))
 
 
-def _kept_faces(index: np.ndarray) -> int:
-    """How many of these (n, 3) faces a Blender mesh keeps.
-
-    The importer builds one mesh per triangle set and calls ``mesh.validate()``,
-    which drops a face that repeats a vertex, and all but one of the faces on
-    the same three vertices, in any order or winding. CAD exports carry both.
-    """
-    distinct = index[(index[:, 0] != index[:, 1]) & (index[:, 1] != index[:, 2])
-                     & (index[:, 0] != index[:, 2])]
-    return len(np.unique(np.sort(distinct, axis=1), axis=0))
-
-
 def _read_dae(path: Path, *, bind_materials: bool = True):
     """The document, loaded the way the importer's ``_load_collada`` loads it."""
     import collada
@@ -206,8 +211,8 @@ def _read_dae(path: Path, *, bind_materials: bool = True):
 def dae_stats(path: Path) -> dict:
     """Triangle count and normal deviation of a .dae as written, read by pycollada.
 
-    The count is of the triangles a Blender import keeps (``_kept_faces``), so
-    it can be held against the import's exactly.
+    Both are of the triangles a Blender import keeps (``_kept_faces``), so the
+    count can be held against the import's exactly.
 
     Reads the file the way kinema's importer does, or the check would reject
     meshes the importer converts fine: the same ``ignore`` list and the bound
@@ -224,7 +229,6 @@ def dae_stats(path: Path) -> dict:
     document = _read_dae(path)
     triangles: list[np.ndarray] = []
     normals: list[np.ndarray] = []
-    kept: list[int] = []
 
     def add(primitives, matrix: np.ndarray | None = None) -> None:
         for primitive in _triangle_sets(primitives):
@@ -232,7 +236,6 @@ def dae_stats(path: Path) -> dict:
             if corners is not None:
                 triangles.append(corners[0])
                 normals.append(corners[1])
-                kept.append(_kept_faces(primitive.vertex_index))
 
     placed = []
     for bound in document.scene.objects("geometry"):
@@ -254,8 +257,9 @@ def dae_stats(path: Path) -> dict:
     loader = f"pycollada {getattr(collada, '__version__', 'unknown')}"
     if not triangles:
         return {"triangles": 0, "normal_deviation": None, "loader": loader}
+    tri = np.concatenate(triangles)
     return {
-        "triangles": sum(kept),
-        "normal_deviation": normal_deviation(np.concatenate(triangles), np.concatenate(normals)),
+        "triangles": int(len(tri)),
+        "normal_deviation": normal_deviation(tri, np.concatenate(normals)),
         "loader": loader,
     }

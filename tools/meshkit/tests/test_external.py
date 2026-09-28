@@ -4,7 +4,7 @@ import collada
 import numpy as np
 import pytest
 
-from meshkit.external import _corners, dae_stats, normal_deviation
+from meshkit.external import _corners, _kept_faces, dae_stats, normal_deviation
 from test_convert_blender import (flat_box_dae, with_broken_texture,
                                   with_degenerate_and_duplicate_faces, with_lines,
                                   with_prefixed_bindings, with_second_instance)
@@ -119,6 +119,21 @@ def test_count_is_of_the_triangles_blender_keeps(tmp_path):
     flat_box_dae(path)
     with_degenerate_and_duplicate_faces(path)
     assert dae_stats(path)["triangles"] == 12
+
+
+def test_shading_is_of_the_triangles_blender_keeps(tmp_path):
+    # The unflipped copy is 180 degrees off its normals at every corner. The
+    # import keeps face 0 in its place, so the measurement must as well, or it
+    # fails a GLB that is exactly right.
+    path = tmp_path / "box.dae"
+    flat_box_dae(path)
+    with_degenerate_and_duplicate_faces(path, flipped=False)
+    assert max(dae_stats(path)["normal_deviation"]) < 1e-6
+
+
+def test_kept_faces_are_the_first_on_each_set_of_vertices():
+    faces = np.array([[0, 0, 1], [0, 1, 3], [3, 1, 0], [1, 3, 0], [1, 2, 1], [2, 3, 4]])
+    assert _kept_faces(faces).tolist() == [False, True, False, False, False, True]
 
 
 def test_lines_are_not_triangles(tmp_path):

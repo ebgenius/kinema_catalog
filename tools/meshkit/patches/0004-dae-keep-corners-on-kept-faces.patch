@@ -1,0 +1,72 @@
+--- a/src/kinema/io/dae.py
++++ b/src/kinema/io/dae.py
+@@ -28,6 +28,7 @@
+ from xml.etree import ElementTree
+ 
+ import bpy
++import numpy as np
+ from mathutils import Matrix
+ 
+ # Rotations that bring each COLLADA up-axis into Blender's Z-up world.
+@@ -239,6 +240,19 @@
+             yield primitive, matrix
+ 
+ 
++def _kept_faces(faces):
++    """Which of these (n, 3) faces a Blender mesh keeps, as a boolean mask.
++
++    ``mesh.validate()`` removes a face that repeats a vertex, and all but one
++    of the faces on the same three vertices, in any order or winding. This
++    keeps the first of those.
++    """
++    ordered = np.sort(faces, axis=1)
++    keep = np.zeros(len(faces), dtype=bool)
++    keep[np.unique(ordered, axis=0, return_index=True)[1]] = True
++    return keep & (ordered[:, 0] != ordered[:, 1]) & (ordered[:, 1] != ordered[:, 2])
++
++
+ def _build_mesh(name: str, triangle_set, material_cache) -> bpy.types.Mesh | None:
+     """Convert one bound triangle set into a Blender mesh."""
+     vertices = getattr(triangle_set, "vertex", None)
+@@ -252,6 +266,12 @@
+ 
+     mesh = bpy.data.meshes.new(name)
+     faces = indices.reshape(-1, 3)
++    # CAD exports carry degenerate and duplicate faces, which validate() below
++    # would remove. The UVs and normals are set after it, by position, so each
++    # face after a removed one would take the next one's. Leave them out here,
++    # and their corners with them.
++    kept = _kept_faces(faces)
++    faces = faces[kept]
+ 
+     mesh.from_pydata(
+         [tuple(v) for v in vertices],
+@@ -260,8 +280,8 @@
+     )
+     mesh.update()
+     if mesh.validate(verbose=False):
+-        # validate() returns True when it had to remove invalid geometry --
+-        # common with CAD exports containing degenerate triangles.
++        # validate() returns True when it had to repair the mesh; the faces it
++        # removes most often are already gone (_kept_faces).
+         mesh.update()
+ 
+     # UVs, if the file carries any.
+@@ -271,7 +291,7 @@
+         try:
+             uv_layer = mesh.uv_layers.new(name="UVMap")
+             uvs = texcoords[0]
+-            uv_index = texcoord_indices[0].reshape(-1)
++            uv_index = texcoord_indices[0].reshape(-1, 3)[kept].reshape(-1)
+             flat = [0.0] * (len(mesh.loops) * 2)
+             for loop_index in range(min(len(mesh.loops), len(uv_index))):
+                 u, v = uvs[uv_index[loop_index]][:2]
+@@ -287,7 +307,7 @@
+     normal_indices = getattr(triangle_set, "normal_index", None)
+     if normals is not None and normal_indices is not None and len(normals):
+         try:
+-            flat_indices = normal_indices.reshape(-1)
++            flat_indices = normal_indices.reshape(-1, 3)[kept].reshape(-1)
+             loop_normals = [
+                 tuple(normals[flat_indices[i]]) for i in range(len(mesh.loops))
+             ]

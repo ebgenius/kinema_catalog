@@ -1,6 +1,7 @@
 """End to end through a real Blender: skipped where none is installed."""
 
 import re
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -105,19 +106,24 @@ def with_lines(path):
     path.write_text(text.replace("</triangles>", "</triangles>" + lines, 1), encoding="utf-8")
 
 
-def with_degenerate_and_duplicate_faces(path):
-    """Add a face that repeats a vertex, and the first face again, reversed and
-    facing the other way, as a double-sided export has it.
+def with_degenerate_and_duplicate_faces(path, *, flipped=True):
+    """Add a face that repeats a vertex, before the box's own, and the first
+    face again after them, reversed and -- as a double-sided export has it --
+    facing the other way.
 
     CAD exports carry both. Blender's mesh.validate() drops them, so the box
-    still imports as 12 triangles.
+    still imports as 12 triangles, and every one of them must keep its own
+    normals though the face read first is dropped. ``flipped=False`` gives the
+    copy face 0's normals instead, so it faces away from them.
     """
     text = path.read_text(encoding="utf-8").replace('<triangles count="12"',
                                                     '<triangles count="14"', 1)
     # (0, 0, 1) repeats vertex 0; (3, 1, 0) is face (0, 1, 3) reversed, with
-    # normal 1, the box's +x, where face 0 has -x.
-    text = re.sub(r"(<triangles\b.*?<p>.*?)(</p>)", r"\1 0 0 0 0 1 0 3 1 1 1 0 1\2", text,
-                  count=1, flags=re.S)
+    # normal 1, the box's +x, where face 0 has -x -- or, unflipped, face 0's -x.
+    copy = "3 1 1 1 0 1" if flipped else "3 0 1 0 0 0"
+    text = re.sub(r"(<triangles\b.*?<p>)(.*?)(</p>)",
+                  lambda m: f"{m.group(1)}0 0 0 0 1 0 {m.group(2)} {copy}{m.group(3)}",
+                  text, count=1, flags=re.S)
     path.write_text(text, encoding="utf-8")
 
 
@@ -250,14 +256,19 @@ def test_lines_do_not_become_triangles(tmp_path, blender):
     assert item["source_stats"]["triangles"] == 12
 
 
-def test_faces_blender_drops_do_not_fail_the_count(tmp_path, blender):
+@pytest.mark.parametrize("flipped", [True, False], ids=["flipped-copy", "unflipped-copy"])
+def test_faces_blender_drops_change_nothing(tmp_path, blender, flipped):
     # The .dae says 14 triangles; Blender keeps 12. The count check has to
-    # count the way Blender does, or it rejects every CAD mesh that has these.
+    # count the way Blender does, or it rejects every CAD mesh that has these,
+    # and the shading check has to measure the same 12: the unflipped copy
+    # faces away from its normals. The import itself set each face's normals
+    # by position after dropping the first face, so every face took the next
+    # one's (patches/0004).
     root = tmp_path / "catalog"
     dae = root / "src" / "fork" / "box.dae"
     dae.parent.mkdir(parents=True)
     flat_box_dae(dae)
-    with_degenerate_and_duplicate_faces(dae)
+    with_degenerate_and_duplicate_faces(dae, flipped=flipped)
 
     report = convert(plan([dae], root, tmp_path / "out"), blender,
                      report_path=tmp_path / "report.json", progress=lambda _: None)
@@ -265,3 +276,4 @@ def test_faces_blender_drops_do_not_fail_the_count(tmp_path, blender):
     (item,) = report["items"]
     assert item["status"] == "converted", item["problems"]
     assert item["source_stats"]["triangles"] == 12
+    assert max(glb_stats(Path(item["output"]))["normal_deviation"]) < 1.0  # still flat-shaded

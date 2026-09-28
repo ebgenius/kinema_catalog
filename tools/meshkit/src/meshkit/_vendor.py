@@ -38,9 +38,13 @@ PATCHES = (
     # <lines> were read three indices at a time, as if they were triangles:
     # franka's link7 gained two triangles the file never had.
     "0003-dae-skip-line-primitives.patch",
+    # mesh.validate() dropped degenerate and duplicate faces, and the corner
+    # normals and UVs were then read by position: every face after a dropped
+    # one took the next face's.
+    "0004-dae-keep-corners-on-kept-faces.patch",
 )
 # COMMIT's file with PATCHES applied -- what VENDORED_FILE must hash to.
-SHA256 = "80963a10ddd803de032ad667fcfd0e7688344a2df540cfdc48d332f5bd3dfc08"
+SHA256 = "6f803a3e9e67e1ea03b604d4432590f77f404494a283552bee498156f32c2850"
 
 VENDORED_FILE = Path(__file__).parent / "blender_side" / "kinema_dae.py"
 
