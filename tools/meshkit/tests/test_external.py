@@ -1,9 +1,11 @@
+import ast
 from types import SimpleNamespace
 
 import collada
 import numpy as np
 import pytest
 
+from meshkit._vendor import VENDORED_FILE
 from meshkit.external import _corners, _kept_faces, dae_stats, normal_deviation
 from test_convert_blender import (flat_box_dae, with_broken_texture,
                                   with_degenerate_and_duplicate_faces, with_lines,
@@ -134,6 +136,20 @@ def test_shading_is_of_the_triangles_blender_keeps(tmp_path):
 def test_kept_faces_are_the_first_on_each_set_of_vertices():
     faces = np.array([[0, 0, 1], [0, 1, 3], [3, 1, 0], [1, 3, 0], [1, 2, 1], [2, 3, 4]])
     assert _kept_faces(faces).tolist() == [False, True, False, False, False, True]
+
+
+def test_the_importer_keeps_the_same_faces():
+    # Its copy runs inside Blender, but needs only numpy: run its own source
+    # on the same faces, so the two copies cannot drift apart unseen.
+    tree = ast.parse(VENDORED_FILE.read_text(encoding="utf-8"))
+    (node,) = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_kept_faces"]
+    namespace = {"np": np}
+    exec(compile(ast.Module([node], type_ignores=[]), str(VENDORED_FILE), "exec"), namespace)
+    # Six vertices: most faces repeat one, or share their three with another.
+    faces = np.random.default_rng(0).integers(0, 6, size=(400, 3))
+    expected = _kept_faces(faces)
+    assert expected.sum() == 20   # one face per set of three distinct vertices
+    assert namespace["_kept_faces"](faces).tolist() == expected.tolist()
 
 
 def test_lines_are_not_triangles(tmp_path):
