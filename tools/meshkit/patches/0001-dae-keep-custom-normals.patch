@@ -1,0 +1,16 @@
+--- a/src/kinema/io/dae.py
++++ b/src/kinema/io/dae.py
+@@ -258,9 +258,12 @@
+             loop_normals = [
+                 tuple(normals[flat_indices[i]]) for i in range(len(mesh.loops))
+             ]
+-            mesh.normals_split_custom_set(loop_normals)
++            # Smooth first: custom normals are stored relative to the smoothing
++            # fans that exist when they are set. Marking faces smooth afterwards
++            # merges those fans and Blender averages the normals across them.
+             for polygon in mesh.polygons:
+                 polygon.use_smooth = True
++            mesh.normals_split_custom_set(loop_normals)
+         except Exception:  # noqa: BLE001 - bad normals should not fail import
+             pass
+ 
