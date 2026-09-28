@@ -13,8 +13,16 @@ uv run meshkit scan                            # which .dae files are visual mes
 uv run meshkit convert --fork franka_description
 ```
 
-Run these from anywhere inside the catalog checkout. `uv` creates the environment on
-first use.
+Run these from `tools/meshkit`. `uv` looks for the project in the current directory
+and the ones above it, never below, so from the catalog root it finds no `meshkit` and
+fails with `program not found`. From anywhere else in the checkout, name the project:
+
+```
+uv run --project tools/meshkit meshkit doctor  # from the catalog root
+```
+
+`uv` creates the environment on first use. The catalog itself is found by walking up
+from the current directory, or given with `--root`.
 
 ## Blender
 
