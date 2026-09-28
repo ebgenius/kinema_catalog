@@ -22,18 +22,14 @@ same way -- see ``normal_deviation``.
 from __future__ import annotations
 
 import io
-import re
 from pathlib import Path
+from xml.etree import ElementTree
 
 import numpy as np
 import trimesh
 
 # Percentiles of the normal-deviation distribution the gate compares.
 QUANTILES = (50, 90, 99)
-
-_BIND_MATERIAL = re.compile(
-    rb"<bind_material\b[^>]*/>|<bind_material\b.*?</bind_material\s*>", re.S
-)
 
 
 def normal_deviation(triangles: np.ndarray, normals: np.ndarray) -> list[float]:
@@ -172,13 +168,23 @@ def _instance_key(bound) -> tuple:
             tuple(round(float(v), 9) for v in np.asarray(bound.matrix).flat))
 
 
+def _without_bindings(path: Path) -> io.BytesIO:
+    """The importer's ``_without_bindings``: every <bind_material> gone, any prefix."""
+    root = ElementTree.parse(path).getroot()
+    for parent in list(root.iter()):
+        for child in list(parent):
+            if isinstance(child.tag, str) and child.tag.rpartition("}")[2] == "bind_material":
+                parent.remove(child)
+    return io.BytesIO(ElementTree.tostring(root, encoding="utf-8"))
+
+
 def _read_dae(path: Path, *, bind_materials: bool = True):
     """The document, loaded the way the importer's ``_load_collada`` loads it."""
     import collada
 
     source = str(path)
     if not bind_materials:
-        source = io.BytesIO(_BIND_MATERIAL.sub(b"", path.read_bytes()))
+        source = _without_bindings(path)
     return collada.Collada(source, ignore=[
         collada.common.DaeUnsupportedError,
         collada.common.DaeBrokenRefError,

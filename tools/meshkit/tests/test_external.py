@@ -5,7 +5,8 @@ import numpy as np
 import pytest
 
 from meshkit.external import _corners, dae_stats, normal_deviation
-from test_convert_blender import flat_box_dae, with_broken_texture, with_second_instance
+from test_convert_blender import (flat_box_dae, with_broken_texture, with_prefixed_bindings,
+                                  with_second_instance)
 
 
 def cube_corners(flat: bool):
@@ -94,4 +95,15 @@ def test_one_broken_material_is_measured_like_the_rest(tmp_path):
     path = tmp_path / "box.dae"
     flat_box_dae(path)
     with_second_instance(path, broken_material=True)
+    assert dae_stats(path)["triangles"] == 24
+
+
+def test_prefixed_bindings_are_removed_too(tmp_path):
+    # <c:bind_material> is the same element; missing it, the re-read loses
+    # the instances again and only the last resort's one unplaced copy is left.
+    path = tmp_path / "box.dae"
+    flat_box_dae(path)
+    with_second_instance(path)
+    with_broken_texture(path)
+    with_prefixed_bindings(path)
     assert dae_stats(path)["triangles"] == 24

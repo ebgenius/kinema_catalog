@@ -37,7 +37,7 @@ PATCHES = (
     "0002-dae-fallback-keeps-node-placement.patch",
 )
 # COMMIT's file with PATCHES applied -- what VENDORED_FILE must hash to.
-SHA256 = "5faf1af3a6d14fb3aa748732d024ff15c975043b6e05a3752285b030ccb85d3c"
+SHA256 = "dc029a1d056d29eb640fac014c964999940d2df52228838816ea00881d7712b5"
 
 VENDORED_FILE = Path(__file__).parent / "blender_side" / "kinema_dae.py"
 

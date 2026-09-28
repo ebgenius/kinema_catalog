@@ -86,6 +86,15 @@ def with_second_instance(path, *, broken_material=False):
     path.write_text(text.replace(node, node + second), encoding="utf-8")
 
 
+def with_prefixed_bindings(path):
+    """Spell every <bind_material> with a namespace prefix: valid, and read the same."""
+    text = path.read_text(encoding="utf-8")
+    text = re.sub(r"<COLLADA\b", '<COLLADA xmlns:c="http://www.collada.org/2005/11/COLLADASchema"',
+                  text, count=1)
+    text = text.replace("<bind_material>", "<c:bind_material>")
+    path.write_text(text.replace("</bind_material>", "</c:bind_material>"), encoding="utf-8")
+
+
 def with_broken_texture(path):
     """Point the box's material at a texture whose image the file never declares.
 
@@ -132,7 +141,8 @@ def test_existing_output_is_skipped_without_force(tmp_path, blender):
     assert dae.with_suffix(".glb").read_bytes() == b"not touched"
 
 
-def test_broken_texture_keeps_every_instance_where_its_node_puts_it(tmp_path, blender):
+@pytest.mark.parametrize("prefixed", [False, True], ids=["plain", "prefixed-bindings"])
+def test_broken_texture_keeps_every_instance_where_its_node_puts_it(tmp_path, blender, prefixed):
     # The importer used to fall back to the library geometry alone: the node's
     # offset and the second instance were lost, and every check still passed,
     # because they all start from what the importer produced (patches/0002).
@@ -142,6 +152,8 @@ def test_broken_texture_keeps_every_instance_where_its_node_puts_it(tmp_path, bl
     flat_box_dae(dae)
     with_second_instance(dae)
     with_broken_texture(dae)
+    if prefixed:
+        with_prefixed_bindings(dae)
 
     report = convert(plan([dae], root, tmp_path / "out"), blender,
                      report_path=tmp_path / "report.json", progress=lambda _: None)

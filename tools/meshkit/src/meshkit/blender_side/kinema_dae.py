@@ -23,9 +23,9 @@ side" bugs seen in other importers, and both are handled here:
 from __future__ import annotations
 
 import io
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from xml.etree import ElementTree
 
 import bpy
 from mathutils import Matrix
@@ -36,10 +36,6 @@ _UP_AXIS_TO_ZUP: dict[str, Matrix] = {
     "Z_UP": Matrix.Identity(4),
     "X_UP": Matrix.Rotation(1.5707963267948966, 4, "Z"),
 }
-
-_BIND_MATERIAL = re.compile(
-    rb"<bind_material\b[^>]*/>|<bind_material\b.*?</bind_material\s*>", re.S
-)
 
 
 class DaeImportError(RuntimeError):
@@ -58,6 +54,16 @@ class DaeImportResult:
         return [obj.data for obj in self.objects]
 
 
+def _without_bindings(filepath: Path) -> io.BytesIO:
+    """The file with every <bind_material> removed, however its tag is prefixed."""
+    root = ElementTree.parse(filepath).getroot()
+    for parent in list(root.iter()):
+        for child in list(parent):
+            if isinstance(child.tag, str) and child.tag.rpartition("}")[2] == "bind_material":
+                parent.remove(child)
+    return io.BytesIO(ElementTree.tostring(root, encoding="utf-8"))
+
+
 def _load_collada(filepath: Path, *, bind_materials: bool = True):
     try:
         import collada
@@ -70,7 +76,7 @@ def _load_collada(filepath: Path, *, bind_materials: bool = True):
     if not bind_materials:
         # With no <bind_material> left, no binding can fail: pycollada keeps
         # every <instance_geometry>, placed by its node, just without material.
-        source = io.BytesIO(_BIND_MATERIAL.sub(b"", filepath.read_bytes()))
+        source = _without_bindings(filepath)
 
     try:
         # ignore=... keeps a single malformed effect or unsupported controller
