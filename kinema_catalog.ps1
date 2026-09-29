@@ -91,7 +91,11 @@ if ($LASTEXITCODE -ne 0 -or -not $wslPath) {
 $wslPath = ($wslPath -replace "`0", '').Trim()
 
 # ------------------------------------------------------------------ docker check
-& wsl.exe -d $WslDistro -e bash -lc "command -v docker >/dev/null 2>&1" 2>$null | Out-Null
+# Not `command -v docker`: WSL puts the Windows PATH in the distro, so that always
+# finds Docker Desktop's shim under /mnt/c/.../resources/bin, which runs the real
+# /usr/bin/docker when the WSL integration is on and otherwise only prints
+# "activate the WSL integration". A docker outside /mnt/ is what integration adds.
+& wsl.exe -d $WslDistro -e bash -lc "type -ap docker 2>/dev/null | grep -qv '^/mnt/'" 2>$null | Out-Null
 if ($LASTEXITCODE -ne 0) {
     Die @"
 docker is not available inside WSL distro '$WslDistro'.

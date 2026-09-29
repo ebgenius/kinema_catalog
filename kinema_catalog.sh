@@ -205,9 +205,26 @@ pick_viewer() {
 }
 
 # --------------------------------------------------------------------------- docker
+# True when a docker CLI lives in this system rather than only behind /mnt/.
+# In WSL, the Windows PATH adds Docker Desktop's resources/bin, whose `docker`
+# is a shim: it runs /usr/bin/docker when the WSL integration put one there, and
+# otherwise only prints "activate the WSL integration" and fails. So a docker
+# found under /mnt/ alone means the integration is off for this distro -- and
+# `docker info` failing through that shim says nothing about the daemon.
+has_real_docker() {
+  type -ap docker 2>/dev/null | grep -qv '^/mnt/'
+}
+
 require_docker() {
-  command -v docker >/dev/null 2>&1 \
-    || die "docker not found.$([ "$IS_WSL" = 1 ] && printf ' In WSL, enable Docker Desktop -> Settings -> Resources -> WSL integration for this distro.')"
+  if ! has_real_docker; then
+    if [ "$IS_WSL" = 1 ]; then
+      die "$(printf '%s\n\n%s\n%s' \
+        "docker is not available inside WSL distro '${WSL_DISTRO_NAME:-this one}'." \
+        "Enable it in Docker Desktop:" \
+        "  Settings -> Resources -> WSL integration -> turn on '${WSL_DISTRO_NAME:-this distro}' -> Apply & restart")"
+    fi
+    die "docker not found — install Docker Engine or Docker Desktop."
+  fi
   docker info >/dev/null 2>&1 \
     || die "the docker daemon is not reachable — is Docker Desktop running?"
 }
@@ -228,6 +245,14 @@ ensure_submodule() {
   if [ -n "$(ls -A "$REPO_ROOT/src/$sub" 2>/dev/null)" ]; then return 0; fi
   command -v git >/dev/null 2>&1 || die "git not found, cannot clone src/$sub"
   info "cloning submodule src/$sub"
+  # Anonymous HTTPS first: every fork is public, and under WSL there is usually
+  # no SSH key or agent -- Git Bash's agent does not cross into WSL -- so the
+  # SSH URLs in .gitmodules would fail. The rewrite applies to this command
+  # only; .gitmodules and the clone's recorded origin keep SSH for pushing.
+  git -C "$REPO_ROOT" -c url."https://github.com/".insteadOf=git@github.com: \
+      submodule update --init -- "src/$sub" && return 0
+  # A fork that has gone private needs credentials: try the recorded URL as is.
+  warn "anonymous HTTPS clone of src/$sub failed; retrying with the URL in .gitmodules"
   git -C "$REPO_ROOT" submodule update --init -- "src/$sub" \
     || die "failed to clone src/$sub"
 }
