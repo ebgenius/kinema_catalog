@@ -94,8 +94,11 @@ $wslPath = ($wslPath -replace "`0", '').Trim()
 # Not `command -v docker`: WSL puts the Windows PATH in the distro, so that always
 # finds Docker Desktop's shim under /mnt/c/.../resources/bin, which runs the real
 # /usr/bin/docker when the WSL integration is on and otherwise only prints
-# "activate the WSL integration". A docker outside /mnt/ is what integration adds.
-& wsl.exe -d $WslDistro -e bash -lc "type -ap docker 2>/dev/null | grep -qv '^/mnt/'" 2>$null | Out-Null
+# "activate the WSL integration". The first docker on PATH is the one that runs:
+# it must be outside /mnt/, or be the shim with /usr/bin/docker to hand off to.
+# Same rule as has_real_docker in kinema_catalog.sh. Single-quoted, so PowerShell
+# leaves $first to bash.
+& wsl.exe -d $WslDistro -e bash -lc 'first=$(type -P docker) || exit 1; case "$first" in /mnt/*) test -f /usr/bin/docker ;; esac' 2>$null | Out-Null
 if ($LASTEXITCODE -ne 0) {
     Die @"
 docker is not available inside WSL distro '$WslDistro'.

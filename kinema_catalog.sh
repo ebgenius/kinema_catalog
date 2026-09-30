@@ -205,19 +205,27 @@ pick_viewer() {
 }
 
 # --------------------------------------------------------------------------- docker
-# True when a docker CLI lives in this system rather than only behind /mnt/.
+# True when the `docker` this script will run is a working CLI.
 # In WSL, the Windows PATH adds Docker Desktop's resources/bin, whose `docker`
 # is a shim: it runs /usr/bin/docker when the WSL integration put one there, and
-# otherwise only prints "activate the WSL integration" and fails. So a docker
-# found under /mnt/ alone means the integration is off for this distro -- and
-# `docker info` failing through that shim says nothing about the daemon.
+# otherwise only prints "activate the WSL integration" and fails -- after which
+# `docker info` failing says nothing about the daemon. So the first docker on
+# PATH decides, as it is what `docker` resolves to: one outside /mnt/ is real,
+# and the shim counts only when /usr/bin/docker is there for it to hand off to
+# (the test below is the shim's own). A real docker later on PATH does not help
+# while the shim shadows it.
 # Outside WSL, /mnt/ is an ordinary mount point and a docker there is real.
 has_real_docker() {
-  if [ "$IS_WSL" = 1 ]; then
-    type -ap docker 2>/dev/null | grep -qv '^/mnt/'
-  else
+  if [ "$IS_WSL" != 1 ]; then
     command -v docker >/dev/null 2>&1
+    return
   fi
+  local first
+  first=$(type -P docker) || return 1
+  case "$first" in
+    /mnt/*) [ -f /usr/bin/docker ] ;;
+    *)      return 0 ;;
+  esac
 }
 
 require_docker() {
