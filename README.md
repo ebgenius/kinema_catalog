@@ -100,9 +100,16 @@ for your Ubuntu distro). Nothing else — no local ROS install.
 
 ## Working with the submodules
 
+The launcher clones a robot's submodule the first time you pick it, over anonymous
+HTTPS: every fork is public, so no SSH key is needed, even inside WSL. `.gitmodules`
+keeps SSH URLs for pushing, so cloning by hand needs a GitHub SSH key, or the same
+HTTPS override:
+
 ```sh
 # first checkout
 git submodule update --init --recursive
+# ...or, without an SSH key
+git -c url."https://github.com/".insteadOf=git@github.com: submodule update --init --recursive
 
 # pull the latest upstream-tracked branch of every fork
 git submodule update --remote
