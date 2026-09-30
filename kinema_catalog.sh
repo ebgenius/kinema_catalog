@@ -211,8 +211,13 @@ pick_viewer() {
 # otherwise only prints "activate the WSL integration" and fails. So a docker
 # found under /mnt/ alone means the integration is off for this distro -- and
 # `docker info` failing through that shim says nothing about the daemon.
+# Outside WSL, /mnt/ is an ordinary mount point and a docker there is real.
 has_real_docker() {
-  type -ap docker 2>/dev/null | grep -qv '^/mnt/'
+  if [ "$IS_WSL" = 1 ]; then
+    type -ap docker 2>/dev/null | grep -qv '^/mnt/'
+  else
+    command -v docker >/dev/null 2>&1
+  fi
 }
 
 require_docker() {
