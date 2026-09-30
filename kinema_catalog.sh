@@ -262,10 +262,13 @@ ensure_submodule() {
   # no SSH key or agent -- Git Bash's agent does not cross into WSL -- so the
   # SSH URLs in .gitmodules would fail. The rewrite applies to this command
   # only; .gitmodules and the clone's recorded origin keep SSH for pushing.
-  # GIT_TERMINAL_PROMPT=0: GitHub answers a private or missing repo with a 401,
-  # and git would then wait at a "Username for 'https://github.com':" prompt,
-  # so the SSH retry below would never run.
+  # GitHub answers a private or missing repo with a 401, and git then asks for
+  # credentials: GIT_TERMINAL_PROMPT=0 stops its "Username for ..." prompt, and
+  # an empty credential.helper stops a configured helper -- in WSL often Git
+  # Credential Manager, which opens a Windows sign-in window. Either would hold
+  # the SSH retry below; and the attempt is meant to be anonymous anyway.
   GIT_TERMINAL_PROMPT=0 git -C "$REPO_ROOT" \
+      -c credential.helper= \
       -c url."https://github.com/".insteadOf=git@github.com: \
       submodule update --init -- "src/$sub" && return 0
   # A fork that has gone private needs credentials: try the recorded URL as is.
