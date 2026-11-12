@@ -109,37 +109,34 @@ importer converts it back, and the GLB lands in kinema exactly where the `.dae` 
 ## The vendored importer
 
 `src/meshkit/blender_side/kinema_dae.py` is kinema's `src/kinema/io/dae.py` at the
-commit pinned in `_vendor.py`, plus the patches in `patches/`. `convert` refuses to run
-if the file differs from pinned-plus-patches (`--allow-importer-drift` overrides).
+commit pinned in `_vendor.py`, unchanged. `convert` refuses to run if the file differs
+from the pin (`--allow-importer-drift` overrides). A fix to the importer goes to kinema
+first; then re-vendor from the commit that has it and update `COMMIT` and `SHA256`.
 
-- **`0001-dae-keep-custom-normals.patch`**: kinema set each mesh's custom normals and
-  *then* marked its faces smooth. That merges Blender's smoothing fans, and the
-  authored normals get averaged across every hard edge. That's the dark smearing at
-  panel seams and edges. The patch swaps the two steps. It applies to kinema as is,
-  and belongs upstream. Once kinema merges it, re-vendor from that commit and delete
-  the patch.
-- **`0002-dae-fallback-keeps-node-placement.patch`**: when a material fails to bind
-  (a texture whose image the file never declares, common in CAD exports), pycollada
-  drops that `<instance_geometry>` and the node placing it. If other instances
-  survived, kinema imported those and silently lost the rest; if none did, its
-  fallback imported the library geometry alone, at the origin, once however many
-  nodes instanced it. No check could see either, because they all start from the
-  import. When the first read reports errors, the patch reads the file again
-  without bindings and imports each instance it lost where its node puts it,
-  without material; instances that did bind keep theirs. Like 0001, it applies to
-  kinema as is and belongs upstream.
-- **`0003-dae-skip-line-primitives.patch`**: kinema read every primitive's indices
-  three at a time, `<lines>` included, so their edge endpoints became triangles the
-  file never had. franka's `link7.dae` has three edges, and its GLB gained two
-  triangles. The count check caught it. The patch skips line primitives. It is
-  upstream-bound like the others.
-- **`0004-dae-keep-corners-on-kept-faces.patch`**: `mesh.validate()` removes a face
-  that repeats a vertex, and all but one of the faces on the same three vertices. CAD
-  exports carry both. kinema read the normals and UVs by position after that, so each
-  face after a removed one took the next face's. Of the checks, only shading can see
-  it. The patch leaves those faces out, with their corners, before building the mesh,
-  keeping the first of each set; the count and shading checks leave out the same
-  ones. Upstream-bound as well.
+The pin is the merge of [kinema#126](https://github.com/ebgenius/kinema/pull/126),
+which fixed four importer bugs that meshkit's checks found. Until then meshkit carried
+them as patches:
+
+- **Normals averaged away.** kinema set each mesh's custom normals and *then* marked
+  its faces smooth. That merges Blender's smoothing fans, and the authored normals got
+  averaged across every hard edge: the dark smearing at panel seams and edges. The
+  geometry checks all passed, which is why the shading check exists.
+- **Lost placement.** When a material fails to bind (a texture whose image the file
+  never declares, common in CAD exports), pycollada drops that `<instance_geometry>`
+  and the node placing it. If other instances survived, kinema imported those and
+  silently lost the rest; if none did, its fallback imported the library geometry
+  alone, at the origin, once however many nodes instanced it. No check could see
+  either, because they all start from the import. kinema now reads the document again
+  without bindings and imports each lost instance where its node puts it, without
+  material.
+- **`<lines>` as triangles.** Every primitive's indices were read three at a time, so
+  franka's `link7.dae`, which has three edges, gained two triangles. The count check
+  caught it.
+- **Shifted corners.** `mesh.validate()` removes a face that repeats a vertex, and all
+  but one of the faces on the same three vertices. CAD exports carry both. kinema read
+  the normals and UVs by position after that, so each face after a removed one took the
+  next face's. Of the checks, only shading can see it. The count and shading checks
+  leave out the same faces Blender does.
 
 ## Tests
 

@@ -9,7 +9,7 @@ triangle count and surface area must agree with the source's.
 Neither check can see a fault in the *import*, though: the round trip starts
 from what kinema's importer produced, so an importer that loses something hands
 the loss to both sides. That is not hypothetical -- kinema's importer averaged
-every file's authored normals away (patches/0001), and the geometry checks all
+every file's authored normals away (fixed in kinema#126), and the geometry checks all
 passed. So the shading is also compared end to end, the raw .dae read by
 pycollada against the GLB read by trimesh, with no Blender in between.
 

@@ -186,7 +186,7 @@ def test_existing_output_is_skipped_without_force(tmp_path, blender):
 def test_broken_texture_keeps_every_instance_where_its_node_puts_it(tmp_path, blender, prefixed):
     # The importer used to fall back to the library geometry alone: the node's
     # offset and the second instance were lost, and every check still passed,
-    # because they all start from what the importer produced (patches/0002).
+    # because they all start from what the importer produced (fixed in kinema#126).
     root = tmp_path / "catalog"
     dae = root / "src" / "fork" / "box.dae"
     dae.parent.mkdir(parents=True)
@@ -263,7 +263,7 @@ def test_faces_blender_drops_change_nothing(tmp_path, blender, flipped):
     # and the shading check has to measure the same 12: the unflipped copy
     # faces away from its normals. The import itself set each face's normals
     # by position after dropping the first face, so every face took the next
-    # one's (patches/0004).
+    # one's (fixed in kinema#126).
     root = tmp_path / "catalog"
     dae = root / "src" / "fork" / "box.dae"
     dae.parent.mkdir(parents=True)
