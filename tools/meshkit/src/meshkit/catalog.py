@@ -18,7 +18,7 @@ from __future__ import annotations
 import configparser
 import json
 import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 import yaml
 
@@ -43,6 +43,30 @@ _FIELDS = ("id", "name", "kind", "category", "family", "maker", "tags", "licence
 
 class CatalogError(ValueError):
     """The catalog's sources or its index cannot be read as a catalog."""
+
+
+class _UniqueKeyLoader(yaml.SafeLoader):
+    """safe_load, except that a key given twice is an error, not the last one winning.
+
+    Two ``args:`` blocks in one entry would otherwise lose the first without a
+    word, and the entry would still validate.
+    """
+
+    def construct_mapping(self, node, deep=False):
+        seen = set()
+        for key_node, _ in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if key in seen:
+                raise yaml.constructor.ConstructorError(
+                    None, None, f"duplicate key {key!r}", key_node.start_mark)
+            seen.add(key)
+        return super().construct_mapping(node, deep=deep)
+
+
+def _repository_relative(value: str) -> bool:
+    """A path under the repository root, as these files spell it: no root, drive or `..`."""
+    posix, windows = PurePosixPath(value), PureWindowsPath(value)
+    return not (posix.is_absolute() or windows.anchor or ".." in windows.parts)
 
 
 def _entry(raw, *, where: str, family: str, maker: str) -> dict:
@@ -73,8 +97,10 @@ def _entry(raw, *, where: str, family: str, maker: str) -> dict:
     format_ = FORMATS.get(Path(entry).suffix)
     if format_ is None:
         raise CatalogError(f"{label}: entry must end in .xacro or .urdf: {entry}")
-    if Path(entry).is_absolute() or ".." in Path(entry).parts:
-        raise CatalogError(f"{label}: entry must be relative to the repository root: {entry}")
+    for key in ("entry", "mesh_base"):
+        if key in raw and not _repository_relative(raw[key]):
+            raise CatalogError(f"{label}: {key} must be relative to the repository root, "
+                               f"without ..: {raw[key]}")
     args = raw.get("args", {})
     if not isinstance(args, dict) or not all(
             isinstance(k, str) and isinstance(v, str) for k, v in args.items()):
@@ -108,7 +134,7 @@ def load_sources(root: Path) -> list[dict]:
     for path in files:
         where = path.relative_to(root).as_posix()
         try:
-            data = yaml.safe_load(path.read_text(encoding="utf-8"))
+            data = yaml.load(path.read_text(encoding="utf-8"), Loader=_UniqueKeyLoader)
         except yaml.YAMLError as exc:
             raise CatalogError(f"{where}: {exc}") from None
         if not isinstance(data, dict):

@@ -85,15 +85,29 @@ def test_an_entry_is_complete_after_building(tmp_path):
     ("    colour: red\n", "unknown key"),
     ("    args:\n      dof: 7\n", "quote numbers"),
     ("    args:\n      name: two words\n", "whitespace"),
-    ("    category: wheeled\n", None),     # duplicate key: YAML keeps the last
+    ("    mesh_base: /tmp\n", "mesh_base must be relative"),
+    ("    mesh_base: C:/meshes\n", "mesh_base must be relative"),
+    ("    mesh_base: src/arm_fork/../other_fork\n", "mesh_base must be relative"),
 ])
 def test_a_bad_entry_names_itself(tmp_path, extra, message):
-    if message is None:
-        message = "category must be one of"
     make(tmp_path, entries=ENTRY.format(id="arm", submodule="arm_fork") + extra)
     with pytest.raises(catalog.CatalogError, match=message) as info:
         catalog.build(tmp_path)
     assert "catalog/acme.yaml entry 1 (arm)" in str(info.value)
+
+
+def test_a_key_given_twice_is_an_error_not_the_last_one_winning(tmp_path):
+    # Each args block passes alone; safe_load would keep the second and lose
+    # the first without a word.
+    make(tmp_path, entries=ENTRY.format(id="arm", submodule="arm_fork") + """\
+    args:
+      ur_type: ur5e
+    args:
+      name: ur5e
+""")
+    with pytest.raises(catalog.CatalogError, match="duplicate key 'args'"):
+        catalog.build(tmp_path)
+    assert any("duplicate key 'args'" in problem for problem in catalog.check(tmp_path))
 
 
 def test_an_id_is_unique_across_families(tmp_path):
@@ -116,7 +130,8 @@ def test_the_family_is_the_file_name(tmp_path):
 
 def test_entry_must_be_xacro_or_urdf_inside_the_repository(tmp_path):
     for entry, message in [("src/arm_fork/robot.sdf", ".xacro or .urdf"),
-                           ("../elsewhere/arm.urdf", "relative to the repository root")]:
+                           ("../elsewhere/arm.urdf", "relative to the repository root"),
+                           ("/elsewhere/arm.urdf", "relative to the repository root")]:
         make(tmp_path, entries=ENTRY.format(id="arm", submodule="arm_fork").replace(
             "src/arm_fork/urdf/arm.urdf.xacro", entry))
         with pytest.raises(catalog.CatalogError, match=message):

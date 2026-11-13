@@ -42,9 +42,8 @@ file.
 ## Rebuilding and checking
 
 ```sh
-cd tools/meshkit
-uv run meshkit index           # rebuild catalog.json, then report problems
-uv run meshkit index --check   # fail if catalog.json is stale, or anything below
+uv run --project tools/meshkit meshkit index           # rebuild catalog.json, then report problems
+uv run --project tools/meshkit meshkit index --check   # fail if catalog.json is stale, or anything below
 ```
 
 The check, which the tests also run, wants:

@@ -171,6 +171,22 @@ def test_a_wrapper_outside_src_renders_into_its_entrys_fork(catalog):
     assert wrapped and {r.fork for r in wrapped} == {"param_fork"}
 
 
+def test_a_missing_index_is_an_error_not_a_scan_without_robots(catalog):
+    # Before `meshkit index` has run, a scan that quietly skipped the rendered
+    # pass would report every mesh only a rendered robot uses as unreferenced.
+    (catalog / "catalog.json").unlink()
+    with pytest.raises(meshkit.catalog.CatalogError, match="meshkit index"):
+        scan(catalog)
+    assert scan(catalog, render=False).forks()     # the static pass needs no index
+
+
+def test_unparsable_yaml_is_unresolved_in_its_own_fork(catalog):
+    write(catalog, "src/ur_fork/ur_description/config/broken.yaml",
+          "mesh: meshes/base.dae\n  bad: [indent\n")
+    problems = [r.problem for r in scan(catalog, render=False).unresolved("ur_fork")]
+    assert "YAML mentions .dae but could not be parsed" in problems
+
+
 def test_fork_with_only_unresolved_references_is_listed(catalog):
     # No .dae of its own, and its one reference names a package the catalog
     # does not carry: exactly the fork `scan --unresolved` has to show.

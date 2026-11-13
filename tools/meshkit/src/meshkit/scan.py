@@ -41,7 +41,6 @@ from pathlib import Path
 
 import yaml
 
-from meshkit.catalog import INDEX_FILE
 from meshkit.catalog import load as load_catalog
 
 MESH_SUFFIX = ".dae"
@@ -431,7 +430,8 @@ class Scanner:
             documents = list(yaml.load_all(text, Loader=_TolerantLoader))
         except yaml.YAMLError:
             self.refs.append(MeshRef(path, 1, "", "other", [],
-                                     "YAML mentions .dae but could not be parsed"))
+                                     "YAML mentions .dae but could not be parsed",
+                                     fork=fork_of(self.root, path)))
             return
 
         def walk(node, keys: tuple[str, ...], parent: dict | None) -> None:
@@ -458,11 +458,9 @@ class Scanner:
     # -- rendered manifest robots
 
     def _manifest_rows(self):
-        # A catalog.json that cannot be read raises rather than yielding
-        # nothing: skipped, its robots' rendered references would vanish
-        # without a word and their meshes read as unreferenced.
-        if not (self.root / INDEX_FILE).is_file():
-            return
+        # A catalog.json that is missing or cannot be read raises rather than
+        # yielding nothing: skipped, its robots' rendered references would
+        # vanish without a word and their meshes read as unreferenced.
         for entry in load_catalog(self.root):
             yield {"id": entry["id"], "fork": entry["submodule"], "type": entry["format"],
                    "path": entry["entry"], "args": entry["args"]}

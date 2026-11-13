@@ -52,9 +52,8 @@ an entry to the family's file (or start a new `catalog/<family>.yaml`), then reb
 `catalog.json` and check the catalog:
 
 ```sh
-cd tools/meshkit
-uv run meshkit index           # writes catalog.json, then reports any problem
-uv run meshkit index --check   # writes nothing; fails if catalog.json is stale
+uv run --project tools/meshkit meshkit index           # writes catalog.json, then reports any problem
+uv run --project tools/meshkit meshkit index --check   # writes nothing; fails if catalog.json is stale
 ```
 
 See [`catalog/README.md`](../catalog/README.md) for the fields. Then check that it
