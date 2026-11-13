@@ -21,9 +21,9 @@ same way -- see ``normal_deviation``.
 
 from __future__ import annotations
 
+import copy
 import io
 from pathlib import Path
-from xml.etree import ElementTree
 
 import numpy as np
 import trimesh
@@ -185,24 +185,27 @@ def _instance_key(bound) -> tuple:
             tuple(round(float(v), 9) for v in np.asarray(bound.matrix).flat))
 
 
-def _without_bindings(path: Path) -> io.BytesIO:
-    """The importer's ``_without_bindings``: every <bind_material> gone, any prefix."""
-    root = ElementTree.parse(path).getroot()
+def _without_bindings(document) -> io.BytesIO:
+    """The importer's ``_without_bindings``: every <bind_material> gone, any prefix.
+
+    From the tree pycollada already parsed, as the importer does, not from the
+    file: a zipped COLLADA file is an archive, not XML.
+    """
+    from collada import xmlutil
+
+    root = copy.deepcopy(document.xmlnode.getroot())
     for parent in list(root.iter()):
         for child in list(parent):
             if isinstance(child.tag, str) and child.tag.rpartition("}")[2] == "bind_material":
                 parent.remove(child)
-    return io.BytesIO(ElementTree.tostring(root, encoding="utf-8"))
+    return io.BytesIO(xmlutil.etree.tostring(root))
 
 
-def _read_dae(path: Path, *, bind_materials: bool = True):
+def _read_dae(path: Path, source=None):
     """The document, loaded the way the importer's ``_load_collada`` loads it."""
     import collada
 
-    source = str(path)
-    if not bind_materials:
-        source = _without_bindings(path)
-    return collada.Collada(source, ignore=[
+    return collada.Collada(str(path) if source is None else source, ignore=[
         collada.common.DaeUnsupportedError,
         collada.common.DaeBrokenRefError,
     ])
@@ -218,8 +221,9 @@ def dae_stats(path: Path) -> dict:
     meshes the importer converts fine: the same ``ignore`` list and the bound
     scene geometry first. A material that fails to bind -- a texture whose
     image the file never declares -- drops its instances from that walk, so
-    when the read reported errors, the file is read again without bindings for
-    the instances it lost; and as a last resort the library geometry is placed
+    when the read reported errors, the document is read again without bindings
+    for the instances it lost (if that re-read fails, the importer keeps its
+    first read, and so does this); and as a last resort the library geometry is placed
     by whatever nodes survived, as in the importer's fallbacks.
     Triangle sets without normals are given their face normals -- which is
     what Blender shows for them, since the importer leaves such faces flat.
@@ -241,8 +245,14 @@ def dae_stats(path: Path) -> dict:
     for bound in document.scene.objects("geometry"):
         placed.append(_instance_key(bound))
         add(bound.primitives())
+    unbound = None
     if getattr(document, "errors", None):
-        for bound in _read_dae(path, bind_materials=False).scene.objects("geometry"):
+        try:
+            unbound = _read_dae(path, source=_without_bindings(document))
+        except Exception:  # noqa: BLE001 - the importer keeps its first read too
+            pass
+    if unbound is not None:
+        for bound in unbound.scene.objects("geometry"):
             key = _instance_key(bound)
             if key in placed:
                 placed.remove(key)
