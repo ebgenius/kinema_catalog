@@ -14,6 +14,7 @@ It also builds the catalog's index, `catalog.json`, from `catalog/*.yaml` (see
 uv run meshkit doctor                          # find Blender, check the importer
 uv run meshkit index                           # rebuild catalog.json from catalog/*.yaml
 uv run meshkit scan                            # which .dae files are visual meshes
+uv run meshkit upstream                        # how far each fork is behind upstream
 uv run meshkit convert --fork franka_description
 ```
 
@@ -75,6 +76,46 @@ uv run meshkit scan --json
 Unresolved references are mostly upstream problems worth fixing in the fork: a mesh
 that doesn't exist, a package the catalog doesn't carry, or a checked-in URDF with
 absolute paths from someone's workspace.
+
+## upstream
+
+How far each fork is behind the repository it was forked from, on the branch
+`.gitmodules` says the catalog tracks. That is not always upstream's default branch:
+xArm's is `humble`, Clearpath's `jazzy`. It reports, and never syncs, merges or
+pushes.
+
+```
+uv run meshkit upstream                         # Markdown on stdout
+uv run meshkit upstream --fork unitree_ros      # one fork (repeatable)
+uv run meshkit upstream --previous last.md --markdown report.md --json report.json
+```
+
+Per fork it compares three commits through the GitHub API: the pin this repository
+records, the fork's branch, and upstream's branch. From those it suggests:
+
+| Action | When |
+| --- | --- |
+| sync | the fork's branch is behind and has no commits of its own: `gh repo sync` |
+| bump | the pin is behind: update the submodule in a pull request, then `--check` |
+| reconvert | upstream changed meshes |
+| review | the fork has its own commits; upstream added robot files (`.urdf`, `.urdf.xacro`); or upstream was archived, renamed or moved, dropped the branch, or changed its licence, or names a licence the catalog's entries do not |
+| fork | a repository new in one of the lists below: a candidate for the next audit |
+
+Changed files are sorted into **description** (URDF, xacro, SRDF, SDF),
+**meshes** and **config** (YAML under `config/`, or named for limits). GitHub lists
+at most 300 files per comparison, and the report says when it has hit that limit.
+
+The lists are awesome-robot-descriptions, robot_descriptions.py's repositories, and
+fiveages-sim/robot_descriptions (its README's robots, and its submodules). The report
+names what each gained since the previous report and that the catalog doesn't carry.
+The first run has nothing to compare with, so it records a baseline.
+
+The Markdown ends with the run's state in an HTML comment. Passing that report back as
+`--previous` is all a later run needs, and is how the weekly workflow works
+(`.github/workflows/upstream.yml`): it reads the open issue labelled `upstream-report`,
+runs this, and writes the issue back. The JSON report carries the same state.
+
+A token comes from `GITHUB_TOKEN` or `GH_TOKEN`, else from `gh auth token`.
 
 ## convert
 
