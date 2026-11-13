@@ -26,6 +26,7 @@ from __future__ import annotations
 import base64
 import configparser
 import gzip
+import http.client
 import json
 import os
 import re
@@ -85,7 +86,15 @@ class GitHub:
             raise GitHubError(f"GET {path}: HTTP {exc.code} {exc.reason}") from None
         except urllib.error.URLError as exc:
             raise GitHubError(f"GET {path}: {exc.reason}") from None
-        return body.decode("utf-8") if raw else json.loads(body)
+        except (OSError, http.client.HTTPException) as exc:
+            # A timeout or reset while reading the response is not wrapped in
+            # URLError. Raised as itself, it would end the whole report instead
+            # of one fork's or one list's part of it.
+            raise GitHubError(f"GET {path}: {type(exc).__name__}: {exc}") from None
+        try:
+            return body.decode("utf-8") if raw else json.loads(body)
+        except ValueError as exc:
+            raise GitHubError(f"GET {path}: unreadable response: {exc}") from None
 
     def repo(self, name: str) -> dict:
         return self.get(f"repos/{name}")
@@ -242,8 +251,10 @@ def _check_fork(report: ForkReport, fork: Fork, github: GitHub, licences: list[s
     if "licence" in previous and previous["licence"] != report.upstream_licence:
         report.notes.append(f"upstream licence changed: {previous['licence'] or 'none'} -> "
                             f"{report.upstream_licence or 'none'}")
-    elif (report.upstream_licence not in UNNAMED_LICENCES and licences
-          and not any(report.upstream_licence in licence for licence in licences)):
+    # Not an elif: this holds every week, not only until a previous run exists.
+    if (report.upstream_licence not in UNNAMED_LICENCES and licences
+            and not any(_licence_id(report.upstream_licence) in _licence_ids(licence)
+                        for licence in licences)):
         report.notes.append(f"upstream licence is {report.upstream_licence}; the catalog "
                             f"says {', '.join(sorted(set(licences)))}")
 
@@ -283,6 +294,20 @@ def _check_fork(report: ForkReport, fork: Fork, github: GitHub, licences: list[s
                 report.new_robots.append(item["filename"])
 
 
+_SPDX_OPERATORS = {"AND", "OR", "WITH"}
+
+
+def _licence_id(spdx: str) -> str:
+    """An SPDX id, with GPL's -only/-or-later/+ folded: GitHub says GPL-3.0 for both."""
+    return re.sub(r"(-only|-or-later|\+)$", "", spdx).lower()
+
+
+def _licence_ids(expression: str) -> set[str]:
+    """The licence ids an SPDX expression names, whole: LGPL-3.0 does not contain GPL-3.0."""
+    return {_licence_id(token) for token in re.findall(r"[\w.+-]+", expression)
+            if token not in _SPDX_OPERATORS}
+
+
 def _actions(report: ForkReport) -> list[str]:
     actions = []
     if report.fork_behind:
@@ -291,7 +316,9 @@ def _actions(report: ForkReport) -> list[str]:
         actions.append("bump")
     if report.behind and report.changed.get("meshes"):
         actions.append("reconvert")
-    if report.notes or report.new_robots:
+    # A pin with commits upstream lacks has diverged, whatever the fork's branch
+    # says now: bumping it without a look could drop them from the catalog.
+    if report.notes or report.new_robots or report.own:
         actions.append("review")
     return [a for a in ACTIONS if a in actions]
 
@@ -360,14 +387,19 @@ class ListReport:
 
 
 def check_list(source: Source, github: GitHub, *, known: set[str],
-               previous: list[str] | None) -> tuple[ListReport, list[str]]:
-    """The list's report, and the keys to remember for the next run."""
+               previous: list[str] | None) -> tuple[ListReport, list[str] | None]:
+    """The list's report, and the keys to remember for the next run.
+
+    None for the keys when there is nothing to remember: a first run that
+    could not read the list leaves no baseline, so the next run makes one
+    instead of reporting the whole list as new.
+    """
     report = ListReport(source.name, source.repo)
     try:
         candidates = extract(source, github.file(source.repo, source.path))
     except GitHubError as exc:
         report.error = str(exc)
-        return report, list(previous or [])
+        return report, None if previous is None else list(previous)
     candidates = {k: v for k, v in candidates.items() if k not in known}
     report.count = len(candidates)
     if previous is None:
@@ -400,7 +432,7 @@ def run(root: Path, github: GitHub, *, only: list[str] | None = None,
     from meshkit import catalog
 
     previous = previous or {}
-    forks = read_forks(root)
+    forks = all_forks = read_forks(root)
     if only:
         unknown = set(only) - {f.name for f in forks}
         if unknown:
@@ -427,13 +459,16 @@ def run(root: Path, github: GitHub, *, only: list[str] | None = None,
     state_lists = dict(old_lists)
     list_reports = []
     if lists:
-        known = {f.repo.lower() for f in forks} | {r.upstream.lower() for r in reports
-                                                   if r.upstream}
+        # The whole catalog, not only the forks this run checked (--fork), and
+        # every upstream known: one whose lookup failed today is in the state.
+        known = ({f.repo.lower() for f in all_forks}
+                 | {s["upstream"].lower() for s in state_forks.values() if s.get("upstream")})
         for source in SOURCES:
             report, keys = check_list(source, github, known=known,
                                       previous=old_lists.get(source.name))
             list_reports.append(report)
-            state_lists[source.name] = keys
+            if keys is not None:
+                state_lists[source.name] = keys
 
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     return Report(generated, reports, list_reports,

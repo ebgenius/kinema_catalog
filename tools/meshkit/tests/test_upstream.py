@@ -283,3 +283,79 @@ def test_an_oversized_report_drops_the_file_lists(tmp_path, monkeypatch):
     markdown = upstream.render_markdown(report)
     assert "200 meshes" in markdown and "part_000" not in markdown
     assert upstream.read_previous(markdown) == report.state
+
+
+# ------------------------------------------------------------- review findings
+
+def test_a_diverged_pin_is_reviewed_even_when_the_fork_branch_is_clean():
+    # The fork's branch was reset to upstream; the pin still has two commits
+    # of its own. A bare bump would drop them from the catalog.
+    report = check(github(behind=3, own=2, fork_behind=0, fork_own=0, pin_behind_fork=3))
+    assert report.actions == ["bump", "review"]
+
+
+@pytest.mark.parametrize("failure", [TimeoutError("The read operation timed out"),
+                                     ConnectionResetError(10054, "reset"),
+                                     __import__("http.client").client.IncompleteRead(b"")])
+def test_a_failure_while_reading_the_response_is_a_github_error(monkeypatch, failure):
+    def urlopen(request, timeout):
+        raise failure
+
+    monkeypatch.setattr(upstream.urllib.request, "urlopen", urlopen)
+    with pytest.raises(GitHubError, match="GET repos/me/arm: "):
+        upstream.GitHub("token").get("repos/me/arm")
+
+
+@pytest.mark.parametrize(("upstream_licence", "catalog_licence", "noted"), [
+    ("GPL-3.0", "LGPL-3.0", True),            # a substring, not the same licence
+    ("MIT", "MIT-0", True),
+    ("GPL-3.0", "GPL-3.0-or-later", False),   # GitHub's spelling of the same one
+    ("Apache-2.0", "MIT OR Apache-2.0", False),
+])
+def test_licences_are_compared_by_whole_id(upstream_licence, catalog_licence, noted):
+    gh = github(parent={"full_name": "maker/arm", "default_branch": "main",
+                        "archived": False, "license": {"spdx_id": upstream_licence}})
+    notes = check(gh, licences=[catalog_licence]).notes
+    assert bool(notes) is noted
+
+
+def test_a_licence_the_catalog_does_not_name_is_noted_in_a_week_it_also_changed():
+    previous = {"upstream": "maker/arm", "default_branch": "main", "licence": "Apache-2.0"}
+    notes = check(github(), licences=["Apache-2.0"], previous=previous).notes
+    assert notes == ["upstream licence changed: Apache-2.0 -> BSD-3-Clause",
+                     "upstream licence is BSD-3-Clause; the catalog says Apache-2.0"]
+    previous["licence"] = "BSD-3-Clause"                       # and every week after
+    assert check(github(), licences=["Apache-2.0"], previous=previous).notes == [
+        "upstream licence is BSD-3-Clause; the catalog says Apache-2.0"]
+
+
+def test_a_list_unreadable_on_the_first_run_makes_its_baseline_later():
+    report, keys = upstream.check_list(SOURCE, FakeGitHub({}), known=set(), previous=None)
+    assert report.error and keys is None
+    gh = FakeGitHub({LIST_PATH: "github.com/a/one"})
+    report, keys = upstream.check_list(SOURCE, gh, known=set(), previous=None)
+    assert report.baseline and report.new == {}
+
+
+def test_a_run_limited_to_one_fork_still_knows_the_whole_catalog(tmp_path, monkeypatch):
+    make_catalog(tmp_path)
+    with (tmp_path / ".gitmodules").open("a", encoding="utf-8") as gitmodules:
+        gitmodules.write('[submodule "src/base"]\n\tpath = src/base\n'
+                         "\turl = git@github.com:me/base.git\n\tbranch = main\n")
+    monkeypatch.setattr(upstream, "_pin", lambda root, path: PIN)
+    monkeypatch.setattr(upstream, "SOURCES", (SOURCE,))
+    gh = github()
+    gh.responses[LIST_PATH] = "github.com/me/base github.com/maker/base github.com/new/one"
+    previous = {"forks": {"base": {"upstream": "maker/base", "default_branch": "main",
+                                   "licence": "MIT"}},
+                "lists": {SOURCE.name: []}}
+    report = upstream.run(tmp_path, gh, only=["arm"], previous=previous, workers=1)
+    assert report.lists[0].new == {"new/one": "new/one"}
+
+
+def test_a_list_unreadable_on_the_first_run_leaves_no_state(tmp_path, monkeypatch):
+    make_catalog(tmp_path)
+    monkeypatch.setattr(upstream, "_pin", lambda root, path: PIN)
+    monkeypatch.setattr(upstream, "SOURCES", (SOURCE,))
+    report = upstream.run(tmp_path, github(), workers=1)     # the list is a 404
+    assert report.lists[0].error and SOURCE.name not in report.state["lists"]
