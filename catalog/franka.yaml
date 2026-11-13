@@ -1,0 +1,22 @@
+# Franka Robotics. Hand-edited; `meshkit index` builds catalog.json from these files.
+family: franka
+maker: Franka Robotics
+entries:
+  - id: fr3
+    name: Franka FR3
+    category: arm
+    submodule: franka_description
+    entry: src/franka_description/robots/fr3/fr3.urdf.xacro
+    licence: Apache-2.0
+  - id: fp3
+    name: Franka Production 3
+    category: arm
+    submodule: franka_description
+    entry: src/franka_description/robots/fp3/fp3.urdf.xacro
+    licence: Apache-2.0
+  - id: fer
+    name: Franka Emika Robot (Panda)
+    category: arm
+    submodule: franka_description
+    entry: src/franka_description/robots/fer/fer.urdf.xacro
+    licence: Apache-2.0

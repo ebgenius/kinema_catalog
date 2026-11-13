@@ -33,7 +33,8 @@ gazebo_for() {
 
 SCRIPT=$(readlink -f "${BASH_SOURCE[0]}")
 REPO_ROOT=$(dirname "$SCRIPT")
-MANIFEST="$REPO_ROOT/docker/robots.tsv"
+CATALOG_JSON="$REPO_ROOT/catalog.json"
+CATALOG_ROWS="$REPO_ROOT/docker/catalog_rows.py"
 
 # --------------------------------------------------------------------------- output
 if [ -t 1 ]; then
@@ -111,16 +112,23 @@ ${B}examples${N}
 EOF
 }
 
-# --------------------------------------------------------------------------- manifest
+# --------------------------------------------------------------------------- catalog
+# catalog.json is read through docker/catalog_rows.py, which prints one
+# tab-separated line per entry, so bash never parses JSON. It needs python3,
+# standard library only. The rows are collected first and checked, because a
+# failed process substitution would otherwise look like an empty catalog.
 declare -a IDS FAMILIES SUBS LABELS
-load_manifest() {
-  [ -f "$MANIFEST" ] || die "manifest not found: $MANIFEST"
-  local id family sub type path args mesh label
+load_catalog() {
+  [ -f "$CATALOG_JSON" ] || die "catalog not found: $CATALOG_JSON"
+  command -v python3 >/dev/null 2>&1 \
+    || die "python3 is needed to read catalog.json (on Ubuntu: sudo apt install python3)"
+  local rows id family sub type path args mesh label
+  rows=$(python3 "$CATALOG_ROWS" "$CATALOG_JSON") || die "could not read $CATALOG_JSON"
   while IFS=$'\t' read -r id family sub type path args mesh label; do
-    case "$id" in ''|\#*) continue ;; esac
+    [ -n "$id" ] || continue
     IDS+=("$id"); FAMILIES+=("$family"); SUBS+=("$sub"); LABELS+=("$label")
-  done < "$MANIFEST"
-  [ "${#IDS[@]}" -gt 0 ] || die "no robots found in manifest"
+  done <<< "$rows"
+  [ "${#IDS[@]}" -gt 0 ] || die "no robots found in $CATALOG_JSON"
 }
 
 index_of() {
@@ -346,7 +354,7 @@ esac
 IS_WSL=0
 if grep -qi microsoft /proc/version 2>/dev/null; then IS_WSL=1; fi
 
-load_manifest
+load_catalog
 
 if [ "$DO_LIST" = 1 ]; then list_robots; exit 0; fi
 
@@ -356,7 +364,7 @@ IMAGE="$IMAGE_PREFIX:$DISTRO"
 if [ "$DO_CHECK" = 1 ]; then
   require_docker
   ensure_image "$IMAGE"
-  info "checking the manifest against ROS 2 $DISTRO"
+  info "checking every catalog entry against ROS 2 $DISTRO"
   check_tty=()
   if [ -t 1 ]; then check_tty=(-t); fi
   exec docker run --rm "${check_tty[@]}" \

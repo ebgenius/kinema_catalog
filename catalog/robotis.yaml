@@ -1,0 +1,34 @@
+# ROBOTIS. Hand-edited; `meshkit index` builds catalog.json from these files.
+family: robotis
+maker: ROBOTIS
+entries:
+  - id: omx
+    name: ROBOTIS OpenMANIPULATOR-X
+    category: arm
+    submodule: open_manipulator
+    entry: src/open_manipulator/open_manipulator_description/urdf/open_manipulator_x/open_manipulator_x.urdf.xacro
+    licence: Apache-2.0
+  - id: omy_3m
+    name: ROBOTIS OpenMANIPULATOR-Y 3M
+    category: arm
+    submodule: open_manipulator
+    entry: src/open_manipulator/open_manipulator_description/urdf/omy_3m/omy_3m.urdf.xacro
+    licence: Apache-2.0
+  - id: tb3_burger
+    name: TurtleBot3 Burger
+    category: mobile
+    submodule: turtlebot3
+    entry: src/turtlebot3/turtlebot3_description/urdf/turtlebot3_burger.urdf
+    licence: Apache-2.0
+  - id: tb3_waffle
+    name: TurtleBot3 Waffle
+    category: mobile
+    submodule: turtlebot3
+    entry: src/turtlebot3/turtlebot3_description/urdf/turtlebot3_waffle.urdf
+    licence: Apache-2.0
+  - id: tb3_waffle_pi
+    name: TurtleBot3 Waffle Pi
+    category: mobile
+    submodule: turtlebot3
+    entry: src/turtlebot3/turtlebot3_description/urdf/turtlebot3_waffle_pi.urdf
+    licence: Apache-2.0

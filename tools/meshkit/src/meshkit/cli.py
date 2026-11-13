@@ -17,9 +17,9 @@ from meshkit.gate import Tolerance
 
 
 def find_root(start: Path) -> Path:
-    """The catalog checkout: the nearest ancestor with src/ and docker/robots.tsv."""
+    """The catalog checkout: the nearest ancestor with src/ and catalog/."""
     for candidate in (start, *start.parents):
-        if (candidate / "src").is_dir() and (candidate / "docker" / "robots.tsv").is_file():
+        if (candidate / "src").is_dir() and (candidate / "catalog").is_dir():
             return candidate
     raise SystemExit(f"meshkit: {start} is not inside a kinema_catalog checkout (use --root)")
 
@@ -29,12 +29,38 @@ def _root(args) -> Path:
 
 
 def _scan(root: Path):
-    from meshkit.scan import ManifestError, scan
+    from meshkit.catalog import CatalogError
+    from meshkit.scan import scan
 
     try:
         return scan(root)
-    except ManifestError as exc:
+    except CatalogError as exc:
         raise SystemExit(f"meshkit: {exc}") from None
+
+
+# ------------------------------------------------------------------------ index
+
+def cmd_index(args) -> int:
+    from meshkit import catalog
+
+    root = _root(args)
+    if args.check:
+        problems = catalog.check(root)
+        for problem in problems:
+            print(f"  {problem}")
+        print(f"{len(problems)} problem(s)" if problems else "catalog ok")
+        return 1 if problems else 0
+    try:
+        path = catalog.write(root)
+    except catalog.CatalogError as exc:
+        raise SystemExit(f"meshkit: {exc}") from None
+    entries = catalog.load(root)
+    print(f"wrote {path.name}: {len(entries)} entries in "
+          f"{len({e['family'] for e in entries})} families")
+    problems = catalog.check(root)
+    for problem in problems:
+        print(f"  {problem}")
+    return 1 if problems else 0
 
 
 # ----------------------------------------------------------------------- doctor
@@ -232,6 +258,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     doctor = sub.add_parser("doctor", help=f"check Blender ({ENV_VAR}), importer and glTF support")
     doctor.set_defaults(func=cmd_doctor)
+
+    index = sub.add_parser("index", help="build catalog.json from catalog/*.yaml")
+    index.add_argument("--check", action="store_true",
+                       help="write nothing; fail if catalog.json is stale or the catalog "
+                            "has problems")
+    index.set_defaults(func=cmd_index)
 
     scan_p = sub.add_parser("scan", help="classify .dae files as visual / collision")
     scan_p.add_argument("--fork", action="append", help="limit to a submodule (repeatable)")

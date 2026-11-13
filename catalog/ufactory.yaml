@@ -1,0 +1,49 @@
+# UFACTORY. Hand-edited; `meshkit index` builds catalog.json from these files.
+family: ufactory
+maker: UFACTORY
+entries:
+  - id: xarm5
+    name: UFACTORY xArm 5
+    category: arm
+    submodule: xarm_ros2
+    entry: src/xarm_ros2/xarm_description/urdf/xarm_device.urdf.xacro
+    args:
+      dof: "5"
+      robot_type: xarm
+    licence: BSD-3-Clause
+  - id: xarm6
+    name: UFACTORY xArm 6
+    category: arm
+    submodule: xarm_ros2
+    entry: src/xarm_ros2/xarm_description/urdf/xarm_device.urdf.xacro
+    args:
+      dof: "6"
+      robot_type: xarm
+    licence: BSD-3-Clause
+  - id: xarm7
+    name: UFACTORY xArm 7
+    category: arm
+    submodule: xarm_ros2
+    entry: src/xarm_ros2/xarm_description/urdf/xarm_device.urdf.xacro
+    args:
+      dof: "7"
+      robot_type: xarm
+    licence: BSD-3-Clause
+  - id: lite6
+    name: UFACTORY Lite 6
+    category: arm
+    submodule: xarm_ros2
+    entry: src/xarm_ros2/xarm_description/urdf/xarm_device.urdf.xacro
+    args:
+      dof: "6"
+      robot_type: lite
+    licence: BSD-3-Clause
+  - id: uf850
+    name: UFACTORY UF850
+    category: arm
+    submodule: xarm_ros2
+    entry: src/xarm_ros2/xarm_description/urdf/xarm_device.urdf.xacro
+    args:
+      dof: "6"
+      robot_type: uf850
+    licence: BSD-3-Clause

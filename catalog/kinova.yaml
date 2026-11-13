@@ -1,0 +1,19 @@
+# Kinova. Hand-edited; `meshkit index` builds catalog.json from these files.
+family: kinova
+maker: Kinova
+entries:
+  - id: gen3
+    name: Kinova Gen3 (7-DoF)
+    category: arm
+    submodule: ros2_kortex
+    entry: src/ros2_kortex/kortex_description/robots/gen3.xacro
+    args:
+      arm: gen3
+      dof: "7"
+    licence: BSD-3-Clause
+  - id: gen3_lite
+    name: Kinova Gen3 lite
+    category: arm
+    submodule: ros2_kortex
+    entry: src/ros2_kortex/kortex_description/robots/gen3_lite_gen3_lite_2f.xacro
+    licence: BSD-3-Clause

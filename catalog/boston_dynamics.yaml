@@ -1,0 +1,18 @@
+# Boston Dynamics. Hand-edited; `meshkit index` builds catalog.json from these files.
+family: boston_dynamics
+maker: Boston Dynamics
+entries:
+  - id: spot
+    name: Boston Dynamics Spot
+    category: legged
+    submodule: spot_description
+    entry: src/spot_description/spot_description/urdf/spot.urdf.xacro
+    licence: MIT
+  - id: spot_arm
+    name: Boston Dynamics Spot + arm
+    category: legged
+    submodule: spot_description
+    entry: src/spot_description/spot_description/urdf/spot.urdf.xacro
+    args:
+      arm: "true"
+    licence: MIT

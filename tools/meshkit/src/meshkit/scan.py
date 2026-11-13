@@ -25,7 +25,7 @@ it never means the wrong one is.
 Static reading has a ceiling: xArm builds every mesh path from macro
 parameters (``${mesh_path}/${mesh_filename}.${mesh_suffix}``) whose values only
 exist at the call site. So the second pass *renders* the robots in
-``docker/robots.tsv`` -- xacro evaluated with xacrodoc, the engine kinema uses,
+``catalog.json`` -- xacro evaluated with xacrodoc, the engine kinema uses,
 no ROS required -- and the rendered URDFs contribute exact references. (For
 xArm they settle it the other way: its default ``mesh_suffix`` is ``stl``, so
 its .dae files are not what the robot shows.) The two passes are unioned; the
@@ -40,6 +40,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
+
+from meshkit.catalog import INDEX_FILE
+from meshkit.catalog import load as load_catalog
 
 MESH_SUFFIX = ".dae"
 XML_SUFFIXES = (".urdf", ".xacro")
@@ -84,10 +87,6 @@ def _construct_any(loader: yaml.SafeLoader, _suffix: str, node: yaml.Node):
 _TolerantLoader.add_multi_constructor("!", _construct_any)
 
 
-class ManifestError(ValueError):
-    """A docker/robots.tsv row meshkit cannot read."""
-
-
 @dataclass(frozen=True)
 class Package:
     name: str
@@ -104,6 +103,10 @@ class MeshRef:
     matches: list[Path] = field(default_factory=list)
     problem: str | None = None
     via: str = "static"   # or "rendered:<robot id>"
+    # The fork the reference is read in. For a rendered robot that is its
+    # catalog entry's submodule, even when the entry point is a wrapper kept
+    # outside src/ (descriptions/clearpath/).
+    fork: str = ""
 
 
 @dataclass
@@ -137,7 +140,7 @@ class Inventory:
         unresolved references are exactly what ``scan`` must report.
         """
         names = {mesh.fork for mesh in self.meshes.values()}
-        names.update(self.fork_of(ref.source) for ref in self.refs)
+        names.update(ref.fork for ref in self.refs)
         return sorted(names)
 
     def in_fork(self, fork: str | None) -> list[MeshFile]:
@@ -152,7 +155,7 @@ class Inventory:
     def unresolved(self, fork: str | None = None) -> list[MeshRef]:
         refs = [r for r in self.refs if r.problem is not None]
         if fork is not None:
-            refs = [r for r in refs if self.fork_of(r.source) == fork]
+            refs = [r for r in refs if r.fork == fork]
         return refs
 
     def fork_of(self, path: Path) -> str:
@@ -295,11 +298,15 @@ class Scanner:
             self._under[base] = cached
         return cached
 
-    def resolve(self, raw: str, source: Path, *, package_hint: str | None = None
-                ) -> tuple[list[Path], str | None]:
-        """Files a reference can mean, or the reason it cannot be pinned down."""
+    def resolve(self, raw: str, source: Path, *, package_hint: str | None = None,
+                fork: str | None = None) -> tuple[list[Path], str | None]:
+        """Files a reference can mean, or the reason it cannot be pinned down.
+
+        ``fork`` is the submodule the reference is read in; by default the one
+        ``source`` sits in.
+        """
         text = raw.strip()
-        fork = fork_of(self.root, source)
+        fork = fork or fork_of(self.root, source)
         bases: list[Path]
         relative: str
 
@@ -377,11 +384,13 @@ class Scanner:
         return sorted(matches), None
 
     def _record(self, source: Path, line: int, raw: str, role: str,
-                package_hint: str | None = None, via: str = "static") -> None:
-        matches, problem = self.resolve(raw, source, package_hint=package_hint)
+                package_hint: str | None = None, via: str = "static",
+                fork: str | None = None) -> None:
+        fork = fork or fork_of(self.root, source)
+        matches, problem = self.resolve(raw, source, package_hint=package_hint, fork=fork)
         if not matches and problem is None:
             return  # a non-.dae reference
-        self.refs.append(MeshRef(source, line, raw, role, matches, problem, via))
+        self.refs.append(MeshRef(source, line, raw, role, matches, problem, via, fork))
         for path in matches:
             self.meshes[path].roles.add(role)
 
@@ -449,20 +458,14 @@ class Scanner:
     # -- rendered manifest robots
 
     def _manifest_rows(self):
-        manifest = self.root / "docker" / "robots.tsv"
-        if not manifest.is_file():
+        # A catalog.json that cannot be read raises rather than yielding
+        # nothing: skipped, its robots' rendered references would vanish
+        # without a word and their meshes read as unreferenced.
+        if not (self.root / INDEX_FILE).is_file():
             return
-        for number, line in enumerate(manifest.read_text(encoding="utf-8").splitlines(), 1):
-            if not line.strip() or line.startswith("#"):
-                continue
-            cols = line.split("\t")
-            if len(cols) < 6:
-                # Skipped, the robot's rendered references would vanish without
-                # a word and its meshes read as unreferenced.
-                raise ManifestError(f"{manifest}:{number}: {len(cols)} tab-separated "
-                                    "column(s), and a robot row needs at least 6")
-            yield {"id": cols[0], "fork": cols[2], "type": cols[3],
-                   "path": cols[4], "args": cols[5]}
+        for entry in load_catalog(self.root):
+            yield {"id": entry["id"], "fork": entry["submodule"], "type": entry["format"],
+                   "path": entry["entry"], "args": entry["args"]}
 
     def _render(self, row: dict) -> str:
         """The robot's URDF, with xacro evaluated.
@@ -485,13 +488,9 @@ class Scanner:
         packages.reset()
         packages.update_package_cache(mapping)
 
-        args = {}
-        if row["args"] not in ("", "-"):
-            for pair in row["args"].split():
-                key, _, value = pair.partition(":=")
-                args[key] = value
+        args = dict(row["args"])
 
-        # Relative includes (husky's `empty.urdf`) resolve against the working
+        # Relative includes (a file beside the entry point) resolve against the working
         # directory, the way a launch file started from the package would.
         # Some unitree robots read $(arg DEBUG) without declaring it; their
         # launch files pass it, so an undeclared argument is retried as "false".
@@ -517,14 +516,15 @@ class Scanner:
                 tree = ET.fromstring(self._render(row))
             except Exception as exc:  # noqa: BLE001 - one robot must not stop the scan
                 self.refs.append(MeshRef(source, 1, "", "other", [],
-                                         f"could not render: {type(exc).__name__}: {exc}", via))
+                                         f"could not render: {type(exc).__name__}: {exc}", via,
+                                         row["fork"]))
                 continue
             for role in ("visual", "collision"):
                 for block in tree.iter(role):
                     for mesh in block.iter("mesh"):
                         filename = mesh.get("filename")
                         if filename:
-                            self._record(source, 0, filename, role, via=via)
+                            self._record(source, 0, filename, role, via=via, fork=row["fork"])
 
     def run(self, *, render: bool = True) -> Inventory:
         self.index()

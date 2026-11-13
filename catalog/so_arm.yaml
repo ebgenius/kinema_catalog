@@ -1,0 +1,18 @@
+# The Robot Studio. Hand-edited; `meshkit index` builds catalog.json from these files.
+family: so_arm
+maker: The Robot Studio
+entries:
+  - id: so100
+    name: Standard Open Arm SO-100
+    category: arm
+    submodule: SO-ARM100
+    entry: src/SO-ARM100/Simulation/SO100/so100.urdf
+    mesh_base: src/SO-ARM100/Simulation/SO100
+    licence: Apache-2.0
+  - id: so101
+    name: Standard Open Arm SO-101
+    category: arm
+    submodule: SO-ARM100
+    entry: src/SO-ARM100/Simulation/SO101/so101_new_calib.urdf
+    mesh_base: src/SO-ARM100/Simulation/SO101
+    licence: Apache-2.0

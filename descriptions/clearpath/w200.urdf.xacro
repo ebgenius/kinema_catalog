@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<!-- The bare w200 platform from clearpath_common: chassis and drivetrain, no
+     attachments, sensors or mounts. Clearpath generates a robot's description
+     from its robot.yaml (clearpath_generator_common); this is what that
+     generator writes for a robot.yaml naming only the platform. -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="w200">
+  <xacro:include filename="$(find clearpath_platform_description)/urdf/common.urdf.xacro" />
+  <xacro:include filename="$(find clearpath_platform_description)/urdf/w200/w200.urdf.xacro" />
+  <xacro:w200 />
+</robot>

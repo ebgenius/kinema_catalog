@@ -1,0 +1,16 @@
+# ABB. Hand-edited; `meshkit index` builds catalog.json from these files.
+family: abb
+maker: ABB
+entries:
+  - id: irb1200
+    name: ABB IRB 1200-5/0.9
+    category: arm
+    submodule: abb_ros2
+    entry: src/abb_ros2/robot_specific_config/abb_irb1200_support/urdf/irb1200_5_90.xacro
+    licence: Apache-2.0
+  - id: irb4600
+    name: ABB IRB 4600-40/2.55
+    category: arm
+    submodule: abb_ros2
+    entry: src/abb_ros2/robot_specific_config/abb_irb4600_support/urdf/irb4600_40_255.xacro
+    licence: Apache-2.0

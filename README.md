@@ -33,7 +33,7 @@ needs on demand, so a fresh checkout needs no setup beyond Docker.
 ```
 
 `--check` is the one to run after editing a description or swapping meshes: it
-processes every robot in the manifest and tells you which ones stopped resolving.
+processes every entry in the catalog and tells you which ones stopped resolving.
 
 Gazebo opens paused, so the robot holds its spawn pose while you look it over. Press
 Play to run physics: nothing drives the joints, so it then falls and folds up.
@@ -47,11 +47,13 @@ supplies the display):
 ```
 
 Defaults to **ROS 2 Lyrical Luth + Gazebo Jetty**; `-d kilted|jazzy|humble|rolling`
-picks an older pairing when a description hasn't caught up. Details and the robot
-manifest live in [`docker/`](docker/).
+picks an older pairing when a description hasn't caught up. Details live in
+[`docker/`](docker/); the list of robots is [`catalog.json`](catalog.json), built
+from [`catalog/`](catalog/).
 
 **Requirements:** Docker (on Windows: Docker Desktop with WSL integration enabled
-for your Ubuntu distro). Nothing else — no local ROS install.
+for your Ubuntu distro), and `python3` to read the catalog, which Ubuntu ships. No
+local ROS install.
 
 ## Catalog
 
@@ -64,11 +66,13 @@ for your Ubuntu distro). Nothing else — no local ROS install.
 | `xarm_ros2` | [xArm-Developer/xarm_ros2](https://github.com/xArm-Developer/xarm_ros2) | `humble` | UFACTORY xArm 5/6/7, Lite 6 |
 | `open_manipulator` | [ROBOTIS-GIT/open_manipulator](https://github.com/ROBOTIS-GIT/open_manipulator) | `main` | OpenMANIPULATOR-X / -Y |
 | `ros2_kortex` | [Kinovarobotics/ros2_kortex](https://github.com/Kinovarobotics/ros2_kortex) | `main` | Kinova Gen3 / Gen3 lite |
-| `lbr_fri_ros2_stack` | [lbr-stack/lbr_fri_ros2_stack](https://github.com/lbr-stack/lbr_fri_ros2_stack) | `jazzy` | KUKA LBR iiwa 7/14, Med 7/14 |
+| `lbr_iiwa7_r800_description` | [lbr-stack/…](https://github.com/lbr-stack/lbr_iiwa7_r800_description) | `main` | KUKA LBR iiwa 7 R800 |
+| `lbr_iiwa14_r820_description` | [lbr-stack/…](https://github.com/lbr-stack/lbr_iiwa14_r820_description) | `main` | KUKA LBR iiwa 14 R820 |
+| `lbr_med7_r800_description` | [lbr-stack/…](https://github.com/lbr-stack/lbr_med7_r800_description) | `main` | KUKA LBR Med 7 R800 |
+| `lbr_med14_r820_description` | [lbr-stack/…](https://github.com/lbr-stack/lbr_med14_r820_description) | `main` | KUKA LBR Med 14 R820 |
 | `abb_ros2` | [PickNikRobotics/abb_ros2](https://github.com/PickNikRobotics/abb_ros2) | `rolling` | ABB IRB series |
 | `interbotix_ros_manipulators` | [Interbotix/…](https://github.com/Interbotix/interbotix_ros_manipulators) | `main` | ViperX, WidowX, PincherX |
 | `SO-ARM100` | [TheRobotStudio/SO-ARM100](https://github.com/TheRobotStudio/SO-ARM100) | `main` | SO-ARM100 / SO-101 |
-| `moveit_resources` | [moveit/moveit_resources](https://github.com/moveit/moveit_resources) | `ros2` | Panda, Fanuc, dual-arm test models |
 
 ### Mobile bases
 
@@ -76,9 +80,8 @@ for your Ubuntu distro). Nothing else — no local ROS install.
 | --- | --- | --- | --- |
 | `turtlebot3` | [ROBOTIS-GIT/turtlebot3](https://github.com/ROBOTIS-GIT/turtlebot3) | `main` | Burger, Waffle, Waffle Pi |
 | `turtlebot4` | [turtlebot/turtlebot4](https://github.com/turtlebot/turtlebot4) | `jazzy` | TurtleBot 4 / 4 Lite |
-| `clearpath_common` | [clearpathrobotics/clearpath_common](https://github.com/clearpathrobotics/clearpath_common) | `jazzy` | Husky, Jackal, Ridgeback, Warthog, Dingo (current ROS 2 fleet) |
-| `husky` | [husky/husky](https://github.com/husky/husky) | `humble-devel` | Clearpath Husky (standalone, legacy) |
-| `jackal` | [jackal/jackal](https://github.com/jackal/jackal) | `foxy-devel` | Clearpath Jackal (standalone, legacy) |
+| `create3_sim` | [iRobotEducation/create3_sim](https://github.com/iRobotEducation/create3_sim) | `jazzy` | iRobot Create 3 (TurtleBot 4's base) |
+| `clearpath_common` | [clearpathrobotics/clearpath_common](https://github.com/clearpathrobotics/clearpath_common) | `jazzy` | Husky A200/A300, Jackal, Dingo-D/-O, Ridgeback, Warthog: bare platforms, through the wrappers in [`descriptions/clearpath/`](descriptions/clearpath/) |
 | `linorobot2` | [linorobot/linorobot2](https://github.com/linorobot/linorobot2) | `jazzy` | 2WD, 4WD, Mecanum |
 
 ### Legged
@@ -93,9 +96,17 @@ for your Ubuntu distro). Nothing else — no local ROS install.
 ## Layout
 
 - `kinema_catalog.sh` / `.ps1` — the launcher described above.
+- `catalog/` — one YAML file per family, edited by hand: every robot, where its
+  description is, and its licence. See [`catalog/README.md`](catalog/README.md).
+- `catalog.json` — built from `catalog/` by `meshkit index`, and what the launcher,
+  meshkit and Kinema read. Described by `catalog.schema.json`.
 - `src/` — one submodule per robot description fork.
-- `docker/` — viewer image, container orchestrator, and the robot manifest
-  (`robots.tsv`). See [`docker/README.md`](docker/README.md).
+- `descriptions/` — top-level files for descriptions a fork ships only as macros
+  (the Clearpath platforms).
+- `docker/` — viewer image and container orchestrator. See
+  [`docker/README.md`](docker/README.md).
+- `tools/meshkit/` — builds the index, and converts and checks meshes. See
+  [`tools/meshkit/README.md`](tools/meshkit/README.md).
 - `out/` — flattened URDFs written by `--export` (gitignored).
 
 ## Working with the submodules
