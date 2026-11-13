@@ -233,6 +233,33 @@ def cmd_convert(args) -> int:
     return 1 if report["summary"].get("failed") else 0
 
 
+
+# --------------------------------------------------------------------- upstream
+
+def cmd_upstream(args) -> int:
+    from meshkit import upstream
+    from meshkit.catalog import CatalogError
+
+    root = _root(args)
+    try:
+        previous = (upstream.read_previous(args.previous.read_text(encoding="utf-8"))
+                    if args.previous and args.previous.is_file() else {})
+        report = upstream.run(root, upstream.GitHub(upstream.token()), only=args.fork,
+                              previous=previous, lists=not args.no_lists)
+    except (upstream.GitHubError, CatalogError) as exc:
+        raise SystemExit(f"meshkit: {exc}") from None
+    markdown = upstream.render_markdown(report)
+    if args.json:
+        args.json.write_text(json.dumps(report.as_json(), indent=2) + "\n", encoding="utf-8")
+    if args.markdown:
+        args.markdown.write_text(markdown, encoding="utf-8")
+        level = sum(f.level for f in report.forks)
+        print(f"wrote {args.markdown}: {level} of {len(report.forks)} forks level with upstream")
+    else:
+        sys.stdout.write(markdown)
+    return 0
+
+
 # ------------------------------------------------------------------------- main
 
 def _batch_size(text: str) -> int:
@@ -263,6 +290,17 @@ def build_parser() -> argparse.ArgumentParser:
                        help="write nothing; fail if catalog.json is stale or the catalog "
                             "has problems")
     index.set_defaults(func=cmd_index)
+
+    up = sub.add_parser("upstream", help="report how far each fork is behind its upstream")
+    up.add_argument("--fork", action="append", help="limit to a submodule (repeatable)")
+    up.add_argument("--previous", type=Path,
+                    help="the last report, Markdown or JSON: what is new is measured "
+                         "against it (a missing file is a first run)")
+    up.add_argument("--markdown", type=Path, help="write the report here (default: print it)")
+    up.add_argument("--json", type=Path, help="also write the report as JSON")
+    up.add_argument("--no-lists", action="store_true",
+                    help="skip the lists of candidate descriptions")
+    up.set_defaults(func=cmd_upstream)
 
     scan_p = sub.add_parser("scan", help="classify .dae files as visual / collision")
     scan_p.add_argument("--fork", action="append", help="limit to a submodule (repeatable)")

@@ -1,0 +1,66 @@
+# Weekly: how far each fork is behind its upstream, kept in one issue.
+#
+# `meshkit upstream` reports and never syncs or merges (see tools/meshkit/README.md).
+# The issue labelled upstream-report holds the latest report; the state at its end
+# is what the next run measures "new" against, so this job needs nothing but the
+# issue. Close it to start over: the next run opens a new one with a fresh baseline.
+name: Upstream report
+
+on:
+  schedule:
+    - cron: "23 5 * * 1"   # Mondays, 05:23 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: upstream-report
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      LABEL: upstream-report
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+
+      - name: Read the last report
+        id: issue
+        run: |
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --label "$LABEL" --state open \
+                     --limit 1 --json number --jq '.[0].number // empty')
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+          if [ -n "$number" ]; then
+            gh issue view "$number" --repo "$GITHUB_REPOSITORY" --json body --jq .body \
+              > "$RUNNER_TEMP/previous.md"
+          fi
+
+      - name: Compare every fork with its upstream
+        working-directory: tools/meshkit
+        run: |
+          uv run --no-dev meshkit --root "$GITHUB_WORKSPACE" upstream \
+            --previous "$RUNNER_TEMP/previous.md" \
+            --markdown "$RUNNER_TEMP/report.md" --json "$RUNNER_TEMP/report.json"
+          cat "$RUNNER_TEMP/report.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Write the issue
+        env:
+          NUMBER: ${{ steps.issue.outputs.number }}
+        run: |
+          if [ -n "$NUMBER" ]; then
+            gh issue edit "$NUMBER" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/report.md"
+          else
+            gh label create "$LABEL" --repo "$GITHUB_REPOSITORY" --force --color 0e8a16 \
+              --description "The weekly meshkit upstream report"
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "Upstream report" \
+              --label "$LABEL" --assignee "$GITHUB_REPOSITORY_OWNER" \
+              --body-file "$RUNNER_TEMP/report.md"
+          fi

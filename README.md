@@ -122,7 +122,7 @@ git submodule update --init --recursive
 # ...or, without an SSH key
 git -c url."https://github.com/".insteadOf=git@github.com: submodule update --init --recursive
 
-# pull the latest upstream-tracked branch of every fork
+# move every pin to the tip of its fork's tracked branch
 git submodule update --remote
 
 # work on one fork
@@ -133,5 +133,21 @@ git checkout -b my-improvement
 
 Each submodule records the fork's default branch in `.gitmodules`, so `--remote` follows the
 right branch (several ROS repos use `ros2`, `humble`, or `main` rather than `master`).
+
+### Keeping up with upstream
+
+Every Monday the [Upstream report](.github/workflows/upstream.yml) workflow runs
+`meshkit upstream` and rewrites one issue, labelled `upstream-report`. For each fork, the
+issue says how far its pin is behind the upstream branch it tracks, which description, mesh
+and config files changed, and what to do. It also lists repositories that are new in the
+lists the catalog draws its candidates from. To bring a fork level:
+
+```sh
+gh repo sync ebgenius/<fork> --branch <branch>   # only for a fork with no commits of its own
+git submodule update --remote src/<fork>          # on a branch, then a pull request
+./kinema_catalog.sh --check
+```
+
+The workflow only reports. It never syncs a fork or moves a pin.
 
 Upstream licenses apply to each fork; see the `LICENSE` file inside each package.
