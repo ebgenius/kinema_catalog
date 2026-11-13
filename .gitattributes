@@ -1,6 +1,6 @@
 # Shell scripts must keep LF endings or bash/WSL refuses to run them.
 *.sh            text eol=lf
-docker/*.tsv    text eol=lf
+docker/*.py     text eol=lf
 Dockerfile      text eol=lf
 
 # PowerShell is happiest with CRLF on Windows.

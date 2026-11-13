@@ -1,0 +1,16 @@
+# ANYbotics. Hand-edited; `meshkit index` builds catalog.json from these files.
+family: anybotics
+maker: ANYbotics
+entries:
+  - id: anymal_b
+    name: ANYbotics ANYmal B
+    category: legged
+    submodule: anymal_b_simple_description
+    entry: src/anymal_b_simple_description/urdf/anymal.urdf
+    licence: BSD-3-Clause
+  - id: anymal_c
+    name: ANYbotics ANYmal C
+    category: legged
+    submodule: anymal_c_simple_description
+    entry: src/anymal_c_simple_description/urdf/anymal.urdf
+    licence: BSD-3-Clause

@@ -1,0 +1,28 @@
+# KUKA. Hand-edited; `meshkit index` builds catalog.json from these files.
+family: kuka
+maker: KUKA
+entries:
+  - id: iiwa7
+    name: KUKA LBR iiwa 7 R800
+    category: arm
+    submodule: lbr_iiwa7_r800_description
+    entry: src/lbr_iiwa7_r800_description/urdf/lbr_iiwa7_r800.urdf.xacro
+    licence: Apache-2.0
+  - id: iiwa14
+    name: KUKA LBR iiwa 14 R820
+    category: arm
+    submodule: lbr_iiwa14_r820_description
+    entry: src/lbr_iiwa14_r820_description/urdf/lbr_iiwa14_r820.urdf.xacro
+    licence: Apache-2.0
+  - id: med7
+    name: KUKA LBR Med 7 R800
+    category: arm
+    submodule: lbr_med7_r800_description
+    entry: src/lbr_med7_r800_description/urdf/lbr_med7_r800.urdf.xacro
+    licence: Apache-2.0
+  - id: med14
+    name: KUKA LBR Med 14 R820
+    category: arm
+    submodule: lbr_med14_r820_description
+    entry: src/lbr_med14_r820_description/urdf/lbr_med14_r820.urdf.xacro
+    licence: Apache-2.0

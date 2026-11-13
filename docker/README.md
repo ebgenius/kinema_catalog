@@ -7,7 +7,7 @@ directly; the launcher builds and drives it for you.
 | --- | --- |
 | `Dockerfile` | Thin layer on `osrf/ros:<distro>-desktop-full` adding xacro, robot/joint state publishers, RViz and `ros_gz`. |
 | `entrypoint.sh` | Container-side orchestrator: builds the package index, flattens the description, launches RViz or Gazebo. |
-| `robots.tsv` | The robot manifest — one row per launchable robot. |
+| `catalog_rows.py` | Reads `../catalog.json` and prints one tab-separated line per entry, so neither shell script parses JSON. Standard library only; on the host it needs `python3`. |
 | `rviz/robot.rviz` | RViz layout (RobotModel + grid + TF). `__FIXED_FRAME__` is substituted per robot at launch. |
 
 ## How a description is made loadable without a colcon build
@@ -24,8 +24,9 @@ wait. The same directory is added to `GZ_SIM_RESOURCE_PATH` so Gazebo resolves
 `package://` mesh URIs too.
 
 Consequence worth knowing: a description that depends on a package **not** in this
-catalog (TurtleBot 4 needs `irobot_create_description`, for instance) will fail at
-the xacro step. That is a missing upstream dependency, not a bug in the tooling.
+catalog fails at the xacro step. That is a missing dependency, not a bug in the
+tooling, and the fix is to fork the repository that has it into the catalog: TurtleBot
+4 needs `irobot_create_description`, which is why `create3_sim` is a submodule.
 
 ## ROS 2 / Gazebo pairings
 
@@ -46,19 +47,17 @@ distros never rebuilds the one you were using.
 
 ## Adding a robot
 
-Append a row to `robots.tsv`:
+The catalog is described in [`catalog/`](../catalog/), one YAML file per family. Add
+an entry to the family's file (or start a new `catalog/<family>.yaml`), then rebuild
+`catalog.json` and check the catalog:
 
+```sh
+uv run --project tools/meshkit meshkit index           # writes catalog.json, then reports any problem
+uv run --project tools/meshkit meshkit index --check   # writes nothing; fails if catalog.json is stale
 ```
-id	family	submodule	type	path	args	mesh_base	label
-```
 
-- `type` is `xacro` or `urdf`
-- `path` is relative to the repo root
-- `args` are xacro `k:=v` pairs, or `-`
-- `mesh_base` is only for URDFs with **relative** mesh paths (they get rewritten to
-  absolute `file://` URIs); use `-` when meshes use `package://`
-
-Then check it resolves:
+See [`catalog/README.md`](../catalog/README.md) for the fields. Then check that it
+resolves:
 
 ```sh
 ./kinema_catalog.sh <id> --viewer none --export

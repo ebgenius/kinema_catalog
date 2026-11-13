@@ -1,0 +1,70 @@
+# Clearpath Robotics. Hand-edited; `meshkit index` builds catalog.json from these files.
+family: clearpath
+maker: Clearpath Robotics
+entries:
+  - id: husky
+    name: Clearpath Husky A200
+    category: mobile
+    submodule: clearpath_common
+    entry: descriptions/clearpath/a200.urdf.xacro
+    licence: BSD-3-Clause
+  - id: husky_a300
+    name: Clearpath Husky A300
+    category: mobile
+    submodule: clearpath_common
+    entry: descriptions/clearpath/a300.urdf.xacro
+    licence: BSD-3-Clause
+  - id: jackal
+    name: Clearpath Jackal J100
+    category: mobile
+    submodule: clearpath_common
+    entry: descriptions/clearpath/j100.urdf.xacro
+    licence: BSD-3-Clause
+  - id: dingo_d
+    name: Clearpath Dingo-D DD100
+    category: mobile
+    submodule: clearpath_common
+    entry: descriptions/clearpath/dd100.urdf.xacro
+    licence: BSD-3-Clause
+  - id: dingo_d150
+    name: Clearpath Dingo-D DD150
+    category: mobile
+    submodule: clearpath_common
+    entry: descriptions/clearpath/dd150.urdf.xacro
+    licence: BSD-3-Clause
+  - id: dingo_o
+    name: Clearpath Dingo-O DO100
+    category: mobile
+    submodule: clearpath_common
+    entry: descriptions/clearpath/do100.urdf.xacro
+    licence: BSD-3-Clause
+  - id: dingo_o150
+    name: Clearpath Dingo-O DO150
+    category: mobile
+    submodule: clearpath_common
+    entry: descriptions/clearpath/do150.urdf.xacro
+    licence: BSD-3-Clause
+  - id: ridgeback
+    name: Clearpath Ridgeback R100
+    category: mobile
+    submodule: clearpath_common
+    entry: descriptions/clearpath/r100.urdf.xacro
+    licence: BSD-3-Clause
+  - id: warthog
+    name: Clearpath Warthog W200
+    category: mobile
+    submodule: clearpath_common
+    entry: descriptions/clearpath/w200.urdf.xacro
+    licence: BSD-3-Clause
+  - id: tb4
+    name: TurtleBot 4
+    category: mobile
+    submodule: turtlebot4
+    entry: src/turtlebot4/turtlebot4_description/urdf/standard/turtlebot4.urdf.xacro
+    licence: Apache-2.0
+  - id: tb4_lite
+    name: TurtleBot 4 Lite
+    category: mobile
+    submodule: turtlebot4
+    entry: src/turtlebot4/turtlebot4_description/urdf/lite/turtlebot4.urdf.xacro
+    licence: Apache-2.0

@@ -1,0 +1,22 @@
+# Linorobot. Hand-edited; `meshkit index` builds catalog.json from these files.
+family: linorobot
+maker: Linorobot
+entries:
+  - id: lino_2wd
+    name: Linorobot2 2WD
+    category: mobile
+    submodule: linorobot2
+    entry: src/linorobot2/linorobot2_description/urdf/robots/2wd.urdf.xacro
+    licence: Apache-2.0
+  - id: lino_4wd
+    name: Linorobot2 4WD
+    category: mobile
+    submodule: linorobot2
+    entry: src/linorobot2/linorobot2_description/urdf/robots/4wd.urdf.xacro
+    licence: Apache-2.0
+  - id: lino_mecanum
+    name: Linorobot2 Mecanum
+    category: mobile
+    submodule: linorobot2
+    entry: src/linorobot2/linorobot2_description/urdf/robots/mecanum.urdf.xacro
+    licence: Apache-2.0

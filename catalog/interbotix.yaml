@@ -1,0 +1,22 @@
+# Trossen Robotics. Hand-edited; `meshkit index` builds catalog.json from these files.
+family: interbotix
+maker: Trossen Robotics
+entries:
+  - id: px100
+    name: Interbotix PincherX 100
+    category: arm
+    submodule: interbotix_ros_manipulators
+    entry: src/interbotix_ros_manipulators/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/px100.urdf.xacro
+    licence: BSD-3-Clause
+  - id: wx250s
+    name: Interbotix WidowX 250 S
+    category: arm
+    submodule: interbotix_ros_manipulators
+    entry: src/interbotix_ros_manipulators/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/wx250s.urdf.xacro
+    licence: BSD-3-Clause
+  - id: vx300s
+    name: Interbotix ViperX 300 S
+    category: arm
+    submodule: interbotix_ros_manipulators
+    entry: src/interbotix_ros_manipulators/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/vx300s.urdf.xacro
+    licence: BSD-3-Clause

@@ -7,8 +7,12 @@ measure the same as its source.
 It converts through **kinema's own COLLADA importer**, so a GLB made here is the robot
 kinema shows. Every GLB is checked three ways before it leaves staging.
 
+It also builds the catalog's index, `catalog.json`, from `catalog/*.yaml` (see
+[`catalog/README.md`](../../catalog/README.md)).
+
 ```
 uv run meshkit doctor                          # find Blender, check the importer
+uv run meshkit index                           # rebuild catalog.json from catalog/*.yaml
 uv run meshkit scan                            # which .dae files are visual meshes
 uv run meshkit convert --fork franka_description
 ```
@@ -58,7 +62,7 @@ third of the catalog's `.dae` files live under a `visual/` directory. Two passes
 - **Static:** `<visual>`/`<collision>` blocks in URDF and xacro, plus mesh paths in
   YAML (Universal Robots). xacro variables become wildcards. A reference that is
   nothing but variables is reported as unresolved and never allowed to claim files.
-- **Rendered:** every robot in `docker/robots.tsv` is evaluated with xacrodoc, the
+- **Rendered:** every entry in `catalog.json` is evaluated with xacrodoc, the
   engine kinema uses, and gives exact references.
 
 ```

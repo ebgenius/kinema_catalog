@@ -1,0 +1,10 @@
+# iRobot. Hand-edited; `meshkit index` builds catalog.json from these files.
+family: irobot
+maker: iRobot
+entries:
+  - id: create3
+    name: iRobot Create 3
+    category: mobile
+    submodule: create3_sim
+    entry: src/create3_sim/irobot_create_common/irobot_create_description/urdf/create3.urdf.xacro
+    licence: BSD-3-Clause

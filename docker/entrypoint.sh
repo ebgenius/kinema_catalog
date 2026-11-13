@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Container-side orchestrator. Turns a manifest row into a running RViz or Gazebo
+# Container-side orchestrator. Turns a catalog entry into a running RViz or Gazebo
 # session. Driven entirely by env vars set by kinema_catalog.sh on the host:
 #
-#   KINEMA_ROBOT   robot id from docker/robots.tsv
+#   KINEMA_ROBOT   entry id from catalog.json
 #   KINEMA_VIEWER  rviz | gz
 #   KINEMA_EXPORT  1 to also write the flattened URDF to /catalog/out/<id>.urdf
 #
@@ -10,7 +10,6 @@
 set -euo pipefail
 
 CATALOG=/catalog
-MANIFEST="$CATALOG/docker/robots.tsv"
 GEN_DIR=/tmp/kinema
 INDEX=/tmp/kinema_index
 
@@ -51,18 +50,27 @@ build_index() {
 }
 
 # ---------------------------------------------------------------------------
-# Manifest lookup
+# Catalog lookup
 # ---------------------------------------------------------------------------
+# catalog.json as tab-separated lines (docker/catalog_rows.py), read once.
+# Collected rather than streamed, so a failure to read the catalog stops the
+# run instead of looking like a catalog with nothing in it.
+ROWS=""
+load_rows() {
+  ROWS=$(python3 "$CATALOG/docker/catalog_rows.py" "$CATALOG/catalog.json") \
+    || die "could not read catalog.json"
+  [ -n "$ROWS" ] || die "catalog.json has no entries"
+}
+
 lookup() {
   local want="$1" id family sub type path args mesh label
   while IFS=$'\t' read -r id family sub type path args mesh label; do
-    case "$id" in ''|\#*) continue ;; esac
     if [ "$id" = "$want" ]; then
       R_FAMILY=$family; R_SUB=$sub; R_TYPE=$type; R_PATH=$path
       R_ARGS=$args; R_MESH=$mesh; R_LABEL=$label
       return 0
     fi
-  done < "$MANIFEST"
+  done <<< "$ROWS"
   return 1
 }
 
@@ -120,13 +128,13 @@ generate_urdf() {
   GEN_URDF="$out"
 }
 
-# Flatten every robot in the manifest and report what breaks. One index build for
-# the whole run, so this is cheap enough to use as a CI check on the manifest.
+# Flatten every catalog entry and report what breaks. One index build for
+# the whole run, so this is cheap enough to use as a CI check on the catalog.
 check_all() {
   local id family sub type path args mesh label pass=0 fail=0 first_ok=""
   local -a failed=()
   while IFS=$'\t' read -r id family sub type path args mesh label; do
-    case "$id" in ''|\#*) continue ;; esac
+    [ -n "$id" ] || continue
     if [ ! -e "$CATALOG/src/$sub/.git" ] && [ -z "$(ls -A "$CATALOG/src/$sub" 2>/dev/null)" ]; then
       printf '  %-14s \033[2mSKIP  submodule not cloned\033[0m\n' "$id"
       continue
@@ -143,7 +151,7 @@ check_all() {
       failed+=("$id")
       fail=$((fail + 1))
     fi
-  done < "$MANIFEST"
+  done <<< "$ROWS"
 
   # Flattening alone never touches a viewer, which is how #1 shipped. Run the
   # exact sequence main() uses — no subshell — so a value that fails to cross a
@@ -252,10 +260,11 @@ main() {
   fi
 
   [ -n "${KINEMA_ROBOT:-}" ] || die "KINEMA_ROBOT is not set"
+  load_rows
 
-  # manifest-wide check: flatten everything, report failures
+  # catalog-wide check: flatten everything, report failures
   if [ "$KINEMA_ROBOT" = all ]; then
-    bold "checking every robot in the manifest — ROS 2 $ROS_DISTRO"
+    bold "checking every catalog entry — ROS 2 $ROS_DISTRO"
     build_index
     check_all
     return $?

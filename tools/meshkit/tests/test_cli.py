@@ -36,14 +36,12 @@ def test_options_that_would_silently_lose_each_other_are_refused(argv, capsys):
     assert "not allowed with" in capsys.readouterr().err
 
 
-def test_malformed_manifest_row_is_an_error_not_a_skip(tmp_path):
+def test_unreadable_catalog_is_an_error_not_a_skip(tmp_path):
+    # Skipped, its robots' rendered references would vanish without a word.
     (tmp_path / "src").mkdir()
-    (tmp_path / "docker").mkdir()
-    (tmp_path / "docker" / "robots.tsv").write_text(
-        "# id\tfamily\tsubmodule\ttype\tpath\targs\n"
-        "fer arm franka_description xacro robots/fer.urdf.xacro -\n",   # spaces, not tabs
-        encoding="utf-8")
-    with pytest.raises(SystemExit, match=r"robots\.tsv:2: 1 tab-separated column"):
+    (tmp_path / "catalog.json").write_text('{"schema_version": 1, "entries": [{"id": "fer"}]}',
+                                           encoding="utf-8")
+    with pytest.raises(SystemExit, match=r"entry 1 is incomplete"):
         main(["--root", str(tmp_path), "scan"])
 
 

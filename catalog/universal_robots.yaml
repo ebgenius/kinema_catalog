@@ -1,0 +1,87 @@
+# Universal Robots. Hand-edited; `meshkit index` builds catalog.json from these files.
+family: universal_robots
+maker: Universal Robots
+entries:
+  - id: ur3
+    name: Universal Robots UR3
+    category: arm
+    submodule: Universal_Robots_ROS2_Description
+    entry: src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro
+    args:
+      ur_type: ur3
+      name: ur3
+    licence: BSD-3-Clause
+  - id: ur3e
+    name: Universal Robots UR3e
+    category: arm
+    submodule: Universal_Robots_ROS2_Description
+    entry: src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro
+    args:
+      ur_type: ur3e
+      name: ur3e
+    licence: BSD-3-Clause
+  - id: ur5
+    name: Universal Robots UR5
+    category: arm
+    submodule: Universal_Robots_ROS2_Description
+    entry: src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro
+    args:
+      ur_type: ur5
+      name: ur5
+    licence: BSD-3-Clause
+  - id: ur5e
+    name: Universal Robots UR5e
+    category: arm
+    submodule: Universal_Robots_ROS2_Description
+    entry: src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro
+    args:
+      ur_type: ur5e
+      name: ur5e
+    licence: BSD-3-Clause
+  - id: ur10
+    name: Universal Robots UR10
+    category: arm
+    submodule: Universal_Robots_ROS2_Description
+    entry: src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro
+    args:
+      ur_type: ur10
+      name: ur10
+    licence: BSD-3-Clause
+  - id: ur10e
+    name: Universal Robots UR10e
+    category: arm
+    submodule: Universal_Robots_ROS2_Description
+    entry: src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro
+    args:
+      ur_type: ur10e
+      name: ur10e
+    licence: BSD-3-Clause
+  - id: ur16e
+    name: Universal Robots UR16e
+    category: arm
+    submodule: Universal_Robots_ROS2_Description
+    entry: src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro
+    args:
+      ur_type: ur16e
+      name: ur16e
+    licence: BSD-3-Clause
+  - id: ur20
+    name: Universal Robots UR20
+    category: arm
+    submodule: Universal_Robots_ROS2_Description
+    entry: src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro
+    args:
+      ur_type: ur20
+      name: ur20
+    licence: BSD-3-Clause AND LicenseRef-UR-Graphical-Documentation
+    licence_note: "Meshes under Universal Robots' Terms and Conditions for Use of Graphical Documentation (meshes/ur20/LICENSE.txt): use is limited to simulating and representing UR products, hobby and research use is non-commercial only, and UR owns derivative works."
+  - id: ur30
+    name: Universal Robots UR30
+    category: arm
+    submodule: Universal_Robots_ROS2_Description
+    entry: src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro
+    args:
+      ur_type: ur30
+      name: ur30
+    licence: BSD-3-Clause AND LicenseRef-UR-Graphical-Documentation
+    licence_note: "Meshes under Universal Robots' Terms and Conditions for Use of Graphical Documentation (meshes/ur30/LICENSE.txt): use is limited to simulating and representing UR products, hobby and research use is non-commercial only, and UR owns derivative works."
