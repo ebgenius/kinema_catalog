@@ -5,6 +5,7 @@ import collada
 import numpy as np
 import pytest
 
+import meshkit.external
 from meshkit._vendor import VENDORED_FILE
 from meshkit.external import _corners, _kept_faces, dae_stats, normal_deviation
 from test_convert_blender import (flat_box_dae, with_broken_texture,
@@ -101,6 +102,32 @@ def test_one_broken_material_is_measured_like_the_rest(tmp_path, broken_first, o
     with_second_instance(path, broken_material=True, broken_first=broken_first,
                          offset_cm=offset_cm)
     assert dae_stats(path)["triangles"] == 24
+
+
+def test_a_zipped_file_with_a_broken_material_is_measured_whole(tmp_path):
+    # pycollada reads a zipped COLLADA file; the binding-free re-read starts
+    # from its parsed tree, as the importer's does, so it can read one too.
+    import zipfile
+
+    path = tmp_path / "box.dae"
+    flat_box_dae(path)
+    with_second_instance(path, broken_material=True)
+    zipped = tmp_path / "box.zae"
+    with zipfile.ZipFile(zipped, "w") as archive:
+        archive.write(path, "box.dae")
+    assert dae_stats(zipped)["triangles"] == 24
+
+
+def test_a_failed_reread_keeps_what_the_first_read_gave(tmp_path, monkeypatch):
+    # The importer warns and keeps its first read; the gate must count the same.
+    def fail(document):
+        raise ValueError("stand-in parse failure")
+
+    monkeypatch.setattr(meshkit.external, "_without_bindings", fail)
+    path = tmp_path / "box.dae"
+    flat_box_dae(path)
+    with_second_instance(path, broken_material=True)
+    assert dae_stats(path)["triangles"] == 12
 
 
 def test_prefixed_bindings_are_removed_too(tmp_path):

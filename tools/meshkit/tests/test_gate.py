@@ -46,7 +46,7 @@ def test_normals_within_tolerance():
 
 
 def test_averaged_normals_fail():
-    # finger.dae through the unpatched importer: flat faces became smooth.
+    # finger.dae through kinema's importer before #126: flat faces became smooth.
     problems = compare_normals([0.0, 0.02, 0.03], [42.9, 61.4, 82.4])
     assert len(problems) == 3
 

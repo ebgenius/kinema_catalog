@@ -54,8 +54,7 @@ def cmd_doctor(args) -> int:
 
     provenance = importer_provenance()
     drift = "" if provenance["matches_pinned"] else "   <-- DIFFERS from the pinned copy"
-    patches = f" + {len(provenance['patches'])} patch(es)" if provenance["patches"] else ""
-    print(f"  importer  kinema {COMMIT[:12]}{patches} {provenance['path']}{drift}")
+    print(f"  importer  kinema {COMMIT[:12]} {provenance['path']}{drift}")
     ok &= bool(provenance["matches_pinned"])
 
     with tempfile.TemporaryDirectory(prefix="meshkit-doctor-") as tmp:

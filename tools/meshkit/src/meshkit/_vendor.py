@@ -1,18 +1,16 @@
 """Provenance of the vendored COLLADA importer.
 
 ``blender_side/kinema_dae.py`` is kinema's ``src/kinema/io/dae.py`` at a pinned
-commit, plus the patches listed in ``PATCHES``. It is vendored rather than
-depended on because kinema is never pip-installed (``package = false``), and
-importing it as a package would run ``kinema/__init__.py``, which registers the
-whole add-on. The file itself only needs ``bpy``, ``mathutils`` and ``collada``,
-so it is loaded by path inside Blender instead.
+commit, unchanged. It is vendored rather than depended on because kinema is
+never pip-installed (``package = false``), and importing it as a package would
+run ``kinema/__init__.py``, which registers the whole add-on. The file itself
+only needs ``bpy``, ``mathutils`` and ``collada``, so it is loaded by path
+inside Blender instead.
 
 Converting through kinema's own importer is the point: a GLB made here should
-look like the robot kinema imports. So every departure from upstream is a patch
-file under ``tools/meshkit/patches/``, applicable to kinema as-is, and meant to
-go upstream -- after which the file is re-vendored from the new commit and the
-patch deleted. Anything else changing the file is drift, and ``meshkit convert``
-refuses to run on it.
+look like the robot kinema imports. So a fix to the importer goes to kinema
+first, and the file is then re-vendored from the commit that has it. Anything
+else changing the file is drift, and ``meshkit convert`` refuses to run on it.
 """
 
 from __future__ import annotations
@@ -22,29 +20,13 @@ from pathlib import Path
 
 REPOSITORY = "https://github.com/ebgenius/kinema"
 UPSTREAM_PATH = "src/kinema/io/dae.py"
-COMMIT = "cf35e9cf35e467f8851498fb5d011fabdf184129"  # Release 0.5.0 (#55)
-# sha256 values are of the file with line endings normalised to LF, so a CRLF
-# checkout on Windows does not read as drift.
-UPSTREAM_SHA256 = "085541ac346a05f5bb8b8855991564288846671ee0ff2cce9663c1d7a60e05a5"
-PATCHES = (
-    # Custom normals were set before the faces were marked smooth, and Blender
-    # then averaged them across every hard edge: authored normals were lost on
-    # every .dae kinema imported.
-    "0001-dae-keep-custom-normals.patch",
-    # When a material failed to bind, pycollada dropped that <instance_geometry>
-    # and its node with it: lost outright if other instances survived, and
-    # otherwise imported from the library alone, unplaced and only once.
-    "0002-dae-fallback-keeps-node-placement.patch",
-    # <lines> were read three indices at a time, as if they were triangles:
-    # franka's link7 gained two triangles the file never had.
-    "0003-dae-skip-line-primitives.patch",
-    # mesh.validate() dropped degenerate and duplicate faces, and the corner
-    # normals and UVs were then read by position: every face after a dropped
-    # one took the next face's.
-    "0004-dae-keep-corners-on-kept-faces.patch",
-)
-# COMMIT's file with PATCHES applied -- what VENDORED_FILE must hash to.
-SHA256 = "6f803a3e9e67e1ea03b604d4432590f77f404494a283552bee498156f32c2850"
+# The COLLADA importer fixes from ebgenius/kinema#126: authored normals kept,
+# instances whose material failed to bind kept where their nodes put them,
+# <lines> skipped, and corners kept on the faces Blender keeps.
+COMMIT = "fac9fcae5e17b4affae251133c31a07ac754fe8a"
+# COMMIT's file, with line endings normalised to LF so that a CRLF checkout on
+# Windows does not read as drift.
+SHA256 = "0ddb7af279755eaa0c782503b0d8fac6d8192cc922695742059097355b246669"
 
 VENDORED_FILE = Path(__file__).parent / "blender_side" / "kinema_dae.py"
 
@@ -61,7 +43,6 @@ def importer_provenance() -> dict:
         "repository": REPOSITORY,
         "path": UPSTREAM_PATH,
         "commit": COMMIT,
-        "patches": list(PATCHES),
         "sha256": actual,
         "matches_pinned": actual == SHA256,
     }
