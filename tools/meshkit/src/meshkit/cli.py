@@ -252,7 +252,7 @@ def cmd_upstream(args) -> int:
     if args.json:
         args.json.write_text(json.dumps(report.as_json(), indent=2) + "\n", encoding="utf-8")
     try:
-        markdown = upstream.render_markdown(report)
+        markdown = upstream.render_markdown(report, json_url=args.json_url)
     except upstream.GitHubError as exc:
         raise SystemExit(f"meshkit: {exc}") from None
     if args.markdown:
@@ -302,6 +302,8 @@ def build_parser() -> argparse.ArgumentParser:
                          "against it (a missing file is a first run)")
     up.add_argument("--markdown", type=Path, help="write the report here (default: print it)")
     up.add_argument("--json", type=Path, help="also write the report as JSON")
+    up.add_argument("--json-url", help="where the JSON report will be published; the "
+                                       "Markdown links there for what it leaves out")
     up.add_argument("--no-lists", action="store_true",
                     help="skip the lists of candidate descriptions")
     up.set_defaults(func=cmd_upstream)

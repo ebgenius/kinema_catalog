@@ -301,7 +301,10 @@ def _check_fork(report: ForkReport, fork: Fork, github: GitHub, licences: list[s
         try:
             pin_vs_fork = github.compare(fork.repo, fork.pin, fork_head)
         except NotFound:
-            pass   # no shared history: noted above
+            # Both compared with upstream, yet not with each other: without this
+            # note, pin_only stays unknown and a bump could drop pinned commits.
+            report.notes.append(f"the pin {fork.pin[:12]} and the fork's {fork.branch!r} "
+                                "share no history")
         else:
             report.pin_behind_fork = pin_vs_fork["ahead_by"]
             report.pin_only = pin_vs_fork["behind_by"]
@@ -511,7 +514,11 @@ def encode_state(state: dict) -> str:
 
 def read_previous(text: str) -> dict:
     """The state a previous report carries: from its Markdown, or its JSON."""
-    match = re.search(rf"<!--\s*{re.escape(STATE_MARKER)}\s+([A-Za-z0-9+/=\s]+?)\s*-->", text)
+    # The last marker: this report writes its own at the very end, and text
+    # from upstream (a file name, a list's label) could carry an earlier one.
+    matches = list(re.finditer(
+        rf"<!--\s*{re.escape(STATE_MARKER)}\s+([A-Za-z0-9+/=\s]+?)\s*-->", text))
+    match = matches[-1] if matches else None
     if match:
         try:
             return json.loads(gzip.decompress(base64.b64decode("".join(match.group(1).split()))))
@@ -528,11 +535,21 @@ def read_previous(text: str) -> dict:
     return document.get("state", {}) if isinstance(document, dict) else {}
 
 
+def _inert(text: str) -> str:
+    """Text from someone else's list, made safe to put in an issue.
+
+    No HTML (a comment would hide the rest of the body, or forge a state
+    marker), no @mention to notify anyone, no brackets to break the link.
+    """
+    return (text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            .replace("@", "&#64;").replace("[", "&#91;").replace("]", "&#93;"))
+
+
 def _count(value: int | None) -> str:
     return "?" if value is None else str(value)
 
 
-def render_markdown(report: Report, *, detail: int = 2) -> str:
+def render_markdown(report: Report, *, detail: int = 2, json_url: str | None = None) -> str:
     """The report as Markdown, within BODY_LIMIT.
 
     ``detail`` 2 names changed files and new candidates; 1 drops the files; 0
@@ -540,6 +557,7 @@ def render_markdown(report: Report, *, detail: int = 2) -> str:
     tried in turn until the body fits. The state at the end is never cut.
     """
     file_lists, candidate_lists = detail >= 2, detail >= 1
+    json_report = f"the [JSON report]({json_url})" if json_url else "the JSON report"
     forks = report.forks
     level = sum(f.level for f in forks)
     lines = [
@@ -561,7 +579,7 @@ def render_markdown(report: Report, *, detail: int = 2) -> str:
         changes = ", ".join(f"{len(files)} {category}"
                             for category, files in sorted(f.changed.items()))
         if f.truncated:
-            changes += " (first 300 files)"
+            changes += f" ({COMPARE_FILE_LIMIT} files listed, GitHub's most: maybe more)"
         if f.new_robots:
             changes += f"; **{len(f.new_robots)} new robot file(s)**"
         upstream = f"[{f.upstream}](https://github.com/{f.upstream})" if f.upstream else "?"
@@ -575,6 +593,8 @@ def render_markdown(report: Report, *, detail: int = 2) -> str:
             lines += [f"- **{f.name}:** {note}" for note in f.notes]
 
     changed = [f for f in forks if f.behind and (f.changed or f.new_robots)]
+    if changed and not file_lists:
+        lines += ["", f"File names are left out to fit the issue; {json_report} has them."]
     if changed and file_lists:
         lines += ["", "## What upstream changed", ""]
         for f in changed:
@@ -611,10 +631,11 @@ def render_markdown(report: Report, *, detail: int = 2) -> str:
                 shown = list(item.new.items())[:LISTED_CANDIDATES if candidate_lists else 0]
                 for key, label in shown:
                     link = f"https://github.com/{key}" if ":" not in key else None
+                    label = _inert(label)
                     lines.append(f"  - [{label}]({link})" if link else f"  - {label}")
                 if candidate_lists and len(item.new) > len(shown):
-                    lines.append(f"  - and {len(item.new) - len(shown)} more, in the JSON "
-                                 "report")
+                    lines.append(f"  - and {len(item.new) - len(shown)} more, in "
+                                 f"{json_report}")
 
     lines += [
         "",
@@ -636,6 +657,6 @@ def render_markdown(report: Report, *, detail: int = 2) -> str:
     if len(text) <= BODY_LIMIT:
         return text
     if detail > 0:
-        return render_markdown(report, detail=detail - 1)
+        return render_markdown(report, detail=detail - 1, json_url=json_url)
     raise GitHubError(f"the report is {len(text)} characters even without file or candidate "
                       f"names, over the {BODY_LIMIT} an issue can hold")

@@ -117,7 +117,9 @@ The first run has nothing to compare with, so it records a baseline.
 The Markdown ends with the run's state in an HTML comment. Passing that report back as
 `--previous` is all a later run needs, and is how the weekly workflow works
 (`.github/workflows/upstream.yml`): it reads the open issue labelled `upstream-report`,
-runs this, and writes the issue back. The JSON report carries the same state.
+runs this, and writes the issue back. The JSON report carries the same state; the
+workflow keeps it for 90 days as the run's `upstream-report` artifact, and passes the
+run's address as `--json-url`, so the issue links to it wherever it leaves names out.
 
 A token comes from `GITHUB_TOKEN` or `GH_TOKEN`, else from `gh auth token`.
 

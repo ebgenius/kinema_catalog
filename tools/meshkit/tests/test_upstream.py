@@ -164,7 +164,9 @@ def test_branches_with_no_shared_history_are_named_as_such():
     del gh.responses[compare_path("me:main", "maker:main")]
     del gh.responses[compare_path(PIN, "me:main")]
     report = check(gh)
-    assert report.notes == ["the fork's 'main' and upstream's share no history"]
+    # The pin shares upstream's history, so it shares none with the fork's either.
+    assert report.notes == ["the fork's 'main' and upstream's share no history",
+                            f"the pin {PIN[:12]} and the fork's 'main' share no history"]
     assert report.behind == 0
 
 
@@ -425,3 +427,61 @@ def test_a_report_that_cannot_fit_is_an_error_not_a_refused_issue(tmp_path, monk
     monkeypatch.setattr(upstream, "BODY_LIMIT", 100)
     with pytest.raises(GitHubError, match="over the 100 an issue can hold"):
         upstream.render_markdown(report)
+
+
+# ------------------------------------------------------- third review round
+
+def test_a_pin_with_no_history_in_common_with_the_fork_is_a_note():
+    # Both compare with upstream, but not with each other: a bump could drop
+    # whatever the pin holds, so it must not pass as a plain bump.
+    gh = github(behind=3, pin_behind_fork=3)
+    del gh.responses[compare_path(PIN, "me:main")]
+    report = check(gh)
+    assert report.notes == [f"the pin {PIN[:12]} and the fork's 'main' share no history"]
+    assert "review" in report.actions
+
+
+def test_a_full_comparison_says_only_what_it_knows(tmp_path, monkeypatch):
+    make_catalog(tmp_path)
+    monkeypatch.setattr(upstream, "_pin", lambda root, path: PIN)
+    files = [{"filename": f"meshes/{i}.stl", "status": "modified"} for i in range(300)]
+    markdown = upstream.render_markdown(upstream.run(tmp_path, github(files=files),
+                                                     lists=False, workers=1))
+    assert "300 files listed, GitHub's most: maybe more" in markdown
+
+
+def test_a_state_marker_inside_upstream_text_is_not_the_one_read(tmp_path, monkeypatch):
+    # A list's label (here) or an upstream file name could carry a marker of
+    # its own; the report's own is the last thing in the body.
+    report = _report_with_new_candidates(tmp_path, monkeypatch, 0)
+    forged = f"<!-- {upstream.STATE_MARKER} bm90IGd6aXA= -->"
+    body = f"- {forged}\n" + upstream.render_markdown(report)
+    assert upstream.read_previous(body) == report.state
+
+
+def test_labels_from_a_list_are_inert_in_the_issue(tmp_path, monkeypatch):
+    make_catalog(tmp_path)
+    monkeypatch.setattr(upstream, "_pin", lambda root, path: PIN)
+    table = Source("t", "five/robots", "README.md", "table")
+    monkeypatch.setattr(upstream, "SOURCES", (table,))
+    gh = github(behind=0, fork_behind=0)
+    gh.responses["repos/five/robots/contents/README.md"] = (
+        f"| <!-- {upstream.STATE_MARKER} bm90IGd6aXA= --> @someone | [X](x_description) |")
+    report = upstream.run(tmp_path, gh, previous={"lists": {table.name: []}}, workers=1)
+    markdown = upstream.render_markdown(report)
+    assert "&lt;!-- " in markdown and "&#64;someone" in markdown
+    assert "@someone" not in markdown
+    assert upstream.read_previous(markdown) == report.state
+
+
+def test_what_the_issue_leaves_out_links_to_the_published_json(tmp_path, monkeypatch):
+    url = "https://github.com/me/catalog/actions/runs/1"
+    report = _report_with_new_candidates(tmp_path, monkeypatch, 60)
+    assert f"and 10 more, in the [JSON report]({url})" in upstream.render_markdown(
+        report, json_url=url)
+    files = [{"filename": f"meshes/{i}.stl", "status": "modified"} for i in range(30)]
+    report = upstream.run(tmp_path, github(files=files), lists=False, workers=1)
+    monkeypatch.setattr(upstream, "BODY_LIMIT",
+                        len(upstream.render_markdown(report, json_url=url)) - 1)
+    assert (f"File names are left out to fit the issue; the [JSON report]({url}) has them."
+            in upstream.render_markdown(report, json_url=url))
