@@ -98,12 +98,16 @@ records, the fork's branch, and upstream's branch. From those it suggests:
 | sync | the fork's branch is behind and has no commits of its own: `gh repo sync` |
 | bump | the pin is behind: update the submodule in a pull request, then `--check` |
 | reconvert | upstream changed meshes |
-| review | the fork has its own commits; upstream added robot files (`.urdf`, `.urdf.xacro`); or upstream was archived, renamed or moved, dropped the branch, or changed its licence, or names a licence the catalog's entries do not |
+| review | the fork has its own commits and is behind, so it needs a merge; the pin has commits the fork's branch no longer has, which a bump would drop; upstream added robot files (`.urdf`, `.urdf.xacro`); or upstream was archived, renamed or moved, or changed its licence, or names a licence the catalog's entries do not; or either side lacks the branch, or the two share no history |
 | fork | a repository new in one of the lists below: a candidate for the next audit |
 
 Changed files are sorted into **description** (URDF, xacro, SRDF, SDF),
 **meshes** and **config** (YAML under `config/`, or named for limits). GitHub lists
 at most 300 files per comparison, and the report says when it has hit that limit.
+The Markdown names up to 25 files per kind and 50 new candidates per list, counting
+the rest; the JSON has them all. An issue holds at most 65,536 characters, so a
+report that would not fit drops the file names, then the candidates' names. The
+state is never cut.
 
 The lists are awesome-robot-descriptions, robot_descriptions.py's repositories, and
 fiveages-sim/robot_descriptions (its README's robots, and its submodules). The report

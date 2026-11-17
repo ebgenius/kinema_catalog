@@ -248,9 +248,13 @@ def cmd_upstream(args) -> int:
                               previous=previous, lists=not args.no_lists)
     except (upstream.GitHubError, CatalogError) as exc:
         raise SystemExit(f"meshkit: {exc}") from None
-    markdown = upstream.render_markdown(report)
+    # The JSON first: it has no size limit, so it survives a Markdown that cannot fit.
     if args.json:
         args.json.write_text(json.dumps(report.as_json(), indent=2) + "\n", encoding="utf-8")
+    try:
+        markdown = upstream.render_markdown(report)
+    except upstream.GitHubError as exc:
+        raise SystemExit(f"meshkit: {exc}") from None
     if args.markdown:
         args.markdown.write_text(markdown, encoding="utf-8")
         level = sum(f.level for f in report.forks)

@@ -45,6 +45,8 @@ STATE_MARKER = "meshkit-upstream-state:v1"
 COMPARE_FILE_LIMIT = 300
 # Per category, in the Markdown; the JSON has every file.
 LISTED_FILES = 25
+# New candidates named per list; the rest are counted.
+LISTED_CANDIDATES = 50
 BODY_LIMIT = 60_000   # GitHub refuses an issue body over 65,536 characters
 
 MESH_SUFFIXES = {".dae", ".stl", ".obj", ".mtl", ".glb", ".gltf", ".ply"}
@@ -102,6 +104,13 @@ class GitHub:
     def compare(self, repo: str, base: str, head: str) -> dict:
         quote = lambda ref: urllib.parse.quote(ref, safe="/:")  # noqa: E731
         return self.get(f"repos/{repo}/compare/{quote(base)}...{quote(head)}?per_page=100")
+
+    def has_branch(self, repo: str, branch: str) -> bool:
+        try:
+            self.get(f"repos/{repo}/branches/{urllib.parse.quote(branch, safe='')}")
+        except NotFound:
+            return False
+        return True
 
     def file(self, repo: str, path: str) -> str:
         return self.get(f"repos/{repo}/contents/{urllib.parse.quote(path)}", raw=True)
@@ -195,6 +204,7 @@ class ForkReport:
     fork_behind: int | None = None   # upstream commits the fork's branch lacks
     fork_own: int | None = None      # the fork branch's commits upstream lacks
     pin_behind_fork: int | None = None
+    pin_only: int | None = None      # pinned commits the fork's branch lacks
     changed: dict[str, list[str]] = field(default_factory=dict)
     other_changed: int = 0
     truncated: bool = False
@@ -258,27 +268,43 @@ def _check_fork(report: ForkReport, fork: Fork, github: GitHub, licences: list[s
         report.notes.append(f"upstream licence is {report.upstream_licence}; the catalog "
                             f"says {', '.join(sorted(set(licences)))}")
 
-    owner = report.upstream.split("/")[0]
-    upstream_head = f"{owner}:{fork.branch}"
-    try:
-        fork_vs = github.compare(fork.repo, f"{fork.repo.split('/')[0]}:{fork.branch}",
-                                 upstream_head)
-    except NotFound:
+    upstream_head = f"{report.upstream.split('/')[0]}:{fork.branch}"
+    fork_head = f"{fork.repo.split('/')[0]}:{fork.branch}"
+    # A comparison answers 404 for a branch missing on either side, and for
+    # histories with nothing in common: ask which before saying anything.
+    if not github.has_branch(report.upstream, fork.branch):
         report.notes.append(f"upstream has no branch {fork.branch!r} (its default is "
                             f"{report.upstream_default_branch!r})")
         return
-    report.fork_behind, report.fork_own = fork_vs["ahead_by"], fork_vs["behind_by"]
+    fork_has_branch = github.has_branch(fork.repo, fork.branch)
+    if not fork_has_branch:
+        report.notes.append(f"the fork has no branch {fork.branch!r}: restore it, or "
+                            "correct .gitmodules")
+    else:
+        try:
+            fork_vs = github.compare(fork.repo, fork_head, upstream_head)
+        except NotFound:
+            report.notes.append(f"the fork's {fork.branch!r} and upstream's share no history")
+        else:
+            report.fork_behind, report.fork_own = fork_vs["ahead_by"], fork_vs["behind_by"]
 
     if fork.pin is None:
         return
     try:
         pinned = github.compare(fork.repo, fork.pin, upstream_head)
     except NotFound:
-        report.notes.append(f"the pin {fork.pin[:12]} is not in {fork.repo}: push it")
+        report.notes.append(f"the pin {fork.pin[:12]} is not in {fork.repo}, or shares no "
+                            f"history with upstream's {fork.branch!r}")
         return
     report.behind, report.own = pinned["ahead_by"], pinned["behind_by"]
-    report.pin_behind_fork = github.compare(
-        fork.repo, fork.pin, f"{fork.repo.split('/')[0]}:{fork.branch}")["ahead_by"]
+    if fork_has_branch:
+        try:
+            pin_vs_fork = github.compare(fork.repo, fork.pin, fork_head)
+        except NotFound:
+            pass   # no shared history: noted above
+        else:
+            report.pin_behind_fork = pin_vs_fork["ahead_by"]
+            report.pin_only = pin_vs_fork["behind_by"]
 
     if report.behind:
         files = pinned.get("files") or []
@@ -316,9 +342,12 @@ def _actions(report: ForkReport) -> list[str]:
         actions.append("bump")
     if report.behind and report.changed.get("meshes"):
         actions.append("reconvert")
-    # A pin with commits upstream lacks has diverged, whatever the fork's branch
-    # says now: bumping it without a look could drop them from the catalog.
-    if report.notes or report.new_robots or report.own:
+    # Commits of the fork's own are expected (step 7 adds them on purpose), so
+    # they alone ask for nothing. Two cases do: a fork that has its own commits
+    # and is behind needs a merge (above), and a pin holding commits the fork's
+    # branch no longer has -- a branch reset to upstream -- would lose them in a
+    # bump.
+    if report.notes or report.new_robots or report.pin_only:
         actions.append("review")
     return [a for a in ACTIONS if a in actions]
 
@@ -503,7 +532,14 @@ def _count(value: int | None) -> str:
     return "?" if value is None else str(value)
 
 
-def render_markdown(report: Report, *, file_lists: bool = True) -> str:
+def render_markdown(report: Report, *, detail: int = 2) -> str:
+    """The report as Markdown, within BODY_LIMIT.
+
+    ``detail`` 2 names changed files and new candidates; 1 drops the files; 0
+    also drops the candidates' names, keeping their counts. Each level is
+    tried in turn until the body fits. The state at the end is never cut.
+    """
+    file_lists, candidate_lists = detail >= 2, detail >= 1
     forks = report.forks
     level = sum(f.level for f in forks)
     lines = [
@@ -570,10 +606,15 @@ def render_markdown(report: Report, *, file_lists: bool = True) -> str:
             elif not item.new:
                 lines.append(f"- {source}: nothing new ({item.count} not in the catalog)")
             else:
-                lines.append(f"- {source}: {len(item.new)} new (*fork*, after the audit):")
-                for key, label in item.new.items():
+                lines.append(f"- {source}: {len(item.new)} new (*fork*, after the audit)"
+                             + (":" if candidate_lists else ""))
+                shown = list(item.new.items())[:LISTED_CANDIDATES if candidate_lists else 0]
+                for key, label in shown:
                     link = f"https://github.com/{key}" if ":" not in key else None
                     lines.append(f"  - [{label}]({link})" if link else f"  - {label}")
+                if candidate_lists and len(item.new) > len(shown):
+                    lines.append(f"  - and {len(item.new) - len(shown)} more, in the JSON "
+                                 "report")
 
     lines += [
         "",
@@ -584,14 +625,17 @@ def render_markdown(report: Report, *, file_lists: bool = True) -> str:
         "- **bump:** the pin is behind; after syncing, update the submodule in a pull "
         "request and run `./kinema_catalog.sh --check`.",
         "- **reconvert:** upstream changed meshes; convert them again after the bump.",
-        "- **review:** something a person has to decide: a fork with its own commits, "
-        "new robots, or the notes above.",
+        "- **review:** something a person has to decide: a fork with its own commits that "
+        "is behind, a pin a bump would lose commits from, new robots, or the notes above.",
         "- **fork:** a candidate for the next audit.",
         "",
         f"<!-- {STATE_MARKER} {encode_state(report.state)} -->",
         "",
     ]
     text = "\n".join(lines)
-    if len(text) > BODY_LIMIT and file_lists:
-        return render_markdown(report, file_lists=False)
-    return text
+    if len(text) <= BODY_LIMIT:
+        return text
+    if detail > 0:
+        return render_markdown(report, detail=detail - 1)
+    raise GitHubError(f"the report is {len(text)} characters even without file or candidate "
+                      f"names, over the {BODY_LIMIT} an issue can hold")

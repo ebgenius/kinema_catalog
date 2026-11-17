@@ -28,22 +28,25 @@ class FakeGitHub:
     repo = upstream.GitHub.repo
     compare = upstream.GitHub.compare
     file = upstream.GitHub.file
+    has_branch = upstream.GitHub.has_branch
 
 
 def compare_path(base, head, repo="me/arm"):
     return f"repos/{repo}/compare/{base}...{head}?per_page=100"
 
 
-def github(*, behind=3, own=0, fork_behind=3, fork_own=0, pin_behind_fork=0, files=(),
-           parent=None):
+def github(*, behind=3, own=0, fork_behind=3, fork_own=0, pin_behind_fork=0, pin_only=0,
+           files=(), parent=None):
     parent = parent or {"full_name": "maker/arm", "default_branch": "main",
                         "archived": False, "license": {"spdx_id": "BSD-3-Clause"}}
     return FakeGitHub({
         "repos/me/arm": {"full_name": "me/arm", "parent": parent},
+        "repos/me/arm/branches/main": {"name": "main"},
+        "repos/maker/arm/branches/main": {"name": "main"},
         compare_path("me:main", "maker:main"): {"ahead_by": fork_behind, "behind_by": fork_own},
         compare_path(PIN, "maker:main"): {"ahead_by": behind, "behind_by": own,
                                           "files": [dict(f) for f in files]},
-        compare_path(PIN, "me:main"): {"ahead_by": pin_behind_fork, "behind_by": 0},
+        compare_path(PIN, "me:main"): {"ahead_by": pin_behind_fork, "behind_by": pin_only},
     })
 
 
@@ -137,10 +140,32 @@ def test_a_licence_the_catalog_does_not_name_is_a_note():
 
 def test_an_upstream_without_the_tracked_branch_is_a_note():
     gh = github()
+    del gh.responses["repos/maker/arm/branches/main"]
     del gh.responses[compare_path("me:main", "maker:main")]
     report = check(gh)
     assert report.notes == ["upstream has no branch 'main' (its default is 'main')"]
     assert report.behind is None and not report.level
+
+
+def test_a_fork_without_the_tracked_branch_is_its_own_note_and_the_pin_is_still_compared():
+    # The same 404 from the comparison, but the missing branch is the fork's.
+    gh = github(behind=3)
+    del gh.responses["repos/me/arm/branches/main"]
+    del gh.responses[compare_path("me:main", "maker:main")]
+    del gh.responses[compare_path(PIN, "me:main")]
+    report = check(gh)
+    assert report.notes == ["the fork has no branch 'main': restore it, or correct .gitmodules"]
+    assert report.behind == 3 and report.fork_behind is None
+    assert report.actions == ["bump", "review"]
+
+
+def test_branches_with_no_shared_history_are_named_as_such():
+    gh = github(behind=0)
+    del gh.responses[compare_path("me:main", "maker:main")]
+    del gh.responses[compare_path(PIN, "me:main")]
+    report = check(gh)
+    assert report.notes == ["the fork's 'main' and upstream's share no history"]
+    assert report.behind == 0
 
 
 def test_a_failed_request_is_a_note_not_a_crash():
@@ -290,8 +315,16 @@ def test_an_oversized_report_drops_the_file_lists(tmp_path, monkeypatch):
 def test_a_diverged_pin_is_reviewed_even_when_the_fork_branch_is_clean():
     # The fork's branch was reset to upstream; the pin still has two commits
     # of its own. A bare bump would drop them from the catalog.
-    report = check(github(behind=3, own=2, fork_behind=0, fork_own=0, pin_behind_fork=3))
+    report = check(github(behind=3, own=2, fork_behind=0, fork_own=0, pin_behind_fork=3,
+                          pin_only=2))
     assert report.actions == ["bump", "review"]
+
+
+def test_the_forks_own_commits_alone_ask_for_nothing():
+    # Level with upstream, carrying its own improvements, and pinned to them:
+    # the state the forks are meant to reach, not one to review every week.
+    report = check(github(behind=0, own=2, fork_behind=0, fork_own=2))
+    assert report.actions == []
 
 
 @pytest.mark.parametrize("failure", [TimeoutError("The read operation timed out"),
@@ -359,3 +392,36 @@ def test_a_list_unreadable_on_the_first_run_leaves_no_state(tmp_path, monkeypatc
     monkeypatch.setattr(upstream, "SOURCES", (SOURCE,))
     report = upstream.run(tmp_path, github(), workers=1)     # the list is a 404
     assert report.lists[0].error and SOURCE.name not in report.state["lists"]
+
+
+def _report_with_new_candidates(tmp_path, monkeypatch, count):
+    make_catalog(tmp_path)
+    monkeypatch.setattr(upstream, "_pin", lambda root, path: PIN)
+    monkeypatch.setattr(upstream, "SOURCES", (SOURCE,))
+    gh = github(behind=0, fork_behind=0)
+    gh.responses[LIST_PATH] = " ".join(f"github.com/new/repo{i:03}" for i in range(count))
+    return upstream.run(tmp_path, gh, previous={"lists": {SOURCE.name: []}}, workers=1)
+
+
+def test_new_candidates_past_the_limit_are_counted_not_named(tmp_path, monkeypatch):
+    report = _report_with_new_candidates(tmp_path, monkeypatch, 60)
+    markdown = upstream.render_markdown(report)
+    assert "60 new" in markdown and "new/repo049" in markdown and "new/repo050" not in markdown
+    assert "and 10 more, in the JSON report" in markdown
+
+
+def test_an_oversized_list_of_candidates_keeps_its_count_and_the_state(tmp_path, monkeypatch):
+    report = _report_with_new_candidates(tmp_path, monkeypatch, 40)
+    without_names = upstream.render_markdown(report, detail=0)
+    monkeypatch.setattr(upstream, "BODY_LIMIT", len(without_names))
+    markdown = upstream.render_markdown(report)
+    assert markdown == without_names
+    assert "40 new" in markdown and "new/repo000" not in markdown
+    assert upstream.read_previous(markdown) == report.state
+
+
+def test_a_report_that_cannot_fit_is_an_error_not_a_refused_issue(tmp_path, monkeypatch):
+    report = _report_with_new_candidates(tmp_path, monkeypatch, 3)
+    monkeypatch.setattr(upstream, "BODY_LIMIT", 100)
+    with pytest.raises(GitHubError, match="over the 100 an issue can hold"):
+        upstream.render_markdown(report)

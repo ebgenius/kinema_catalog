@@ -20,6 +20,9 @@ concurrency:
 
 jobs:
   report:
+    # A manual run can name any branch, and would run that branch's code with
+    # a token that can write issues. Only main's code writes the report.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:

@@ -139,12 +139,15 @@ right branch (several ROS repos use `ros2`, `humble`, or `main` rather than `mas
 Every Monday the [Upstream report](.github/workflows/upstream.yml) workflow runs
 `meshkit upstream` and rewrites one issue, labelled `upstream-report`. For each fork, the
 issue says how far its pin is behind the upstream branch it tracks, which description, mesh
-and config files changed, and what to do. It also lists repositories that are new in the
-lists the catalog draws its candidates from. To bring a fork level:
+and config files changed (naming up to 25 per kind and counting the rest), and what to do.
+It also lists repositories that are new in the lists the catalog draws its candidates from.
+To bring a fork level:
 
 ```sh
 gh repo sync ebgenius/<fork> --branch <branch>   # only for a fork with no commits of its own
 git submodule update --remote src/<fork>          # on a branch, then a pull request
+# ...or, without an SSH key
+git -c url."https://github.com/".insteadOf=git@github.com: submodule update --remote src/<fork>
 ./kinema_catalog.sh --check
 ```
 
