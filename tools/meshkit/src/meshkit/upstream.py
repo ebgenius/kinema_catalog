@@ -34,6 +34,7 @@ import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
+import zlib
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -111,7 +112,8 @@ class GitHub:
             found = self.get(f"repos/{repo}/branches/{urllib.parse.quote(branch, safe='')}")
         except NotFound:
             return None
-        sha = (found.get("commit") or {}).get("sha") if isinstance(found, dict) else None
+        commit = found.get("commit") if isinstance(found, dict) else None
+        sha = commit.get("sha") if isinstance(commit, dict) else None
         if not isinstance(sha, str):
             raise GitHubError(f"{repo}'s branch {branch!r} names no commit")
         return sha
@@ -203,6 +205,7 @@ class ForkReport:
     upstream_default_branch: str | None = None
     upstream_archived: bool = False
     upstream_licence: str | None = None
+    upstream_sha: str | None = None  # upstream's branch, as every comparison read it
     behind: int | None = None        # upstream commits the pin lacks
     own: int | None = None           # pinned commits upstream lacks
     fork_behind: int | None = None   # upstream commits the fork's branch lacks
@@ -225,8 +228,11 @@ class ForkReport:
     def compare_url(self) -> str | None:
         if not (self.upstream and self.pin):
             return None
+        # The commit the counts were taken at, not the branch, which may have
+        # moved since: the page shows what the report counted.
         owner = self.upstream.split("/")[0]
-        return f"https://github.com/{self.repo}/compare/{self.pin}...{owner}:{self.branch}"
+        head = self.upstream_sha or self.branch
+        return f"https://github.com/{self.repo}/compare/{self.pin}...{owner}:{head}"
 
 
 def check_fork(fork: Fork, github: GitHub, *, licences: list[str],
@@ -281,6 +287,7 @@ def _check_fork(report: ForkReport, fork: Fork, github: GitHub, licences: list[s
         report.notes.append(f"upstream has no branch {fork.branch!r} (its default is "
                             f"{report.upstream_default_branch!r})")
         return
+    report.upstream_sha = upstream_sha
     fork_sha = github.branch_sha(fork.repo, fork.branch)
     fork_has_branch = fork_sha is not None
     upstream_head = f"{report.upstream.split('/')[0]}:{upstream_sha}"
@@ -533,18 +540,23 @@ def read_previous(text: str) -> dict:
             raise GitHubError(f"the previous report is not valid JSON: {exc}") from None
         if not isinstance(document, dict):
             raise GitHubError("the previous report is JSON, but not a report")
-        return _checked_state(document.get("state", {}))
-    # The last marker: this report writes its own at the very end, and text
-    # from upstream (a file name, a list's label) could carry an earlier one.
-    matches = list(re.finditer(
-        rf"<!--\s*{re.escape(STATE_MARKER)}\s+([A-Za-z0-9+/=\s]+?)\s*-->", text))
-    match = matches[-1] if matches else None
+        return _checked_state(document.get("state"))
+    # The footer: this report writes its state as the very last thing, and
+    # text from upstream (a file name, a list's label) could carry a marker
+    # earlier on, so only one at the end counts.
+    match = re.search(
+        rf"<!--\s*{re.escape(STATE_MARKER)}\s+([A-Za-z0-9+/=\s]+?)\s*-->\s*\Z", text)
     if match:
         try:
             state = json.loads(gzip.decompress(base64.b64decode("".join(match.group(1).split()))))
-        except (ValueError, OSError) as exc:
+        except (ValueError, OSError, EOFError, zlib.error) as exc:
             raise GitHubError(f"the previous report's state cannot be read: {exc}") from None
         return _checked_state(state)
+    # A report whose footer is cut short, or has text after it, must not pass
+    # for a first run: that records today's candidates as the baseline, and
+    # loses what is new since the last good report.
+    if re.search(rf"<!--\s*{re.escape(STATE_MARKER)}", text):
+        raise GitHubError("the previous report's state is cut short, or is not at its end")
     # A report from before there was any state, or not a report at all: start
     # again, so every list reads as a new baseline.
     return {}
@@ -560,8 +572,13 @@ def _checked_state(state) -> dict:
         return GitHubError(f"the previous report's state cannot be read: {what}")
 
     if not isinstance(state, dict):
-        raise refuse("it is not an object")
-    forks, lists = state.get("forks", {}), state.get("lists", {})
+        raise refuse("it is missing, or not an object")
+    # Every report writes both: one without is not this report's, and a
+    # missing list would make every candidate a baseline again.
+    missing = [key for key in ("forks", "lists") if key not in state]
+    if missing:
+        raise refuse(f"it has no {' or '.join(missing)}")
+    forks, lists = state["forks"], state["lists"]
     if not isinstance(forks, dict) or not all(
             isinstance(entry, dict)
             and all(isinstance(entry.get(key), (str, type(None)))
@@ -625,7 +642,9 @@ def render_markdown(report: Report, *, detail: int = 2, json_url: str | None = N
     file_lists, candidate_lists = detail >= 2, detail >= 1
     # The URL in angle brackets, which a parenthesis cannot end, with anything
     # the brackets cannot hold (a space, < or >, a line break) percent-encoded.
-    destination = urllib.parse.quote(json_url or "", safe=":/?#[]@!$&'()*+,;=%~")
+    # An & becomes &amp;, since Markdown reads entities even in a destination.
+    destination = (urllib.parse.quote(json_url or "", safe=":/?#[]@!$&'()*+,;=%~")
+                   .replace("&", "&amp;"))
     json_report = (f"the [JSON report](<{destination}>)" if json_url
                    else "the JSON report" if json_written
                    else "the JSON report that `--json` writes")

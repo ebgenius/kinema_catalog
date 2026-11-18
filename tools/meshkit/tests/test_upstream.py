@@ -601,9 +601,13 @@ def test_every_comparison_uses_the_commits_resolved_once():
     gh.get = moving
     report = check(gh)
     assert (report.behind, report.fork_behind) == (3, 3)
-    compares = [p for p in asked if "/compare/" in p]
-    assert len(compares) == 3 and not any("b" * 40 in p or ":main" in p for p in compares)
+    # Exactly these three, each against the commit it read first.
+    assert sorted(p for p in asked if "/compare/" in p) == sorted([
+        compare_path(ME, MAKER), compare_path(PIN, MAKER), compare_path(PIN, ME)])
     assert asked.count("repos/maker/arm/branches/main") == 1
+    assert asked.count("repos/me/arm/branches/main") == 1
+    # And the link shows what was counted, not where the branch is now.
+    assert report.compare_url == f"https://github.com/me/arm/compare/{PIN}...{MAKER}"
 
 
 def test_a_branch_that_names_no_commit_is_a_note():
@@ -665,3 +669,79 @@ def test_an_unreadable_previous_report_is_named_not_a_traceback(tmp_path):
     previous.write_bytes(b"\xff\xfe not utf-8")
     with pytest.raises(SystemExit, match=f"cannot read {re.escape(str(previous))}"):
         main(["--root", str(tmp_path), "upstream", "--previous", str(previous)])
+
+
+# -------------------------------------------------------- sixth review round
+
+def test_a_branch_whose_commit_is_not_an_object_is_a_note():
+    gh = github()
+    gh.responses["repos/maker/arm/branches/main"] = {"name": "main", "commit": "unavailable"}
+    report = check(gh)
+    assert report.notes == ["could not be checked: maker/arm's branch 'main' names no commit"]
+
+
+@pytest.mark.parametrize("text", [
+    json.dumps({"generated": "x"}),                          # a JSON report with no state
+    json.dumps({"state": {}}),
+    json.dumps({"state": {"forks": {}}}),
+    f"<!-- {upstream.STATE_MARKER} {upstream.encode_state({})} -->",
+    f"<!-- {upstream.STATE_MARKER} {upstream.encode_state({'lists': {}})} -->",
+])
+def test_a_state_without_forks_and_lists_is_refused(text):
+    with pytest.raises(GitHubError, match="cannot be read"):
+        upstream.read_previous(text)
+
+
+def test_a_compressed_state_cut_short_is_an_error_not_a_traceback():
+    import base64
+    import gzip
+
+    packed = gzip.compress(json.dumps({"forks": {}, "lists": {}}).encode())[:-8]
+    marker = f"<!-- {upstream.STATE_MARKER} {base64.b64encode(packed).decode()} -->"
+    with pytest.raises(GitHubError, match="cannot be read"):
+        upstream.read_previous(marker)
+
+
+def test_a_footer_cut_short_or_not_at_the_end_is_an_error_not_a_first_run():
+    footer = (f"<!-- {upstream.STATE_MARKER} "
+              f"{upstream.encode_state({'forks': {}, 'lists': {}})} -->")
+    assert upstream.read_previous(f"# Upstream report\n\n{footer}\r\n\n") == {
+        "forks": {}, "lists": {}}
+    for text in (f"# Upstream report\n\n{footer[:-3]}",          # no closing -->
+                 f"# Upstream report\n\n{footer[:40]}",
+                 f"# Upstream report\n\n{footer}\nsomething added after it"):
+        with pytest.raises(GitHubError, match="cut short, or is not at its end"):
+            upstream.read_previous(text)
+    # No marker at all is still a first run.
+    assert upstream.read_previous("# a report from before there was any state") == {}
+
+
+def test_an_ampersand_in_the_json_url_is_kept_literal(tmp_path, monkeypatch):
+    report = _report_with_new_candidates(tmp_path, monkeypatch, 60)
+    markdown = upstream.render_markdown(report, json_url="https://example.com/r?a=1&copy=2")
+    assert "[JSON report](<https://example.com/r?a=1&amp;copy=2>)" in markdown
+
+
+def test_a_previous_path_that_is_a_directory_is_an_error(tmp_path):
+    from meshkit.cli import main
+
+    make_catalog(tmp_path)
+    with pytest.raises(SystemExit, match="cannot read"):
+        main(["--root", str(tmp_path), "upstream", "--previous", str(tmp_path)])
+
+
+def test_a_previous_path_not_there_yet_is_a_first_run(tmp_path, monkeypatch):
+    from meshkit.cli import main
+
+    make_catalog(tmp_path)
+    seen = {}
+
+    def run(root, github, **kwargs):     # stop before any request
+        seen.update(kwargs)
+        raise GitHubError("stop here")
+
+    monkeypatch.setattr(upstream, "token", lambda: "t")
+    monkeypatch.setattr(upstream, "run", run)
+    with pytest.raises(SystemExit, match="stop here"):
+        main(["--root", str(tmp_path), "upstream", "--previous", str(tmp_path / "none.md")])
+    assert seen["previous"] == {}

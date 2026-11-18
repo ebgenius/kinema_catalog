@@ -246,9 +246,14 @@ def cmd_upstream(args) -> int:
     if args.json and args.markdown and _same_file(args.json, args.markdown):
         raise SystemExit(f"meshkit: --json and --markdown are the same file: {args.json}")
     previous_text = ""
-    if args.previous and args.previous.is_file():   # no file yet: a first run
+    if args.previous:
+        # Only a file that is not there is a first run. Anything else that
+        # cannot be read (a directory, no permission) is an error: taken for a
+        # first run, it would reset the baseline and lose what is new.
         try:
             previous_text = args.previous.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            pass
         except (OSError, UnicodeDecodeError) as exc:
             raise SystemExit(f"meshkit: cannot read {args.previous}: {exc}") from None
     try:
