@@ -105,12 +105,16 @@ class GitHub:
         quote = lambda ref: urllib.parse.quote(ref, safe="/:")  # noqa: E731
         return self.get(f"repos/{repo}/compare/{quote(base)}...{quote(head)}?per_page=100")
 
-    def has_branch(self, repo: str, branch: str) -> bool:
+    def branch_sha(self, repo: str, branch: str) -> str | None:
+        """The commit a branch points at, or None when there is no such branch."""
         try:
-            self.get(f"repos/{repo}/branches/{urllib.parse.quote(branch, safe='')}")
+            found = self.get(f"repos/{repo}/branches/{urllib.parse.quote(branch, safe='')}")
         except NotFound:
-            return False
-        return True
+            return None
+        sha = (found.get("commit") or {}).get("sha") if isinstance(found, dict) else None
+        if not isinstance(sha, str):
+            raise GitHubError(f"{repo}'s branch {branch!r} names no commit")
+        return sha
 
     def file(self, repo: str, path: str) -> str:
         return self.get(f"repos/{repo}/contents/{urllib.parse.quote(path)}", raw=True)
@@ -268,15 +272,19 @@ def _check_fork(report: ForkReport, fork: Fork, github: GitHub, licences: list[s
         report.notes.append(f"upstream licence is {report.upstream_licence}; the catalog "
                             f"says {', '.join(sorted(set(licences)))}")
 
-    upstream_head = f"{report.upstream.split('/')[0]}:{fork.branch}"
-    fork_head = f"{fork.repo.split('/')[0]}:{fork.branch}"
     # A comparison answers 404 for a branch missing on either side, and for
     # histories with nothing in common: ask which before saying anything.
-    if not github.has_branch(report.upstream, fork.branch):
+    # Each branch is resolved to one commit, which every comparison below
+    # uses: a push between two of them would otherwise make them disagree.
+    upstream_sha = github.branch_sha(report.upstream, fork.branch)
+    if upstream_sha is None:
         report.notes.append(f"upstream has no branch {fork.branch!r} (its default is "
                             f"{report.upstream_default_branch!r})")
         return
-    fork_has_branch = github.has_branch(fork.repo, fork.branch)
+    fork_sha = github.branch_sha(fork.repo, fork.branch)
+    fork_has_branch = fork_sha is not None
+    upstream_head = f"{report.upstream.split('/')[0]}:{upstream_sha}"
+    fork_head = f"{fork.repo.split('/')[0]}:{fork_sha}"
     if not fork_has_branch:
         report.notes.append(f"the fork has no branch {fork.branch!r}: restore it, or "
                             "correct .gitmodules")
@@ -517,12 +525,15 @@ def read_previous(text: str) -> dict:
     # JSON first: its state is a field, and a marker inside an upstream file
     # name or a list's label is only text in it.
     if text.lstrip().startswith("{"):
+        # A JSON report cut short is an error, not a first run: a first run
+        # records today's candidates as the baseline, and loses what is new.
         try:
             document = json.loads(text)
-        except json.JSONDecodeError:
-            document = None
-        if isinstance(document, dict):
-            return document.get("state", {})
+        except json.JSONDecodeError as exc:
+            raise GitHubError(f"the previous report is not valid JSON: {exc}") from None
+        if not isinstance(document, dict):
+            raise GitHubError("the previous report is JSON, but not a report")
+        return _checked_state(document.get("state", {}))
     # The last marker: this report writes its own at the very end, and text
     # from upstream (a file name, a list's label) could carry an earlier one.
     matches = list(re.finditer(
@@ -530,12 +541,38 @@ def read_previous(text: str) -> dict:
     match = matches[-1] if matches else None
     if match:
         try:
-            return json.loads(gzip.decompress(base64.b64decode("".join(match.group(1).split()))))
+            state = json.loads(gzip.decompress(base64.b64decode("".join(match.group(1).split()))))
         except (ValueError, OSError) as exc:
             raise GitHubError(f"the previous report's state cannot be read: {exc}") from None
+        return _checked_state(state)
     # A report from before there was any state, or not a report at all: start
     # again, so every list reads as a new baseline.
     return {}
+
+
+def _checked_state(state) -> dict:
+    """The state, refused here if it is not the shape ``run`` reads.
+
+    Every fork is a mapping of strings (or null) and every list a list of
+    keys; anything else would fail halfway through a run, or be read wrongly.
+    """
+    def refuse(what: str) -> GitHubError:
+        return GitHubError(f"the previous report's state cannot be read: {what}")
+
+    if not isinstance(state, dict):
+        raise refuse("it is not an object")
+    forks, lists = state.get("forks", {}), state.get("lists", {})
+    if not isinstance(forks, dict) or not all(
+            isinstance(entry, dict)
+            and all(isinstance(entry.get(key), (str, type(None)))
+                    for key in ("upstream", "default_branch", "licence"))
+            for entry in forks.values()):
+        raise refuse("its forks are not upstream, branch and licence names")
+    if not isinstance(lists, dict) or not all(
+            isinstance(keys, list) and all(isinstance(key, str) for key in keys)
+            for keys in lists.values()):
+        raise refuse("its lists are not lists of names")
+    return state
 
 
 def _inert(text: str) -> str:
@@ -553,11 +590,19 @@ def _code(name: str) -> str:
 
     Git allows backticks and line breaks in a name. The delimiter is one
     backtick longer than the longest run inside, and line breaks are shown,
-    not kept, so the name can never end the span or start a block.
+    not kept, so the name can never end the span or start a block. A
+    backslash is doubled first, so a name with a line break and one with a
+    literal ``\\n`` stay distinct.
+
+    A span strips one space from each end when both ends have one, so a name
+    that touches a backtick or has a space at both ends gets a space of
+    padding on each side, which the strip removes.
     """
-    name = name.replace("\r", "\\r").replace("\n", "\\n")
+    name = name.replace("\\", "\\\\").replace("\r", "\\r").replace("\n", "\\n")
     fence = "`" * (max((len(run) for run in re.findall(r"`+", name)), default=0) + 1)
-    pad = " " if name.startswith("`") or name.endswith("`") else ""
+    touches = name.startswith("`") or name.endswith("`")
+    spaced = name.startswith(" ") and name.endswith(" ") and name.strip(" ")
+    pad = " " if touches or spaced else ""
     return f"{fence}{pad}{name}{pad}{fence}"
 
 
@@ -578,7 +623,10 @@ def render_markdown(report: Report, *, detail: int = 2, json_url: str | None = N
     written, and otherwise in the one ``--json`` would write.
     """
     file_lists, candidate_lists = detail >= 2, detail >= 1
-    json_report = (f"the [JSON report]({json_url})" if json_url
+    # The URL in angle brackets, which a parenthesis cannot end, with anything
+    # the brackets cannot hold (a space, < or >, a line break) percent-encoded.
+    destination = urllib.parse.quote(json_url or "", safe=":/?#[]@!$&'()*+,;=%~")
+    json_report = (f"the [JSON report](<{destination}>)" if json_url
                    else "the JSON report" if json_written
                    else "the JSON report that `--json` writes")
     forks = report.forks

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import tempfile
 from collections import Counter
@@ -241,9 +242,17 @@ def cmd_upstream(args) -> int:
     from meshkit.catalog import CatalogError
 
     root = _root(args)
+    # One file for both would leave the Markdown pointing at a JSON it overwrote.
+    if args.json and args.markdown and _same_file(args.json, args.markdown):
+        raise SystemExit(f"meshkit: --json and --markdown are the same file: {args.json}")
+    previous_text = ""
+    if args.previous and args.previous.is_file():   # no file yet: a first run
+        try:
+            previous_text = args.previous.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            raise SystemExit(f"meshkit: cannot read {args.previous}: {exc}") from None
     try:
-        previous = (upstream.read_previous(args.previous.read_text(encoding="utf-8"))
-                    if args.previous and args.previous.is_file() else {})
+        previous = upstream.read_previous(previous_text)
         report = upstream.run(root, upstream.GitHub(upstream.token()), only=args.fork,
                               previous=previous, lists=not args.no_lists)
     except (upstream.GitHubError, CatalogError) as exc:
@@ -263,6 +272,16 @@ def cmd_upstream(args) -> int:
     else:
         sys.stdout.write(markdown)
     return 0
+
+
+def _same_file(a: Path, b: Path) -> bool:
+    """Whether two paths name one file: by spelling, or as links to it."""
+    if a.resolve() == b.resolve():
+        return True
+    try:
+        return a.exists() and b.exists() and os.path.samefile(a, b)
+    except OSError:
+        return False
 
 
 # ------------------------------------------------------------------------- main

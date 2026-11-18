@@ -9,6 +9,9 @@ from meshkit import upstream
 from meshkit.upstream import Fork, GitHubError, NotFound, Source
 
 PIN = "a" * 40
+FORK_SHA = "f" * 40          # where the fork's branch is
+UPSTREAM_SHA = "e" * 40      # where upstream's is
+ME, MAKER = f"me:{FORK_SHA}", f"maker:{UPSTREAM_SHA}"
 
 
 class FakeGitHub:
@@ -29,7 +32,7 @@ class FakeGitHub:
     repo = upstream.GitHub.repo
     compare = upstream.GitHub.compare
     file = upstream.GitHub.file
-    has_branch = upstream.GitHub.has_branch
+    branch_sha = upstream.GitHub.branch_sha
 
 
 def compare_path(base, head, repo="me/arm"):
@@ -42,12 +45,12 @@ def github(*, behind=3, own=0, fork_behind=3, fork_own=0, pin_behind_fork=0, pin
                         "archived": False, "license": {"spdx_id": "BSD-3-Clause"}}
     return FakeGitHub({
         "repos/me/arm": {"full_name": "me/arm", "parent": parent},
-        "repos/me/arm/branches/main": {"name": "main"},
-        "repos/maker/arm/branches/main": {"name": "main"},
-        compare_path("me:main", "maker:main"): {"ahead_by": fork_behind, "behind_by": fork_own},
-        compare_path(PIN, "maker:main"): {"ahead_by": behind, "behind_by": own,
+        "repos/me/arm/branches/main": {"name": "main", "commit": {"sha": FORK_SHA}},
+        "repos/maker/arm/branches/main": {"name": "main", "commit": {"sha": UPSTREAM_SHA}},
+        compare_path(ME, MAKER): {"ahead_by": fork_behind, "behind_by": fork_own},
+        compare_path(PIN, MAKER): {"ahead_by": behind, "behind_by": own,
                                           "files": [dict(f) for f in files]},
-        compare_path(PIN, "me:main"): {"ahead_by": pin_behind_fork, "behind_by": pin_only},
+        compare_path(PIN, ME): {"ahead_by": pin_behind_fork, "behind_by": pin_only},
     })
 
 
@@ -142,7 +145,7 @@ def test_a_licence_the_catalog_does_not_name_is_a_note():
 def test_an_upstream_without_the_tracked_branch_is_a_note():
     gh = github()
     del gh.responses["repos/maker/arm/branches/main"]
-    del gh.responses[compare_path("me:main", "maker:main")]
+    del gh.responses[compare_path(ME, MAKER)]
     report = check(gh)
     assert report.notes == ["upstream has no branch 'main' (its default is 'main')"]
     assert report.behind is None and not report.level
@@ -152,8 +155,8 @@ def test_a_fork_without_the_tracked_branch_is_its_own_note_and_the_pin_is_still_
     # The same 404 from the comparison, but the missing branch is the fork's.
     gh = github(behind=3)
     del gh.responses["repos/me/arm/branches/main"]
-    del gh.responses[compare_path("me:main", "maker:main")]
-    del gh.responses[compare_path(PIN, "me:main")]
+    del gh.responses[compare_path(ME, MAKER)]
+    del gh.responses[compare_path(PIN, ME)]
     report = check(gh)
     assert report.notes == ["the fork has no branch 'main': restore it, or correct .gitmodules"]
     assert report.behind == 3 and report.fork_behind is None
@@ -162,8 +165,8 @@ def test_a_fork_without_the_tracked_branch_is_its_own_note_and_the_pin_is_still_
 
 def test_branches_with_no_shared_history_are_named_as_such():
     gh = github(behind=0)
-    del gh.responses[compare_path("me:main", "maker:main")]
-    del gh.responses[compare_path(PIN, "me:main")]
+    del gh.responses[compare_path(ME, MAKER)]
+    del gh.responses[compare_path(PIN, ME)]
     report = check(gh)
     # The pin shares upstream's history, so it shares none with the fork's either.
     assert report.notes == ["the fork's 'main' and upstream's share no history",
@@ -436,7 +439,7 @@ def test_a_pin_with_no_history_in_common_with_the_fork_is_a_note():
     # Both compare with upstream, but not with each other: a bump could drop
     # whatever the pin holds, so it must not pass as a plain bump.
     gh = github(behind=3, pin_behind_fork=3)
-    del gh.responses[compare_path(PIN, "me:main")]
+    del gh.responses[compare_path(PIN, ME)]
     report = check(gh)
     assert report.notes == [f"the pin {PIN[:12]} and the fork's 'main' share no history"]
     assert "review" in report.actions
@@ -478,13 +481,13 @@ def test_labels_from_a_list_are_inert_in_the_issue(tmp_path, monkeypatch):
 def test_what_the_issue_leaves_out_links_to_the_published_json(tmp_path, monkeypatch):
     url = "https://github.com/me/catalog/actions/runs/1"
     report = _report_with_new_candidates(tmp_path, monkeypatch, 60)
-    assert f"and 10 more, in the [JSON report]({url})" in upstream.render_markdown(
+    assert f"and 10 more, in the [JSON report](<{url}>)" in upstream.render_markdown(
         report, json_url=url)
     files = [{"filename": f"meshes/{i}.stl", "status": "modified"} for i in range(30)]
     report = upstream.run(tmp_path, github(files=files), lists=False, workers=1)
     monkeypatch.setattr(upstream, "BODY_LIMIT",
                         len(upstream.render_markdown(report, json_url=url)) - 1)
-    assert (f"File names are left out to fit the issue; the [JSON report]({url}) has them."
+    assert (f"File names are left out to fit the issue; the [JSON report](<{url}>) has them."
             in upstream.render_markdown(report, json_url=url))
 
 
@@ -498,7 +501,7 @@ def test_files_past_the_limit_say_where_the_rest_are(tmp_path, monkeypatch):
     monkeypatch.setattr(upstream, "_pin", lambda root, path: PIN)
     files = [{"filename": f"meshes/{i}.stl", "status": "modified"} for i in range(30)]
     report = upstream.run(tmp_path, github(files=files), lists=False, workers=1)
-    assert f"- and 5 more, in the [JSON report]({URL})" in upstream.render_markdown(
+    assert f"- and 5 more, in the [JSON report](<{URL}>)" in upstream.render_markdown(
         report, json_url=URL)
 
 
@@ -511,7 +514,7 @@ def test_candidates_left_out_to_fit_say_where_they_are(tmp_path, monkeypatch):
                         len(upstream.render_markdown(report, detail=0, json_url=url)))
     markdown = upstream.render_markdown(report, json_url=url)
     assert "new/repo000" not in markdown
-    assert (f"Candidate names are left out to fit the issue; the [JSON report]({url}) "
+    assert (f"Candidate names are left out to fit the issue; the [JSON report](<{url}>) "
             "has them.") in markdown
 
 
@@ -534,22 +537,37 @@ def test_a_json_report_is_read_by_its_state_not_by_a_marker_inside_it(tmp_path, 
     assert upstream.read_previous(as_json) == report.state
 
 
+def _shown(code):
+    """What GitHub shows for an inline code span, read back to the name."""
+    fence = re.match(r"`+", code).group()
+    assert code.endswith(fence)
+    inner = code[len(fence):-len(fence)]
+    # The span ends at the first backtick run as long as its opener.
+    assert fence not in inner and not inner.startswith("`") and not inner.endswith("`")
+    # GFM strips one space from each end when both ends have one.
+    if inner.startswith(" ") and inner.endswith(" ") and inner.strip(" "):
+        inner = inner[1:-1]
+    return re.sub(r"\\(.)", lambda m: {"n": "\n", "r": "\r"}.get(m[1], m[1]), inner)
+
+
 @pytest.mark.parametrize("name", [
     "urdf/a`b.urdf",
     "urdf/`x`.urdf",
     "urdf/a``b`.urdf",
     "urdf/x`\n\n<!-- hidden.urdf",
+    " urdf/spaced.urdf ",
+    "urdf/a\\nb.urdf",          # a backslash and an n, not a line break
+    "urdf/a\nb.urdf",
+    "urdf/a\r\nb\\.urdf",
 ])
 def test_upstream_file_names_stay_inside_their_code_span(name):
-    # A span ends at the first backtick run as long as its opener: none may be
-    # inside, and the name may not run into either end.
     code = upstream._code(name)
-    assert "\n" not in code
-    fence = re.match(r"`+", code).group()
-    inner = code[len(fence):-len(fence)]
-    assert code.endswith(fence) and fence not in inner
-    assert not inner.startswith("`") and not inner.endswith("`")
-    assert inner.strip(" ").replace("\\n", "\n") == name
+    assert "\n" not in code and "\r" not in code
+    assert _shown(code) == name
+
+
+def test_a_line_break_and_a_backslash_n_are_told_apart():
+    assert upstream._code("a\nb") != upstream._code("a\\nb")
 
 
 def test_a_file_name_cannot_hide_the_rest_of_the_issue(tmp_path, monkeypatch):
@@ -562,3 +580,88 @@ def test_a_file_name_cannot_hide_the_rest_of_the_issue(tmp_path, monkeypatch):
     assert report.forks[0].new_robots == [name]
     assert "\n<!-- hidden" not in markdown
     assert "- ``urdf/x`\\n\\n<!-- hidden.urdf``\n" in markdown
+
+
+# -------------------------------------------------------- fifth review round
+
+def test_every_comparison_uses_the_commits_resolved_once():
+    # Upstream moves on while the fork is checked: every comparison must
+    # still be against the commit read first, or they could disagree.
+    gh = github()
+    asked = []
+    get = gh.get
+
+    def moving(path, *, raw=False):
+        asked.append(path)
+        value = get(path, raw=raw)
+        if path == "repos/maker/arm/branches/main":
+            gh.responses[path] = {"name": "main", "commit": {"sha": "b" * 40}}
+        return value
+
+    gh.get = moving
+    report = check(gh)
+    assert (report.behind, report.fork_behind) == (3, 3)
+    compares = [p for p in asked if "/compare/" in p]
+    assert len(compares) == 3 and not any("b" * 40 in p or ":main" in p for p in compares)
+    assert asked.count("repos/maker/arm/branches/main") == 1
+
+
+def test_a_branch_that_names_no_commit_is_a_note():
+    gh = github()
+    gh.responses["repos/maker/arm/branches/main"] = {"name": "main"}
+    report = check(gh)
+    assert report.notes == ["could not be checked: maker/arm's branch 'main' names no commit"]
+
+
+@pytest.mark.parametrize("text", [
+    '{"generated": "x", "state": {"forks": {}, "li',
+    '{"generated": "x", "state": ',
+    '  {"forks": [',
+])
+def test_a_json_report_cut_short_is_an_error_not_a_first_run(text):
+    with pytest.raises(GitHubError, match="not valid JSON"):
+        upstream.read_previous(text)
+
+
+@pytest.mark.parametrize("state", [
+    {"lists": None},
+    {"forks": []},
+    {"forks": {"arm": {"upstream": 3}}},
+    {"forks": {"arm": "maker/arm"}},
+    {"lists": {"one": "a/b"}},
+    {"lists": {"one": [1]}},
+    [],
+])
+def test_a_state_of_the_wrong_shape_is_refused_before_the_run(state):
+    with pytest.raises(GitHubError, match="cannot be read"):
+        upstream.read_previous(json.dumps({"state": state}))
+    marker = f"<!-- {upstream.STATE_MARKER} {upstream.encode_state(state)} -->"
+    with pytest.raises(GitHubError, match="cannot be read"):
+        upstream.read_previous(marker)
+
+
+def test_a_json_url_with_a_parenthesis_is_linked_whole(tmp_path, monkeypatch):
+    report = _report_with_new_candidates(tmp_path, monkeypatch, 60)
+    markdown = upstream.render_markdown(report, json_url="https://example.com/a (1)/report).json")
+    assert "[JSON report](<https://example.com/a%20(1)/report).json>)" in markdown
+
+
+def test_json_and_markdown_on_one_file_is_refused(tmp_path, capsys):
+    from meshkit.cli import main
+
+    make_catalog(tmp_path)
+    out = tmp_path / "report.out"
+    with pytest.raises(SystemExit, match="are the same file"):
+        main(["--root", str(tmp_path), "upstream", "--json", str(out),
+              "--markdown", str(tmp_path / "." / "report.out")])
+    assert not out.exists()
+
+
+def test_an_unreadable_previous_report_is_named_not_a_traceback(tmp_path):
+    from meshkit.cli import main
+
+    make_catalog(tmp_path)
+    previous = tmp_path / "previous.md"
+    previous.write_bytes(b"\xff\xfe not utf-8")
+    with pytest.raises(SystemExit, match=f"cannot read {re.escape(str(previous))}"):
+        main(["--root", str(tmp_path), "upstream", "--previous", str(previous)])
