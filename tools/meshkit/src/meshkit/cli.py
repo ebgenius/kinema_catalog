@@ -252,7 +252,8 @@ def cmd_upstream(args) -> int:
     if args.json:
         args.json.write_text(json.dumps(report.as_json(), indent=2) + "\n", encoding="utf-8")
     try:
-        markdown = upstream.render_markdown(report, json_url=args.json_url)
+        markdown = upstream.render_markdown(report, json_url=args.json_url,
+                                            json_written=bool(args.json))
     except upstream.GitHubError as exc:
         raise SystemExit(f"meshkit: {exc}") from None
     if args.markdown:

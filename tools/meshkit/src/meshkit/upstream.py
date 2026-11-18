@@ -513,7 +513,16 @@ def encode_state(state: dict) -> str:
 
 
 def read_previous(text: str) -> dict:
-    """The state a previous report carries: from its Markdown, or its JSON."""
+    """The state a previous report carries: from its JSON, or its Markdown."""
+    # JSON first: its state is a field, and a marker inside an upstream file
+    # name or a list's label is only text in it.
+    if text.lstrip().startswith("{"):
+        try:
+            document = json.loads(text)
+        except json.JSONDecodeError:
+            document = None
+        if isinstance(document, dict):
+            return document.get("state", {})
     # The last marker: this report writes its own at the very end, and text
     # from upstream (a file name, a list's label) could carry an earlier one.
     matches = list(re.finditer(
@@ -524,15 +533,9 @@ def read_previous(text: str) -> dict:
             return json.loads(gzip.decompress(base64.b64decode("".join(match.group(1).split()))))
         except (ValueError, OSError) as exc:
             raise GitHubError(f"the previous report's state cannot be read: {exc}") from None
-    if not text.strip():
-        return {}
-    try:
-        document = json.loads(text)
-    except json.JSONDecodeError:
-        # A report from before there was any state, or not a report at all:
-        # start again, so every list reads as a new baseline.
-        return {}
-    return document.get("state", {}) if isinstance(document, dict) else {}
+    # A report from before there was any state, or not a report at all: start
+    # again, so every list reads as a new baseline.
+    return {}
 
 
 def _inert(text: str) -> str:
@@ -545,19 +548,39 @@ def _inert(text: str) -> str:
             .replace("@", "&#64;").replace("[", "&#91;").replace("]", "&#93;"))
 
 
+def _code(name: str) -> str:
+    """A file name from upstream as inline code it cannot break out of.
+
+    Git allows backticks and line breaks in a name. The delimiter is one
+    backtick longer than the longest run inside, and line breaks are shown,
+    not kept, so the name can never end the span or start a block.
+    """
+    name = name.replace("\r", "\\r").replace("\n", "\\n")
+    fence = "`" * (max((len(run) for run in re.findall(r"`+", name)), default=0) + 1)
+    pad = " " if name.startswith("`") or name.endswith("`") else ""
+    return f"{fence}{pad}{name}{pad}{fence}"
+
+
 def _count(value: int | None) -> str:
     return "?" if value is None else str(value)
 
 
-def render_markdown(report: Report, *, detail: int = 2, json_url: str | None = None) -> str:
+def render_markdown(report: Report, *, detail: int = 2, json_url: str | None = None,
+                    json_written: bool = False) -> str:
     """The report as Markdown, within BODY_LIMIT.
 
     ``detail`` 2 names changed files and new candidates; 1 drops the files; 0
     also drops the candidates' names, keeping their counts. Each level is
     tried in turn until the body fits. The state at the end is never cut.
+
+    Wherever names are left out, the report says where they are: at
+    ``json_url`` when the JSON is published, in the JSON report when one was
+    written, and otherwise in the one ``--json`` would write.
     """
     file_lists, candidate_lists = detail >= 2, detail >= 1
-    json_report = f"the [JSON report]({json_url})" if json_url else "the JSON report"
+    json_report = (f"the [JSON report]({json_url})" if json_url
+                   else "the JSON report" if json_written
+                   else "the JSON report that `--json` writes")
     forks = report.forks
     level = sum(f.level for f in forks)
     lines = [
@@ -603,12 +626,12 @@ def render_markdown(report: Report, *, detail: int = 2, json_url: str | None = N
                       f"{total} file(s)</summary>", ""]
             if f.new_robots:
                 lines += ["New robot files, not in the index:", ""]
-                lines += [f"- `{name}`" for name in f.new_robots] + [""]
+                lines += [f"- {_code(name)}" for name in f.new_robots] + [""]
             for category, files in sorted(f.changed.items()):
                 lines += [f"{category.capitalize()} ({len(files)}):", ""]
-                lines += [f"- `{name}`" for name in files[:LISTED_FILES]]
+                lines += [f"- {_code(name)}" for name in files[:LISTED_FILES]]
                 if len(files) > LISTED_FILES:
-                    lines.append(f"- and {len(files) - LISTED_FILES} more")
+                    lines.append(f"- and {len(files) - LISTED_FILES} more, in {json_report}")
                 lines.append("")
             if f.other_changed:
                 lines += [f"And {f.other_changed} other file(s).", ""]
@@ -616,6 +639,9 @@ def render_markdown(report: Report, *, detail: int = 2, json_url: str | None = N
 
     if report.lists:
         lines += ["", "## New in the lists the catalog draws from", ""]
+        if not candidate_lists and any(item.new for item in report.lists):
+            lines += [f"Candidate names are left out to fit the issue; {json_report} "
+                      "has them.", ""]
         for item in report.lists:
             source = f"[{item.name}](https://github.com/{item.repo})"
             if item.error:
@@ -657,6 +683,7 @@ def render_markdown(report: Report, *, detail: int = 2, json_url: str | None = N
     if len(text) <= BODY_LIMIT:
         return text
     if detail > 0:
-        return render_markdown(report, detail=detail - 1, json_url=json_url)
+        return render_markdown(report, detail=detail - 1, json_url=json_url,
+                               json_written=json_written)
     raise GitHubError(f"the report is {len(text)} characters even without file or candidate "
                       f"names, over the {BODY_LIMIT} an issue can hold")

@@ -1,6 +1,7 @@
 """meshkit upstream, against a GitHub that answers from a dict."""
 
 import json
+import re
 
 import pytest
 
@@ -485,3 +486,79 @@ def test_what_the_issue_leaves_out_links_to_the_published_json(tmp_path, monkeyp
                         len(upstream.render_markdown(report, json_url=url)) - 1)
     assert (f"File names are left out to fit the issue; the [JSON report]({url}) has them."
             in upstream.render_markdown(report, json_url=url))
+
+
+# ------------------------------------------------------- fourth review round
+
+URL = "https://github.com/me/catalog/actions/runs/1"
+
+
+def test_files_past_the_limit_say_where_the_rest_are(tmp_path, monkeypatch):
+    make_catalog(tmp_path)
+    monkeypatch.setattr(upstream, "_pin", lambda root, path: PIN)
+    files = [{"filename": f"meshes/{i}.stl", "status": "modified"} for i in range(30)]
+    report = upstream.run(tmp_path, github(files=files), lists=False, workers=1)
+    assert f"- and 5 more, in the [JSON report]({URL})" in upstream.render_markdown(
+        report, json_url=URL)
+
+
+def test_candidates_left_out_to_fit_say_where_they_are(tmp_path, monkeypatch):
+    # No fork changed, so the note about file names never appears: the
+    # candidates need their own.
+    url = URL
+    report = _report_with_new_candidates(tmp_path, monkeypatch, 40)
+    monkeypatch.setattr(upstream, "BODY_LIMIT",
+                        len(upstream.render_markdown(report, detail=0, json_url=url)))
+    markdown = upstream.render_markdown(report, json_url=url)
+    assert "new/repo000" not in markdown
+    assert (f"Candidate names are left out to fit the issue; the [JSON report]({url}) "
+            "has them.") in markdown
+
+
+def test_the_json_report_is_promised_only_as_it_exists(tmp_path, monkeypatch):
+    report = _report_with_new_candidates(tmp_path, monkeypatch, 60)
+    assert "and 10 more, in the JSON report that `--json` writes" in (
+        upstream.render_markdown(report))
+    written = upstream.render_markdown(report, json_written=True)
+    assert "and 10 more, in the JSON report\n" in written and "`--json`" not in written
+
+
+def test_a_json_report_is_read_by_its_state_not_by_a_marker_inside_it(tmp_path, monkeypatch):
+    make_catalog(tmp_path)
+    monkeypatch.setattr(upstream, "_pin", lambda root, path: PIN)
+    forged = f"<!-- {upstream.STATE_MARKER} bm90IGd6aXA= -->"
+    files = [{"filename": f"urdf/{forged}.urdf", "status": "added"}]
+    report = upstream.run(tmp_path, github(files=files), lists=False, workers=1)
+    as_json = json.dumps(report.as_json())
+    assert forged in as_json
+    assert upstream.read_previous(as_json) == report.state
+
+
+@pytest.mark.parametrize("name", [
+    "urdf/a`b.urdf",
+    "urdf/`x`.urdf",
+    "urdf/a``b`.urdf",
+    "urdf/x`\n\n<!-- hidden.urdf",
+])
+def test_upstream_file_names_stay_inside_their_code_span(name):
+    # A span ends at the first backtick run as long as its opener: none may be
+    # inside, and the name may not run into either end.
+    code = upstream._code(name)
+    assert "\n" not in code
+    fence = re.match(r"`+", code).group()
+    inner = code[len(fence):-len(fence)]
+    assert code.endswith(fence) and fence not in inner
+    assert not inner.startswith("`") and not inner.endswith("`")
+    assert inner.strip(" ").replace("\\n", "\n") == name
+
+
+def test_a_file_name_cannot_hide_the_rest_of_the_issue(tmp_path, monkeypatch):
+    make_catalog(tmp_path)
+    monkeypatch.setattr(upstream, "_pin", lambda root, path: PIN)
+    name = "urdf/x`\n\n<!-- hidden.urdf"
+    report = upstream.run(tmp_path, github(files=[{"filename": name, "status": "added"}]),
+                          lists=False, workers=1)
+    markdown = upstream.render_markdown(report)
+    assert report.forks[0].new_robots == [name]
+    assert "\n<!-- hidden" not in markdown
+    assert "- ``urdf/x`\\n\\n<!-- hidden.urdf``\n" in markdown

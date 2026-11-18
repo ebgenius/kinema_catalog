@@ -51,7 +51,8 @@ jobs:
         run: |
           uv run --no-dev meshkit --root "$GITHUB_WORKSPACE" upstream \
             --previous "$RUNNER_TEMP/previous.md" \
-            --markdown "$RUNNER_TEMP/report.md" --json "$RUNNER_TEMP/report.json"             --json-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            --markdown "$RUNNER_TEMP/report.md" --json "$RUNNER_TEMP/report.json" \
+            --json-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           cat "$RUNNER_TEMP/report.md" >> "$GITHUB_STEP_SUMMARY"
 
       # Everything the issue leaves out (file names past 25 per kind, candidates
