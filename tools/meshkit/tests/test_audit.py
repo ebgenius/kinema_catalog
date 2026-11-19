@@ -361,6 +361,159 @@ def test_the_top_table_has_one_row_per_package():
         robot("hand/urdf/hand.urdf", 70, "hand")])
     text = audit.render_markdown(audit.Audit("now", dict(audit.WEIGHTS), [report]))
     top = text.split("## The 2 best-scoring candidates")[1].split("## Every candidate")[0]
-    assert "| 90 | arm | `arm/xacro/robot.xacro` | 2 |" in top
-    assert "| 70 | hand | `hand/urdf/hand.urdf` | 1 |" in top
+    assert "| 90 | arm | `arm/xacro/robot.xacro` | 0 | 2 |" in top
+    assert "| 70 | hand | `hand/urdf/hand.urdf` | 0 | 1 |" in top
     assert "ros2_control" not in top
+
+
+def test_a_package_row_is_its_complete_robot_not_a_component_that_ties():
+    def robot(path, score, links, flattened=True):
+        return {"path": path, "kind": "xacro", "score": score, "package": "g1",
+                "links": links, "flattened": flattened, "parts": {k: 1.0 for k in audit.WEIGHTS},
+                "error": None, "licence": "MIT", "formats": {}, "triangles": 1}
+    report = audit.RepoReport("x/y", "x/y", "", ["s"], None, "MIT", False, robots=[
+        robot("g1/xacro/hand.xacro", 100, 2),
+        robot("g1/urdf/unitree_g1_full.urdf", 98, 39),
+        robot("g1/xacro/broken.xacro", 25, 0, flattened=False)])
+    text = audit.render_markdown(audit.Audit("now", dict(audit.WEIGHTS), [report]))
+    top = text.split("## The 1 best-scoring candidates")[1].split("## Every candidate")[0]
+    assert "| 98 | g1 | `g1/urdf/unitree_g1_full.urdf` | 39 | 3 |" in top
+
+
+# ------------------------------------------------------------ review round 1
+
+def test_mjcf_defaults_classes_and_childclass_are_applied(tmp_path):
+    write(tmp_path / "assets" / "a.obj", "v 0 0 0\nvn 0 0 1\nf 1 1 1\n")
+    model = write(tmp_path / "arm.xml", (
+        '<mujoco model="arm"><compiler meshdir="assets"/><asset><mesh file="a.obj"/></asset>'
+        '<default><joint range="-1 1"/>'
+        '<default class="visual"><geom type="mesh" mesh="a" material="m"/></default>'
+        '<default class="free"><joint limited="false"/></default></default>'
+        '<worldbody><body name="b" childclass="visual"><joint type="hinge"/><geom/>'
+        '<body name="c"><joint type="hinge" class="free"/><geom class="main" type="box"/>'
+        '</body></body></worldbody></mujoco>'))
+    result = audit.measure(model, "mjcf", {})
+    # b's joint takes main's range; c's is unlimited by its class.
+    assert result["moving_joints"] == 2 and result["limited_share"] == 0.5
+    # b's bare geom is a coloured mesh by childclass; c's box is main's: no colour.
+    assert result["formats"] == {"obj": 1} and result["mesh_visuals"] == 1
+    assert result["materials_share"] == 0.25 and result["flattened"]
+
+
+def test_an_mjcf_include_that_is_missing_or_repeated_is_an_error(tmp_path):
+    write(tmp_path / "body.xml", '<mujoco><worldbody><body name="b"><geom type="box"/>'
+          "</body></worldbody></mujoco>")
+    missing = write(tmp_path / "a.xml", '<mujoco><include file="body.xml"/>'
+                    '<include file="gone.xml"/></mujoco>')
+    result = audit.measure(missing, "mjcf", {})
+    assert not result["flattened"] and "gone.xml is not there" in result["error"]
+    twice = write(tmp_path / "b.xml", '<mujoco><include file="body.xml"/>'
+                  '<include file="body.xml"/></mujoco>')
+    assert "included twice" in audit.measure(twice, "mjcf", {})["error"]
+
+
+def test_an_include_is_found_beside_the_main_model_too(tmp_path):
+    write(tmp_path / "parts" / "arm.xml", '<mujoco><include file="parts/hand.xml"/></mujoco>')
+    write(tmp_path / "parts" / "hand.xml", '<mujoco><worldbody><body name="h"><geom '
+          'type="box"/></body></worldbody></mujoco>')
+    scene = write(tmp_path / "scene.xml", '<mujoco><include file="parts/arm.xml"/></mujoco>')
+    assert audit.measure(scene, "mjcf", {})["flattened"]
+
+
+def test_a_robot_whose_mesh_is_left_in_git_lfs_does_not_flatten(tmp_path):
+    write(tmp_path / "meshes" / "a.stl", "version https://git-lfs.github.com/spec/v1\n"
+          "oid sha256:00\nsize 99\n")
+    path = write(tmp_path / "a.urdf", urdf(link("a", "meshes/a.stl", mass=1)))
+    result = audit.measure(path, "urdf", {})
+    assert not result["flattened"]
+    assert result["error"] == "1 visual mesh file(s) unreadable: in Git LFS, not fetched"
+
+
+def test_gltf_strips_and_fans_count_and_its_buffers_weigh(tmp_path):
+    write(tmp_path / "a.bin", b"\0" * 5000)
+    document = {"accessors": [{"count": 12}, {"count": 10}, {"count": 7}, {"count": 4}],
+                "buffers": [{"uri": "a.bin"}, {"uri": "data:application/octet-stream;base64,"}],
+                "meshes": [{"primitives": [
+                    {"attributes": {"POSITION": 0, "NORMAL": 0}},             # 4 triangles
+                    {"attributes": {"POSITION": 1, "NORMAL": 1}, "mode": 5},  # strip: 8
+                    {"attributes": {"POSITION": 2, "NORMAL": 2}, "mode": 6},  # fan: 5
+                    {"attributes": {"POSITION": 3}, "mode": 1}]}]}            # lines: none
+    path = write(tmp_path / "a.gltf", json.dumps(document))
+    facts = audit.mesh_facts(path)
+    assert facts["triangles"] == 17 and facts["normals"] is True
+    assert facts["bytes"] == path.stat().st_size + 5000
+    write(tmp_path / "b.gltf", json.dumps({"buffers": [{"uri": "gone.bin"}]}))
+    assert "gone.bin" in audit.mesh_facts(tmp_path / "b.gltf")["error"]
+
+
+def test_meshes_are_streamed_and_nothing_split_between_chunks_is_lost(tmp_path, monkeypatch):
+    monkeypatch.setattr(audit, "_CHUNK", 7)
+    dae = audit.mesh_facts(write(tmp_path / "a.dae", '<COLLADA><material id="m"/>'
+                                 + '<triangles count="5"><input semantic="NORMAL"/></triangles>'
+                                 * 3 + "</COLLADA>"))
+    assert (dae["triangles"], dae["normals"], dae["materials"]) == (15, True, True)
+    stl = audit.mesh_facts(write(tmp_path / "b.stl", "solid x\n" + "facet normal 0 0 1\n"
+                                 "outer loop\nendloop\nendfacet\n" * 4 + "endsolid x\n"))
+    assert stl["triangles"] == 4
+
+
+def test_the_cache_never_clears_a_folder_it_did_not_make(tmp_path):
+    mine = write(tmp_path / "x__y" / "notes.txt", "keep me")
+    with pytest.raises(RuntimeError, match="not a git clone"):
+        audit.fetch("x/y", tmp_path, update=False)
+    assert mine.read_text() == "keep me"
+
+
+def test_the_cache_never_resets_a_clone_of_something_else(tmp_path):
+    import subprocess
+
+    dest = tmp_path / "x__y"
+    dest.mkdir()
+    subprocess.run(["git", "init", "-q", str(dest)], check=True)
+    subprocess.run(["git", "-C", str(dest), "remote", "add", "origin",
+                    "https://github.com/someone/else.git"], check=True)
+    with pytest.raises(RuntimeError, match="not of x/y"):
+        audit.fetch("x/y", tmp_path)
+
+
+def test_a_relative_path_renders_from_the_robots_own_folder(tmp_path, monkeypatch):
+    from meshkit.scan import render_xacro
+
+    write(tmp_path / "cache" / "r" / "urdf" / "parts.xacro",
+          f'<robot {XACRO}><xacro:macro name="arm"><link name="a"/></xacro:macro></robot>')
+    write(tmp_path / "cache" / "r" / "urdf" / "arm.urdf.xacro",
+          f'<robot {XACRO} name="arm"><xacro:include filename="parts.xacro"/><xacro:arm/>'
+          "</robot>")
+    monkeypatch.chdir(tmp_path)
+    text = render_xacro(Path("cache/r/urdf/arm.urdf.xacro"), {}, {})
+    assert '<link name="a"' in text
+
+
+def test_an_mjcf_mesh_written_inline_is_not_a_missing_file(tmp_path):
+    model = write(tmp_path / "cube.xml", (
+        '<mujoco><default><default class="c"><geom type="mesh" mesh="cubelet"/></default>'
+        '</default><asset><mesh name="cubelet" vertex="0 0 0 1 0 0 0 1 0 0 0 1"/></asset>'
+        '<worldbody><body name="b"><geom class="c"/></body></worldbody></mujoco>'))
+    result = audit.measure(model, "mjcf", {})
+    assert result["flattened"] and result["missing_count"] == 0
+
+
+def test_a_packages_mesh_is_looked_for_in_every_copy_of_it(tmp_path):
+    write(tmp_path / "b" / "grip" / "meshes" / "a.stl", binary_stl(2))
+    (tmp_path / "a" / "grip").mkdir(parents=True)
+    packages = [("grip", str(tmp_path / "a" / "grip"), "a"),
+                ("grip", str(tmp_path / "b" / "grip"), "b")]
+    mapping, copies = audit.package_map(packages, "r"), audit.package_copies(packages, "r")
+    text = urdf(link("l", "package://grip/meshes/a.stl", mass=1))
+    path = write(tmp_path / "r" / "a.urdf", text)
+    assert audit.measure(path, "urdf", mapping, copies=copies)["flattened"]
+    assert not audit.measure(path, "urdf", mapping)["flattened"]
+    # The robot's own repository's copy is looked in first.
+    assert audit.package_copies(packages, "b")["grip"][0] == str(tmp_path / "b" / "grip")
+
+
+def test_select_narrows_by_key_repository_or_submodule():
+    c = [audit.Candidate("fork:arm", "me/arm", fork="arm"), audit.Candidate("k", "a/b")]
+    assert audit.select(c, None) == c
+    assert [x.repo for x in audit.select(c, ["ARM"])] == ["me/arm"]
+    assert [x.repo for x in audit.select(c, ["a/b"])] == ["a/b"]

@@ -290,7 +290,14 @@ def cmd_audit(args) -> int:
     json_path = args.json or root / "audit" / "audit.json"
     if _same_file(markdown_path, json_path):
         raise SystemExit(f"meshkit: --json and --markdown are the same file: {json_path}")
-    cache = args.cache or audit.default_cache()
+    cache = (args.cache or audit.default_cache()).absolute()
+    # Before the clones, not after: a first run fetches about 10 GB, and a
+    # folder that cannot be made should say so first.
+    for path in (markdown_path, json_path):
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            raise SystemExit(f"meshkit: cannot write {path}: {exc}") from None
     print(f"cache: {cache}")
     try:
         report = audit.run(root, upstream.GitHub(upstream.token()), cache,
@@ -299,9 +306,7 @@ def cmd_audit(args) -> int:
                            timeout=args.timeout * 60)
     except (upstream.GitHubError, CatalogError) as exc:
         raise SystemExit(f"meshkit: {exc}") from None
-    json_path.parent.mkdir(parents=True, exist_ok=True)
     json_path.write_text(json.dumps(report.as_json(), indent=1) + "\n", encoding="utf-8")
-    markdown_path.parent.mkdir(parents=True, exist_ok=True)
     markdown_path.write_text(audit.render_markdown(report), encoding="utf-8")
     robots = sum(len(r.robots) for r in report.repos)
     failed = sum(1 for r in report.repos if r.error)

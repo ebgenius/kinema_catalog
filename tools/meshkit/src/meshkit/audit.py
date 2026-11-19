@@ -42,7 +42,7 @@ from pathlib import Path
 # What a score is made of, out of 100. Kept here, in one place, so a change of
 # mind is one edit; the report prints this table.
 WEIGHTS = {
-    "licence": 15,    # a licence named, and a LICENSE file that says it
+    "licence": 15,    # a licence named, and a LICENSE file present (not read)
     "alive": 10,      # upstream committed to in the last year (half: in three)
     "flattens": 20,   # xacro evaluates, or the MJCF parses, and every mesh is there
     "limits": 15,     # position and velocity limits on every moving joint
@@ -146,11 +146,16 @@ def gather(root: Path, github, *, lists: bool = True, only: list[str] | None = N
             seen[(candidate.repo.lower(), candidate.folder)] = candidate
         candidates += sorted(seen.values(), key=lambda c: (c.repo.lower(), c.folder))
 
-    if only:
-        wanted = {o.lower() for o in only}
-        candidates = [c for c in candidates
-                      if {c.key.lower(), c.repo.lower(), (c.fork or "").lower()} & wanted]
-    return candidates
+    return select(candidates, only)
+
+
+def select(candidates: list[Candidate], only: list[str] | None) -> list[Candidate]:
+    """The candidates ``--only`` names (by list key, repository or submodule), or all."""
+    if not only:
+        return candidates
+    wanted = {o.lower() for o in only}
+    return [c for c in candidates
+            if {c.key.lower(), c.repo.lower(), (c.fork or "").lower()} & wanted]
 
 
 # ----------------------------------------------------------------------- cache
@@ -172,19 +177,51 @@ def cache_dir(cache: Path, repo: str) -> Path:
     return cache / repo.replace("/", "__")
 
 
+PARTIAL = ".meshkit-partial"
+
+
+def _same_remote(a: str, b: str) -> bool:
+    def norm(url: str) -> str:
+        return url.strip().rstrip("/").removesuffix(".git").lower()
+    return norm(a) == norm(b)
+
+
+def _remove(path: Path) -> None:
+    """Delete a tree git wrote: Windows marks its object files read-only."""
+    def writable(function, name, _exc):
+        os.chmod(name, 0o700)
+        function(name)
+    shutil.rmtree(path, onexc=writable)
+
+
 def fetch(repo: str, cache: Path, *, update: bool = True) -> tuple[Path, str, str]:
-    """A shallow clone of ``repo``'s default branch: (where, commit, its date)."""
+    """A shallow clone of ``repo``'s default branch: (where, commit, its date).
+
+    Only what the audit made is ever replaced or deleted. A folder already at
+    the clone's place that is not a clone of ``repo`` is refused, not cleared:
+    ``--cache`` can point anywhere. A clone is made beside its place and moved
+    in when complete, so one that dies halfway leaves only its own partial
+    folder, which the next run clears.
+    """
     dest = cache_dir(cache, repo)
     url = f"https://github.com/{repo}.git"
     if (dest / ".git").is_dir():
+        origin = _git("remote", "get-url", "origin", cwd=dest)
+        if not _same_remote(origin, url):
+            raise RuntimeError(f"{dest.name} in the cache is a clone of {origin}, "
+                               f"not of {repo}: left as it is")
         if update:
             _git("fetch", "--depth", "1", "--no-tags", "origin", "HEAD", cwd=dest)
             _git("reset", "--hard", "-q", "FETCH_HEAD", cwd=dest)
+    elif dest.exists():
+        raise RuntimeError(f"{dest.name} in the cache is not a git clone: left as it is")
     else:
-        if dest.exists():
-            shutil.rmtree(dest)       # a clone that died halfway
+        partial = dest.with_name(dest.name + PARTIAL)
+        if partial.exists():
+            _remove(partial)          # the audit's own clone that died halfway
         dest.parent.mkdir(parents=True, exist_ok=True)
-        _git("clone", "--depth", "1", "--no-tags", "--single-branch", "-q", url, str(dest))
+        _git("clone", "--depth", "1", "--no-tags", "--single-branch", "-q", url, str(partial))
+        partial.rename(dest)
     commit = _git("rev-parse", "HEAD", cwd=dest)
     date = _git("log", "-1", "--format=%cI", cwd=dest)
     return dest, commit, date
@@ -225,6 +262,19 @@ def package_map(packages: list[tuple[str, str, str]], owner: str) -> dict[str, s
         if repo == owner:
             mapping[name] = where
     return mapping
+
+
+def package_copies(packages: list[tuple[str, str, str]], owner: str) -> dict[str, list[str]]:
+    """Every copy of each package found twice or more, the robot's own first.
+
+    xacro gets one copy (``package_map``), but a mesh is looked for in each:
+    two repositories vendoring one package rarely vendor the same meshes, and
+    which is found first is only the order they sort in.
+    """
+    copies: dict[str, list[str]] = {}
+    for name, where, repo in sorted(packages, key=lambda p: p[2] != owner):
+        copies.setdefault(name, []).append(where)
+    return {name: dirs for name, dirs in copies.items() if len(dirs) > 1}
 
 
 # ---------------------------------------------------------------------- robots
@@ -282,85 +332,151 @@ def mesh_facts(path: Path) -> dict:
 
     Read from the file's own structure, no mesh library: fast enough for every
     mesh of every candidate. Polygons in a DAE count as one triangle each, so
-    its count is a floor.
+    its count is a floor. A file is streamed, or only its header read, never
+    held whole: several workers measure at once, and a candidate's mesh can
+    be any size. ``bytes`` is what drawing it downloads: a ``.gltf`` with the
+    buffers it names.
     """
     facts = {"format": path.suffix.lower().lstrip("."), "bytes": 0, "triangles": None,
              "normals": None, "materials": None, "error": None}
     try:
         facts["bytes"] = path.stat().st_size
         with open(path, "rb") as handle:
-            head = handle.read(512)
-            if head.startswith(_LFS):
+            if handle.read(len(_LFS)) == _LFS:
                 facts["error"] = "in Git LFS, not fetched"
                 return facts
-            data = head + handle.read()
+            handle.seek(0)
+            reader = _READERS.get(facts["format"])
+            if reader:
+                facts.update(reader(handle, path, facts["bytes"]))
     except OSError as exc:
         facts["error"] = f"cannot read: {exc.strerror or exc}"
-        return facts
-    kind = facts["format"]
-    if kind == "stl":
-        facts["normals"] = facts["materials"] = False
-        if data[:5].lower() == b"solid" and b"facet" in data[:2048]:
-            facts["triangles"] = data.count(b"facet normal")
-        elif len(data) >= 84:
-            facts["triangles"] = int.from_bytes(data[80:84], "little")
-    elif kind == "obj":
-        triangles = 0
-        normals = materials = False
-        for line in data.splitlines():
-            if line.startswith(b"f "):
-                triangles += max(len(line.split()) - 3, 1)
-            elif line.startswith(b"vn "):
-                normals = True
-            elif line.startswith((b"usemtl", b"mtllib")):
-                materials = True
-        facts.update(triangles=triangles, normals=normals, materials=materials)
-    elif kind == "dae":
-        text = data.decode("utf-8", "replace")
-        counts = re.findall(r"<(?:triangles|polylist|polygons)\b[^>]*\bcount=\"(\d+)\"", text)
-        facts.update(triangles=sum(int(c) for c in counts),
-                     normals='semantic="NORMAL"' in text,
-                     materials=bool(re.search(r"<material\b", text)))
-    elif kind in ("glb", "gltf"):
-        facts.update(_gltf_facts(data, binary=kind == "glb"))
-    elif kind == "ply":
-        header = data.split(b"end_header", 1)[0].decode("ascii", "replace")
-        faces = re.search(r"element face (\d+)", header)
-        facts.update(triangles=int(faces.group(1)) if faces else None,
-                     normals=" nx" in header,
-                     materials=bool(re.search(r"property \w+ (red|diffuse_red)", header)))
     return facts
 
 
-def _gltf_facts(data: bytes, *, binary: bool) -> dict:
+_CHUNK = 1 << 20
+
+
+def _count(handle, needle: bytes) -> int:
+    """Occurrences of ``needle`` in the rest of ``handle``, a chunk at a time."""
+    count, tail = 0, b""
+    while block := handle.read(_CHUNK):
+        data = tail + block
+        count += data.count(needle)
+        # Shorter than the needle, so never a match counted twice.
+        tail = data[-(len(needle) - 1):]
+    return count
+
+
+def _stl(handle, _path, size) -> dict:
+    head = handle.read(2048)
+    facts = {"normals": False, "materials": False}
+    if head[:5].lower() == b"solid" and b"facet" in head:
+        handle.seek(0)
+        facts["triangles"] = _count(handle, b"facet normal")
+    elif len(head) >= 84:
+        facts["triangles"] = int.from_bytes(head[80:84], "little")
+    return facts
+
+
+def _obj(handle, _path, _size) -> dict:
+    triangles = 0
+    normals = materials = False
+    for line in handle:
+        if line.startswith(b"f "):
+            triangles += max(len(line.split()) - 3, 1)
+        elif line.startswith(b"vn "):
+            normals = True
+        elif line.startswith((b"usemtl", b"mtllib")):
+            materials = True
+    return {"triangles": triangles, "normals": normals, "materials": materials}
+
+
+_DAE_COUNT = re.compile(rb"<(?:triangles|polylist|polygons)\b[^>]*\bcount=\"(\d+)\"")
+
+
+def _dae(handle, _path, _size) -> dict:
+    triangles, normals, materials, carry = 0, False, False, b""
+    while True:
+        block = handle.read(_CHUNK)
+        data = carry + block
+        carry = b""
+        if block:
+            # Everything matched is inside one tag: hold back a tag still open.
+            opened, closed = data.rfind(b"<"), data.rfind(b">")
+            if opened > closed:
+                data, carry = data[:opened], data[opened:]
+        triangles += sum(int(c) for c in _DAE_COUNT.findall(data))
+        normals = normals or b'semantic="NORMAL"' in data
+        materials = materials or re.search(rb"<material\b", data) is not None
+        if not block:
+            break
+    return {"triangles": triangles, "normals": normals, "materials": materials}
+
+
+def _ply(handle, _path, _size) -> dict:
+    header = handle.read(1 << 16).split(b"end_header", 1)[0].decode("ascii", "replace")
+    faces = re.search(r"element face (\d+)", header)
+    return {"triangles": int(faces.group(1)) if faces else None,
+            "normals": " nx" in header,
+            "materials": bool(re.search(r"property \w+ (red|diffuse_red)", header))}
+
+
+def _glb(handle, path, size) -> dict:
+    head = handle.read(20)
+    length = int.from_bytes(head[12:16], "little")
+    return _gltf_facts(handle.read(length), path, size)
+
+
+def _gltf(handle, path, size) -> dict:
+    return _gltf_facts(handle.read(), path, size, external=True)
+
+
+def _gltf_facts(data: bytes, path: Path, size: int, *, external: bool = False) -> dict:
     try:
-        if binary:
-            length = int.from_bytes(data[12:16], "little")
-            document = json.loads(data[20:20 + length])
-        else:
-            document = json.loads(data)
-    except (ValueError, IndexError):
+        document = json.loads(data)
+    except ValueError:
         return {"error": "not a readable glTF"}
     accessors = document.get("accessors", [])
     triangles, normals = 0, True
     for mesh in document.get("meshes", []):
         for primitive in mesh.get("primitives", []):
-            if primitive.get("mode", 4) != 4:
-                continue
+            mode = primitive.get("mode", 4)
+            if mode not in (4, 5, 6):
+                continue                      # points and lines draw no faces
             normals &= "NORMAL" in primitive.get("attributes", {})
             index = primitive.get("indices")
             source = index if index is not None else primitive.get("attributes", {}).get(
                 "POSITION")
             if isinstance(source, int) and source < len(accessors):
-                triangles += accessors[source].get("count", 0) // 3
-    return {"triangles": triangles, "normals": normals,
-            "materials": bool(document.get("materials"))}
+                count = accessors[source].get("count", 0)
+                # A list of triangles, or a strip or fan of them.
+                triangles += count // 3 if mode == 4 else max(count - 2, 0)
+    facts = {"triangles": triangles, "normals": normals,
+             "materials": bool(document.get("materials"))}
+    if external:
+        # A .gltf keeps its geometry in the buffers it names, beside it.
+        from urllib.parse import unquote
+
+        for buffer in document.get("buffers", []):
+            uri = buffer.get("uri")
+            if isinstance(uri, str) and not uri.startswith("data:"):
+                try:
+                    size += (path.parent / unquote(uri)).stat().st_size
+                except OSError:
+                    facts["error"] = f"its buffer {uri} cannot be read"
+        facts["bytes"] = size
+    return facts
+
+
+_READERS = {"stl": _stl, "obj": _obj, "dae": _dae, "ply": _ply, "glb": _glb, "gltf": _gltf}
 
 
 # --------------------------------------------------------------- measurement
 
 def _resolve(filename: str, source: Path, mapping: dict[str, str],
-             mesh_base: Path | None) -> Path | None:
+             mesh_base: Path | None, copies: dict[str, list[str]] | None = None
+             ) -> Path | None:
     text = filename.strip()
     if text.startswith("file://"):
         text = text[len("file://"):]
@@ -368,8 +484,10 @@ def _resolve(filename: str, source: Path, mapping: dict[str, str],
             text = text[1:]
     if text.startswith("package://"):
         package, _, rest = text[len("package://"):].partition("/")
-        where = mapping.get(package)
-        return Path(where) / rest if where else None
+        places = (copies or {}).get(package) or ([mapping[package]] if package in mapping
+                                                 else [])
+        found = [Path(where) / rest for where in places]
+        return next((p for p in found if p.is_file()), found[0] if found else None)
     path = Path(text)
     if path.is_absolute():
         return path
@@ -381,7 +499,8 @@ def _share(part: int, whole: int) -> float | None:
 
 
 def measure_urdf(text: str, source: Path, mapping: dict[str, str], *,
-                 mesh_base: Path | None = None, facts: dict | None = None) -> dict:
+                 mesh_base: Path | None = None, facts: dict | None = None,
+                 copies: dict[str, list[str]] | None = None) -> dict:
     """What a URDF (xacro already evaluated) says about itself."""
     root = ET.fromstring(text)
     if _local(root.tag)[1] != "robot":
@@ -428,7 +547,7 @@ def measure_urdf(text: str, source: Path, mapping: dict[str, str], *,
             mesh = visual.find("geometry/mesh")
             path = None
             if mesh is not None and mesh.get("filename"):
-                path = _resolve(mesh.get("filename"), source, mapping, mesh_base)
+                path = _resolve(mesh.get("filename"), source, mapping, mesh_base, copies)
                 visuals.append({"mesh": str(path) if path else mesh.get("filename"),
                                 "found": bool(path and path.is_file()), "colour": colour})
             else:
@@ -443,20 +562,32 @@ def measure_urdf(text: str, source: Path, mapping: dict[str, str], *,
     return summary
 
 
-def _mjcf_tree(path: Path, seen: set[Path] | None = None) -> ET.Element:
-    """The model with every <include> put in place, the way MuJoCo reads it."""
-    seen = seen or set()
+def _mjcf_tree(path: Path, seen: set[Path] | None = None, main: Path | None = None
+               ) -> ET.Element:
+    """The model with every <include> put in place, the way MuJoCo reads it.
+
+    An include MuJoCo would refuse (a file that is not there, or one already
+    included) is an error here too: the model left without it is not the
+    robot, and must not be scored as one.
+    """
+    seen = set() if seen is None else seen
+    main = main or path.parent
     root = ET.parse(path).getroot()
     seen.add(path.resolve())
 
     def expand(element: ET.Element) -> None:
         for index, child in reversed(list(enumerate(element))):
             if child.tag == "include" and child.get("file"):
-                target = (path.parent / child.get("file")).resolve()
+                name = child.get("file")
+                # Beside the including file, or beside the model MuJoCo was given.
+                target = next((p.resolve() for p in (path.parent / name, main / name)
+                               if p.is_file()), None)
+                if target is None:
+                    raise FileNotFoundError(f"included file {name} is not there")
+                if target in seen:
+                    raise ValueError(f"{name} is included twice")
                 element.remove(child)
-                if target in seen or not target.is_file():
-                    continue
-                included = _mjcf_tree(target, seen)
+                included = _mjcf_tree(target, seen, main)
                 for offset, grandchild in enumerate(list(included)):
                     element.insert(index + offset, grandchild)
             else:
@@ -466,29 +597,78 @@ def _mjcf_tree(path: Path, seen: set[Path] | None = None) -> ET.Element:
     return root
 
 
+_CLASSED = ("joint", "geom")
+
+
+def _mjcf_defaults(root: ET.Element) -> dict[str, dict[str, dict]]:
+    """Each default class's joint and geom attributes, inherited down the tree."""
+    classes: dict[str, dict[str, dict]] = {"main": {tag: {} for tag in _CLASSED}}
+
+    def visit(default: ET.Element, inherited: dict[str, dict], name: str) -> None:
+        own = classes.get(name) if name == "main" else None
+        own = own or {tag: dict(inherited[tag]) for tag in _CLASSED}
+        for child in default:
+            if child.tag in own:
+                own[child.tag].update(child.attrib)
+        classes[name] = own
+        for child in default:
+            if child.tag == "default":
+                visit(child, own, child.get("class", "main"))
+
+    for default in root.findall("default"):
+        visit(default, classes["main"], "main")
+    return classes
+
+
+def _mjcf_elements(world: ET.Element, classes: dict[str, dict[str, dict]]
+                   ) -> list[tuple[str, dict]]:
+    """Every joint and geom under ``world``, with its default class applied.
+
+    An element's class is its own ``class``, else the nearest ``childclass``
+    above it, else ``main``.
+    """
+    found: list[tuple[str, dict]] = []
+
+    def walk(element: ET.Element, childclass: str) -> None:
+        for child in element:
+            if child.tag in _CLASSED:
+                defaults = classes.get(child.get("class") or childclass, classes["main"])
+                found.append((child.tag, defaults[child.tag] | dict(child.attrib)))
+            elif isinstance(child.tag, str):
+                walk(child, child.get("childclass") or childclass)
+
+    walk(world, "main")
+    return found
+
+
 def measure_mjcf(path: Path, *, facts: dict | None = None) -> dict:
     root = _mjcf_tree(path)
     compiler = root.find("compiler")
     meshdir = path.parent
     if compiler is not None:
         meshdir = path.parent / (compiler.get("meshdir") or compiler.get("assetdir") or "")
-    meshes = {}
+    meshes: dict[str, Path | None] = {}
     for mesh in root.iter("mesh"):
         if mesh.get("file"):
             name = mesh.get("name") or Path(mesh.get("file")).stem
             meshes[name] = meshdir / mesh.get("file")
+        elif mesh.get("name"):
+            meshes[mesh.get("name")] = None   # its vertices written in the model itself
     # MuJoCo merges every <worldbody>: an included file brings its own.
     worlds = list(root.iter("worldbody"))
     bodies = [b for world in worlds for b in world.iter("body")]
-    joints = [j for world in worlds for j in world.iter("joint")
-              if j.get("type", "hinge") in ("hinge", "slide")]
+    classes = _mjcf_defaults(root)
+    elements = [e for world in worlds for e in _mjcf_elements(world, classes)]
+    joints = [a for tag, a in elements
+              if tag == "joint" and a.get("type", "hinge") in ("hinge", "slide")]
     limited = sum(1 for j in joints if j.get("range") and j.get("limited") != "false")
     # MuJoCo gives a body without <inertial> the inertia of its geoms.
     massed = sum(1 for b in bodies if b.find("inertial") is not None or b.find("geom") is not None)
     visuals = []
-    for geom in (g for world in worlds for g in world.iter("geom")):
+    for geom in (a for tag, a in elements if tag == "geom"):
         colour = bool(geom.get("material") or geom.get("rgba"))
-        if geom.get("type") == "mesh" or geom.get("mesh"):
+        if (geom.get("type") == "mesh" or geom.get("mesh")) and (
+                geom.get("mesh") not in meshes or meshes[geom.get("mesh")] is not None):
             target = meshes.get(geom.get("mesh"))
             visuals.append({"mesh": str(target) if target else geom.get("mesh"),
                             "found": bool(target and target.is_file()), "colour": colour})
@@ -534,6 +714,7 @@ def _summarise(name, links, moving, limited, velocity, bodies, massed, visuals, 
         "missing_meshes": sorted(set(missing))[:20],
         "missing_count": len(set(missing)),
         "unreadable_meshes": sum(1 for f in files.values() if f["error"]),
+        "unreadable_reasons": sorted({f["error"] for f in files.values() if f["error"]})[:5],
         "formats": formats,
         "normals_share": _share(normals, len(readable)),
         "materials_share": round(material_points / len(visuals), 3) if visuals else None,
@@ -543,7 +724,8 @@ def _summarise(name, links, moving, limited, velocity, bodies, massed, visuals, 
 
 
 def measure(path: Path, kind: str, mapping: dict[str, str], *, args: dict | None = None,
-            mesh_base: Path | None = None, facts: dict | None = None) -> dict:
+            mesh_base: Path | None = None, facts: dict | None = None,
+            copies: dict[str, list[str]] | None = None) -> dict:
     """One robot: its measurements, or why it could not be measured."""
     from meshkit.scan import render_xacro
 
@@ -553,15 +735,22 @@ def measure(path: Path, kind: str, mapping: dict[str, str], *, args: dict | None
         else:
             text = (render_xacro(path, args or {}, mapping) if kind == "xacro"
                     else path.read_text(encoding="utf-8", errors="replace"))
-            result = measure_urdf(text, path, mapping, mesh_base=mesh_base, facts=facts)
+            result = measure_urdf(text, path, mapping, mesh_base=mesh_base, facts=facts,
+                                  copies=copies)
     except Exception as exc:  # noqa: BLE001 - one robot must not stop the audit
         message = " ".join(str(exc).split())[:300]
         return {"flattened": False, "error": f"{type(exc).__name__}: {message}"}
-    result["flattened"] = result["missing_count"] == 0 and result["links"] > 0
-    result["error"] = (None if result["flattened"] else
-                       "renders no links with its default arguments" if not result["links"]
-                       else
-                       f"{result['missing_count']} visual mesh file(s) missing")
+    # A mesh that is there but cannot be read (left in Git LFS, a glTF without
+    # its buffer) is as unmeasured as one that is not there: its triangles,
+    # normals and size are unknown, so it earns nothing.
+    result["flattened"] = (result["links"] > 0 and result["missing_count"] == 0
+                           and result["unreadable_meshes"] == 0)
+    result["error"] = (
+        None if result["flattened"] else
+        "renders no links with its default arguments" if not result["links"] else
+        f"{result['missing_count']} visual mesh file(s) missing" if result["missing_count"] else
+        f"{result['unreadable_meshes']} visual mesh file(s) unreadable: "
+        + "; ".join(result["unreadable_reasons"]))
     return result
 
 
@@ -665,8 +854,8 @@ def audit_repo(spec: dict) -> dict:
                          args=(entry or {}).get("args"),
                          mesh_base=(Path(spec["root"]) / entry["mesh_base"]
                                     if entry and entry.get("mesh_base") else None),
-                         facts=facts)
-        relative = path.relative_to(spec["path_base"]).as_posix() if spec.get(
+                         facts=facts, copies=spec.get("copies"))
+        relative =path.relative_to(spec["path_base"]).as_posix() if spec.get(
             "path_base") else path.relative_to(base).as_posix()
         # A wrapper under descriptions/ describes its fork's robot: the fork's
         # LICENSE is the one that covers it.
@@ -767,7 +956,11 @@ def run(root: Path, github, cache: Path, *, lists: bool = True, only: list[str] 
         progress=print) -> Audit:
     from meshkit.catalog import load as load_catalog
 
-    candidates = gather(root, github, lists=lists, only=only)
+    # Absolute: xacro is evaluated from the robot's own folder, where a path
+    # relative to here would point somewhere else.
+    root, cache = root.absolute(), cache.absolute()
+    everyone = gather(root, github, lists=lists)
+    candidates = select(everyone, only)
     entries: dict[str, list[dict]] = {}
     for entry in load_catalog(root):
         entries.setdefault(entry["submodule"], []).append(entry)
@@ -823,9 +1016,20 @@ def run(root: Path, github, cache: Path, *, lists: bool = True, only: list[str] 
     # Packages from every repository audited, so a candidate that depends on
     # another's description (a gripper on an arm) can still flatten. Each
     # clone is indexed once, however many folders of it are candidates.
-    packages = index_packages({str(where): where for where in set(places.values())})
-    progress(f"{len(set(places.values()))} repositories in place, "
-             f"{len(packages)} ROS packages found")
+    # --only narrows what is measured, not what can be depended on: the other
+    # forks, and the clones already in the cache, are indexed as they are.
+    bases = set(places.values())
+    for other in everyone:
+        if other in candidates or other.error:
+            continue
+        where = root / "src" / other.fork if other.fork else cache_dir(cache, other.repo)
+        if (where / ".git").exists():
+            bases.add(where)
+    # In a fixed order: a package found in two repositories must come from the
+    # same one every run.
+    bases = sorted(bases, key=str)
+    packages = index_packages({str(where): where for where in bases})
+    progress(f"{len(bases)} repositories in place, {len(packages)} ROS packages found")
 
     def measure_one(candidate: Candidate) -> None:
         report = reports[candidate.key]
@@ -834,6 +1038,7 @@ def run(root: Path, github, cache: Path, *, lists: bool = True, only: list[str] 
             return
         spec = {"dir": str(where), "folder": candidate.folder, "root": str(root),
                 "packages": package_map(packages, str(where)),
+                "copies": package_copies(packages, str(where)),
                 "entries": entries.get(candidate.fork, []) if candidate.fork else None,
                 "path_base": str(root) if candidate.fork else None,
                 "scrub": [(str(where), label) for where, label in outside]}
@@ -896,8 +1101,8 @@ def render_markdown(audit: Audit, *, listed: int = 40, top_rows: int = 100) -> s
         "",
         "| Part | Points | Full marks when |",
         "|---|--:|---|",
-        f"| Licence | {WEIGHTS['licence']} | A licence is named and a LICENSE file says it "
-        "(half for one of the two) |",
+        f"| Licence | {WEIGHTS['licence']} | A licence is named and there is a LICENSE file "
+        "(present, not read; half for one of the two) |",
         f"| Alive | {WEIGHTS['alive']} | Upstream committed to in the last year (half: in "
         "three); not archived |",
         f"| Flattens | {WEIGHTS['flattens']} | xacro evaluates (or the MJCF parses) and every "
@@ -939,22 +1144,25 @@ def render_markdown(audit: Audit, *, listed: int = 40, top_rows: int = 100) -> s
     for report, robot in robots:
         unit = robot.get("package") or robot["path"]
         groups.setdefault((report.key, unit), []).append((report, robot))
-    best = [max(group, key=lambda pair: (pair[1]["score"], -len(pair[1]["path"])))
-            + (len(group),) for group in groups.values()]
+    # The row stands for the package's robot: its most complete file that
+    # flattens, not a hand or an arm of it that happens to score as well.
+    best = [max(group, key=_completeness) + (len(group),) for group in groups.values()]
     top = sorted(best, key=lambda t: (-t[1]["score"], t[0].repo.lower(), t[1]["path"]))
     top = top[:top_rows]
     lines += ["", f"## The {len(top)} best-scoring candidates", "",
               f"One row per ROS package: {len(groups)} packages (or files outside any) hold "
-              f"the {len(robots)} candidate robots. Each row shows the package's best file "
-              "and how many robot files it has.", "",
-              "| Score | Package | Best file | Files | Repository | Licence | Formats | "
+              f"the {len(robots)} candidate robots. Each row shows the package's most "
+              "complete robot (the file with the most links among those that flatten) and "
+              "how many robot files the package has; its components and other variants are "
+              "in the repository's details below.", "",
+              "| Score | Package | Robot | Links | Files | Repository | Licence | Formats | "
               "Triangles |",
-              "|--:|---|---|--:|---|---|---|--:|"]
+              "|--:|---|---|--:|--:|---|---|---|--:|"]
     for report, robot, count in top:
         lines.append(f"| {robot['score']} | {_inert(robot.get('package') or '-')} | "
-                     f"{_code(robot['path'])} | {count} | {_repo_link(report)} | "
-                     f"{robot.get('licence') or '-'} | {_formats(robot)} | "
-                     f"{robot.get('triangles') or 0:,} |")
+                     f"{_code(robot['path'])} | {robot.get('links') or 0} | {count} | "
+                     f"{_repo_link(report)} | {robot.get('licence') or '-'} | "
+                     f"{_formats(robot)} | {robot.get('triangles') or 0:,} |")
 
     lines += ["", "## Every candidate, by repository", "",
               "Best score first. Each repository lists its robots, best first.", ""]
@@ -1003,6 +1211,12 @@ def _repo_link(report: RepoReport) -> str:
     path = f"/tree/HEAD/{report.folder}" if report.folder else ""
     label = report.repo + (f"/{report.folder}" if report.folder else "")
     return f"[{_inert(label)}](https://github.com/{report.repo}{path})"
+
+
+def _completeness(pair: tuple[RepoReport, dict]) -> tuple:
+    robot = pair[1]
+    return (bool(robot.get("flattened")), robot.get("links") or 0, robot["score"],
+            -len(robot["path"]))
 
 
 def _formats(robot: dict) -> str:

@@ -148,22 +148,31 @@ reported as such.
 
 **A robot** is a `.urdf`, a `.xacro` whose `<robot>` does more than define macros, or
 an MJCF `.xml` with a body of its own (a `scene.xml` that only includes the robot isn't
-a second one). One row per file, evaluated with its default arguments. xacro is
-evaluated with xacrodoc, as Kinema does, using the ROS packages of every repository
-audited. SDF is counted, not measured.
+a second one). A candidate is one row per robot file, evaluated with its default
+arguments. The catalog is one row per entry, evaluated with the entry's own arguments,
+so two entries rendering one xacro differently are two rows. xacro is evaluated with
+xacrodoc, as Kinema does, using the ROS packages of every repository audited (with
+`--only`, of every fork and every clone already in the cache, so a narrowed run
+resolves what the full one does). An MJCF's `<default>` classes are applied, and an
+include it lacks is an error. SDF is counted, not measured.
 
 | Part | Points | Full marks when |
 | --- | --: | --- |
-| licence | 15 | a licence is named (GitHub's, or the catalog's for an entry) and a LICENSE file is beside the robot or above it in its repository; half for one of the two |
+| licence | 15 | a licence is named (GitHub's, or the catalog's for an entry) and a LICENSE file is beside the robot or above it in its repository; half for one of the two. The file's presence is checked, not what it says |
 | alive | 10 | upstream committed to in the last year; half within three; none when archived |
-| flattens | 20 | the xacro evaluates, or the MJCF parses, and every visual mesh exists. Without this, the parts below score nothing |
+| flattens | 20 | the xacro evaluates, or the MJCF parses, and every visual mesh exists and can be read (one left in Git LFS cannot). Without this, the parts below score nothing |
 | limits | 15 | revolute and prismatic joints have position and velocity limits (MJCF: position only; continuous joints need none) |
 | inertia | 10 | every link with geometry has a mass (MJCF: an inertial, or geoms to derive one from) |
 | look | 20 | half for visual meshes with authored normals, half for materials: a mesh's own count whole, a whole-part colour in the description half |
 | weight | 10 | visual meshes under 200,000 triangles and 50 MB; none from 2,000,000 or 500 MB |
 
 The weights are `WEIGHTS` in `audit.py`. Meshes are read from their own structure, not
-loaded: STL has no normals or materials, and a DAE's polygons count one triangle each.
+loaded, and streamed rather than held whole: STL has no normals or materials, a DAE's
+polygons count one triangle each, and a `.gltf` weighs what its buffers do too.
+
+The cache holds only what the audit put there. A folder at a clone's place that is not
+a clone of that repository is refused, not cleared, and a clone is made beside its
+place and moved in when complete.
 
 **Not measured:** whether Kinema imports the robot, and whether two sources of the same
 robot have the same kinematics. Those are checked by hand in step 5, for the robots the

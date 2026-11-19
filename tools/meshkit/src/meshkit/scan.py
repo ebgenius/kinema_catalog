@@ -532,6 +532,9 @@ def render_xacro(path: Path, args: dict[str, str], mapping: dict[str, str]) -> s
     packages.reset()
     packages.update_package_cache(dict(mapping))
     args = dict(args)
+    # Absolute before the change of directory, or a relative path would be
+    # looked for again beneath the robot's own folder.
+    path = Path(path).absolute()
     with contextlib.chdir(path.parent):
         for _ in range(8):
             try:
