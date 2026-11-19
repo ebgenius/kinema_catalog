@@ -199,7 +199,9 @@ def _same_remote(a: str, b: str) -> bool:
 
 def _remove(path: Path) -> None:
     """Delete a tree git wrote: Windows marks its object files read-only."""
-    def writable(function, name, _exc):
+    def writable(function, name, exc):
+        if isinstance(exc, FileNotFoundError):
+            return                        # removed meanwhile: as good as done
         os.chmod(name, 0o700)
         function(name)
     shutil.rmtree(path, onexc=writable)
@@ -234,7 +236,10 @@ def _clear_dead_staging(dest: Path, *, now: float | None = None) -> None:
         except OSError:
             continue                      # unmarked: not the audit's
         if age > STALE:
-            _remove(old)
+            try:
+                _remove(old)
+            except FileNotFoundError:
+                pass                      # another audit cleared it first
 
 
 def fetch(repo: str, cache: Path, *, update: bool = True) -> tuple[Path, str, str]:
@@ -251,7 +256,18 @@ def fetch(repo: str, cache: Path, *, update: bool = True) -> tuple[Path, str, st
     """
     dest = cache_dir(cache, repo)
     url = f"https://github.com/{repo}.git"
-    if (dest / ".git").is_dir():
+    if dest.parent.is_dir():
+        # Whether or not the clone is there now: a killed run's staging
+        # folder can outlive a clone another run completed.
+        _clear_dead_staging(dest)
+    # Whether the place is taken is asked first, and what took it second: a
+    # clone is put in place by one rename, .git and all, so a clone another
+    # audit puts there between the two questions is seen as the clone it is.
+    if not dest.exists():
+        _clone(repo, url, dest)
+    elif not (dest / ".git").is_dir():
+        raise RuntimeError(f"{dest.name} in the cache is not a git clone: left as it is")
+    else:
         origin = _git("remote", "get-url", "origin", cwd=dest)
         if not _same_remote(origin, url):
             raise RuntimeError(f"{dest.name} in the cache is a clone of {origin}, "
@@ -262,33 +278,32 @@ def fetch(repo: str, cache: Path, *, update: bool = True) -> tuple[Path, str, st
                                    "so it is not reset: left as it is (--no-fetch measures it)")
             _git("fetch", "--depth", "1", "--no-tags", "origin", "HEAD", cwd=dest)
             _git("reset", "--hard", "-q", "FETCH_HEAD", cwd=dest)
-    elif dest.exists():
-        raise RuntimeError(f"{dest.name} in the cache is not a git clone: left as it is")
-    else:
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        _clear_dead_staging(dest)
-        import tempfile
-
-        staging = Path(tempfile.mkdtemp(prefix=f"{dest.name}{PARTIAL}-", dir=dest.parent))
-        try:
-            _mark(staging, repo)
-            clone = staging / "clone"
-            _git("clone", "--depth", "1", "--no-tags", "--single-branch", "-q", url, str(clone))
-            _mark(clone / ".git", repo)
-            try:
-                clone.rename(dest)
-            except OSError:
-                # Another audit sharing the cache finished this clone first:
-                # its clone is as good as ours, if it is the audit's.
-                if not (dest / ".git" / OWNED).is_file():
-                    raise RuntimeError(f"{dest.name} appeared in the cache while cloning, "
-                                       "and not from the audit: left as it is") from None
-        finally:
-            _remove(staging)
-    commit = _git("rev-parse", "HEAD", cwd=dest)
     commit = _git("rev-parse", "HEAD", cwd=dest)
     date = _git("log", "-1", "--format=%cI", cwd=dest)
     return dest, commit, date
+
+
+def _clone(repo: str, url: str, dest: Path) -> None:
+    """A fresh clone at ``dest``, made in a staging folder and moved in whole."""
+    import tempfile
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=f"{dest.name}{PARTIAL}-", dir=dest.parent))
+    try:
+        _mark(staging, repo)
+        clone = staging / "clone"
+        _git("clone", "--depth", "1", "--no-tags", "--single-branch", "-q", url, str(clone))
+        _mark(clone / ".git", repo)
+        try:
+            clone.rename(dest)
+        except OSError:
+            # Another audit sharing the cache finished this clone first:
+            # its clone is as good as ours, if it is the audit's.
+            if not (dest / ".git" / OWNED).is_file():
+                raise RuntimeError(f"{dest.name} appeared in the cache while cloning, "
+                                   "and not from the audit: left as it is") from None
+    finally:
+        _remove(staging)
 
 
 # -------------------------------------------------------------------- packages
@@ -518,7 +533,7 @@ def _buffer_problem(where: Path, uri: str, declared) -> tuple[int, str | None]:
     return size, None
 
 
-def _gltf_facts(data: bytes, path: Path, size: int) -> dict:
+def _gltf_facts(data: bytes, path: Path, _size: int) -> dict:
     try:
         document = json.loads(data)
     except ValueError:
@@ -545,14 +560,18 @@ def _gltf_facts(data: bytes, path: Path, size: int) -> dict:
     # than it says, makes the mesh unreadable.
     from urllib.parse import unquote
 
+    # Kept by path, apart from the file's own bytes: two meshes naming one
+    # buffer download it once, and the robot's total counts it once.
+    buffers: dict[str, int] = {}
     for buffer in document.get("buffers", []):
         uri = buffer.get("uri")
         if isinstance(uri, str) and not uri.startswith("data:"):
-            extra, problem = _buffer_problem(path.parent / unquote(uri), uri,
-                                             buffer.get("byteLength"))
-            size += extra
+            where = path.parent / unquote(uri)
+            extra, problem = _buffer_problem(where, uri, buffer.get("byteLength"))
+            buffers[os.path.normcase(os.path.abspath(where))] = extra
             facts["error"] = facts.get("error") or problem
-    facts["bytes"] = size
+    if buffers:
+        facts["buffers"] = buffers
     if facts.get("error") is None:
         facts.pop("error", None)
     return facts
@@ -817,7 +836,9 @@ def _summarise(name, links, moving, limited, velocity, bodies, massed, visuals, 
         # Drawn per visual: a mesh used by twelve links is drawn twelve times.
         # Downloaded per file: it is fetched once.
         "triangles": sum(files[v["mesh"]]["triangles"] or 0 for v in meshed),
-        "megabytes": round(sum(f["bytes"] for f in files.values()) / 1e6, 2),
+        "megabytes": round((sum(f["bytes"] for f in files.values()) + sum(
+            {p: n for f in files.values() for p, n in f.get("buffers", {}).items()}.values()))
+            / 1e6, 2),
     }
 
 

@@ -170,7 +170,8 @@ include it lacks is an error. SDF is counted, not measured.
 
 The weights are `WEIGHTS` in `audit.py`. Meshes are read from their own structure, not
 loaded, and streamed rather than held whole: STL has no normals or materials, a DAE's
-polygons count one triangle each, and a `.gltf` weighs what its buffers do too.
+polygons count one triangle each, and a `.gltf` weighs what its buffers do too (a
+buffer several meshes share, once).
 
 The audit resets, replaces or deletes only what it made, and marks what it makes:
 `.git/meshkit-audit` in a clone, `meshkit-audit` in the staging folder a clone is made

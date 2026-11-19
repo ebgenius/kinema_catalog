@@ -441,7 +441,8 @@ def test_gltf_strips_and_fans_count_and_its_buffers_weigh(tmp_path):
     path = write(tmp_path / "a.gltf", json.dumps(document))
     facts = audit.mesh_facts(path)
     assert facts["triangles"] == 17 and facts["normals"] is True
-    assert facts["bytes"] == path.stat().st_size + 5000
+    assert facts["bytes"] == path.stat().st_size
+    assert list(facts["buffers"].values()) == [5000]
     write(tmp_path / "b.gltf", json.dumps({"buffers": [{"uri": "gone.bin"}]}))
     assert "gone.bin" in audit.mesh_facts(tmp_path / "b.gltf")["error"]
 
@@ -648,6 +649,73 @@ def test_a_clone_another_audit_finished_first_is_used(tmp_path, monkeypatch):
     dest, commit, _ = audit.fetch("x/y", tmp_path)
     assert (dest / "a.urdf").is_file() and commit == "c" * 40
     assert not list(tmp_path.glob(f"x__y{audit.PARTIAL}-*"))      # ours removed
+
+
+def test_a_buffer_two_meshes_share_is_downloaded_once(tmp_path):
+    write(tmp_path / "meshes" / "shared.bin", b"\0" * 300_000)
+    write(tmp_path / "meshes" / "own.bin", b"\0" * 200_000)
+    for name, uris in (("a", ["shared.bin"]), ("b", ["shared.bin", "own.bin"])):
+        write(tmp_path / "meshes" / f"{name}.gltf",
+              json.dumps({"buffers": [{"uri": u} for u in uris]}))
+    path = write(tmp_path / "r.urdf", urdf(link("a", "meshes/a.gltf", mass=1),
+                                          link("b", "meshes/b.gltf", mass=1)))
+    result = audit.measure(path, "urdf", {})
+    gltf = sum((tmp_path / "meshes" / f"{n}.gltf").stat().st_size for n in "ab")
+    assert result["megabytes"] == round((gltf + 500_000) / 1e6, 2)
+
+
+def test_a_dead_staging_folder_is_cleared_even_beside_a_finished_clone(tmp_path,
+                                                                        monkeypatch):
+    import os
+
+    fake_git(monkeypatch)
+    write(tmp_path / "x__y" / ".git" / audit.OWNED, "made by meshkit audit")
+    dead = tmp_path / f"x__y{audit.PARTIAL}-killed"
+    write(dead / audit.OWNED, "made by meshkit audit")
+    os.utime(dead / audit.OWNED, (1_000_000, 1_000_000))
+    audit.fetch("x/y", tmp_path, update=False)
+    assert not dead.exists()
+
+
+def test_two_audits_clearing_one_dead_folder_both_go_on(tmp_path, monkeypatch):
+    import os
+
+    dest = tmp_path / "x__y"
+    dead = tmp_path / f"x__y{audit.PARTIAL}-killed"
+    write(dead / audit.OWNED, "made by meshkit audit")
+    os.utime(dead / audit.OWNED, (1_000_000, 1_000_000))
+    real = audit._remove
+
+    def raced(path):                       # the other audit got there first
+        real(path)
+        raise FileNotFoundError(path)
+    monkeypatch.setattr(audit, "_remove", raced)
+    audit._clear_dead_staging(dest)
+    assert not dead.exists()
+
+
+def test_a_clone_published_between_the_checks_is_taken_as_a_clone(tmp_path, monkeypatch):
+    calls = fake_git(monkeypatch)
+    dest = tmp_path / "x__y"
+    real_exists, real_is_dir = Path.exists, Path.is_dir
+    published = []
+
+    def first_look(real):
+        def look(self, *args, **kwargs):
+            answer = real(self, *args, **kwargs)
+            if self in (dest, dest / ".git") and not published:
+                # The first question about the place is answered "absent";
+                # the other audit's rename lands just after it.
+                published.append(True)
+                write(dest / ".git" / audit.OWNED, "made by meshkit audit")
+            return answer
+        return look
+    monkeypatch.setattr(Path, "exists", first_look(real_exists))
+    monkeypatch.setattr(Path, "is_dir", first_look(real_is_dir))
+    found, commit, _ = audit.fetch("x/y", tmp_path, update=False)
+    assert published
+    assert found == dest and commit == "c" * 40
+    assert [c[0] for c in calls].count("rev-parse") == 1
 
 
 def test_a_failed_clone_leaves_no_staging_folder(tmp_path, monkeypatch):
