@@ -15,6 +15,7 @@ uv run meshkit doctor                          # find Blender, check the importe
 uv run meshkit index                           # rebuild catalog.json from catalog/*.yaml
 uv run meshkit scan                            # which .dae files are visual meshes
 uv run meshkit upstream                        # how far each fork is behind upstream
+uv run meshkit audit                           # measure and score every robot, ours and candidates
 uv run meshkit convert --fork franka_description
 ```
 
@@ -122,6 +123,54 @@ workflow keeps it for 90 days as the run's `upstream-report` artifact, and passe
 run's address as `--json-url`, so the issue links to it wherever it leaves names out.
 
 A token comes from `GITHUB_TOKEN` or `GH_TOKEN`, else from `gh auth token`.
+
+## audit
+
+Every robot the catalog has, and every robot it could have, measured the same way and
+scored out of 100: what step 5 forks from. It writes `audit/audit.md` and
+`audit/audit.json` at the catalog root, which are committed.
+
+```
+uv run meshkit audit                            # the forks and every candidate
+uv run meshkit audit --forks-only               # the catalog's own entries, no cloning
+uv run meshkit audit --only unitreerobotics/unitree_mujoco
+uv run meshkit audit --no-fetch                 # measure the clones as they are
+```
+
+**What is audited.** Every entry in `catalog.json`, rendered with its own arguments,
+and every repository the upstream report's lists name that the catalog doesn't carry
+(fiveages' README rows are folders of its one repository). Candidates are shallow-cloned
+into a cache outside the repository: `~/.cache/kinema_catalog/audit` (under
+`$XDG_CACHE_HOME` if set), or `--cache`. Not `%LOCALAPPDATA%`, which a packaged Windows
+app has redirected to a folder of its own. The first run clones about
+10 GB; later runs fetch only what changed. Git LFS files are not fetched, and are
+reported as such.
+
+**A robot** is a `.urdf`, a `.xacro` whose `<robot>` does more than define macros, or
+an MJCF `.xml` with a body of its own (a `scene.xml` that only includes the robot isn't
+a second one). One row per file, evaluated with its default arguments. xacro is
+evaluated with xacrodoc, as Kinema does, using the ROS packages of every repository
+audited. SDF is counted, not measured.
+
+| Part | Points | Full marks when |
+| --- | --: | --- |
+| licence | 15 | a licence is named (GitHub's, or the catalog's for an entry) and a LICENSE file is beside the robot or above it in its repository; half for one of the two |
+| alive | 10 | upstream committed to in the last year; half within three; none when archived |
+| flattens | 20 | the xacro evaluates, or the MJCF parses, and every visual mesh exists. Without this, the parts below score nothing |
+| limits | 15 | revolute and prismatic joints have position and velocity limits (MJCF: position only; continuous joints need none) |
+| inertia | 10 | every link with geometry has a mass (MJCF: an inertial, or geoms to derive one from) |
+| look | 20 | half for visual meshes with authored normals, half for materials: a mesh's own count whole, a whole-part colour in the description half |
+| weight | 10 | visual meshes under 200,000 triangles and 50 MB; none from 2,000,000 or 500 MB |
+
+The weights are `WEIGHTS` in `audit.py`. Meshes are read from their own structure, not
+loaded: STL has no normals or materials, and a DAE's polygons count one triangle each.
+
+**Not measured:** whether Kinema imports the robot, and whether two sources of the same
+robot have the same kinematics. Those are checked by hand in step 5, for the robots the
+audit puts forward.
+
+Each repository is measured in a subprocess with a time limit (`--timeout`, default 20
+minutes), so one that hangs xacro or holds a pathological mesh costs only its own rows.
 
 ## convert
 

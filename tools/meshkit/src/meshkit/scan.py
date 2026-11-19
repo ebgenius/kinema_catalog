@@ -477,32 +477,11 @@ class Scanner:
         if row["type"] != "xacro":
             return _read_text(path)
 
-        from xacrodoc import XacroDoc, packages
-
         mapping: dict[str, str] = {}
         for name, group in self.packages.items():
             same_fork = [p for p in group if p.fork == row["fork"]]
             mapping[name] = str((same_fork or group)[0].root)
-        packages.reset()
-        packages.update_package_cache(mapping)
-
-        args = dict(row["args"])
-
-        # Relative includes (a file beside the entry point) resolve against the working
-        # directory, the way a launch file started from the package would.
-        # Some unitree robots read $(arg DEBUG) without declaring it; their
-        # launch files pass it, so an undeclared argument is retried as "false".
-        with contextlib.chdir(path.parent):
-            for _ in range(8):
-                try:
-                    doc = XacroDoc.from_file(str(path), resolve_packages=True, subargs=args)
-                    return doc.to_urdf_string()
-                except Exception as exc:  # noqa: BLE001 - xacro raises its own types
-                    missing = _UNDEFINED_ARG.search(str(exc))
-                    if missing is None or missing.group(1) in args:
-                        raise
-                    args[missing.group(1)] = "false"
-        raise RuntimeError("too many undeclared xacro arguments")
+        return render_xacro(path, row["args"], mapping)
 
     def scan_rendered(self) -> None:
         import xml.etree.ElementTree as ET
@@ -536,6 +515,34 @@ class Scanner:
         if render:
             self.scan_rendered()
         return Inventory(self.root, self.packages, self.meshes, self.refs)
+
+
+def render_xacro(path: Path, args: dict[str, str], mapping: dict[str, str]) -> str:
+    """A xacro file as URDF, evaluated by xacrodoc with ``mapping`` as its packages.
+
+    xacrodoc's package cache is module-global, so it is reset first: one
+    robot's packages must not stay resolvable in the next render. Relative
+    includes (a file beside the entry point) resolve against the working
+    directory, the way a launch file started from the package would. Some
+    robots read an argument without declaring it (unitree's DEBUG): their
+    launch files pass it, so an undeclared argument is retried as "false".
+    """
+    from xacrodoc import XacroDoc, packages
+
+    packages.reset()
+    packages.update_package_cache(dict(mapping))
+    args = dict(args)
+    with contextlib.chdir(path.parent):
+        for _ in range(8):
+            try:
+                doc = XacroDoc.from_file(str(path), resolve_packages=True, subargs=args)
+                return doc.to_urdf_string()
+            except Exception as exc:  # noqa: BLE001 - xacro raises its own types
+                missing = _UNDEFINED_ARG.search(str(exc))
+                if missing is None or missing.group(1) in args:
+                    raise
+                args[missing.group(1)] = "false"
+    raise RuntimeError("too many undeclared xacro arguments")
 
 
 def scan(root: Path, *, render: bool = True) -> Inventory:

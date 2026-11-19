@@ -279,6 +279,37 @@ def cmd_upstream(args) -> int:
     return 0
 
 
+# ------------------------------------------------------------------------ audit
+
+def cmd_audit(args) -> int:
+    from meshkit import audit, upstream
+    from meshkit.catalog import CatalogError
+
+    root = _root(args)
+    markdown_path = args.markdown or root / "audit" / "audit.md"
+    json_path = args.json or root / "audit" / "audit.json"
+    if _same_file(markdown_path, json_path):
+        raise SystemExit(f"meshkit: --json and --markdown are the same file: {json_path}")
+    cache = args.cache or audit.default_cache()
+    print(f"cache: {cache}")
+    try:
+        report = audit.run(root, upstream.GitHub(upstream.token()), cache,
+                           lists=not args.forks_only, only=args.only,
+                           update=not args.no_fetch, workers=args.workers,
+                           timeout=args.timeout * 60)
+    except (upstream.GitHubError, CatalogError) as exc:
+        raise SystemExit(f"meshkit: {exc}") from None
+    json_path.parent.mkdir(parents=True, exist_ok=True)
+    json_path.write_text(json.dumps(report.as_json(), indent=1) + "\n", encoding="utf-8")
+    markdown_path.parent.mkdir(parents=True, exist_ok=True)
+    markdown_path.write_text(audit.render_markdown(report), encoding="utf-8")
+    robots = sum(len(r.robots) for r in report.repos)
+    failed = sum(1 for r in report.repos if r.error)
+    print(f"wrote {markdown_path} and {json_path}: {robots} robots in "
+          f"{len(report.repos)} repositories; {failed} could not be audited")
+    return 0
+
+
 def _same_file(a: Path, b: Path) -> bool:
     """Whether two paths name one file: by spelling, or as links to it."""
     if a.resolve() == b.resolve():
@@ -332,6 +363,26 @@ def build_parser() -> argparse.ArgumentParser:
     up.add_argument("--no-lists", action="store_true",
                     help="skip the lists of candidate descriptions")
     up.set_defaults(func=cmd_upstream)
+
+    au = sub.add_parser("audit", help="measure and score every robot, the catalog's and the "
+                                      "candidates'")
+    au.add_argument("--only", action="append",
+                    help="limit to a fork, a repository (owner/name) or a list key "
+                         "(repeatable)")
+    au.add_argument("--forks-only", action="store_true",
+                    help="the catalog's forks alone, no candidates")
+    au.add_argument("--cache", type=Path,
+                    help="where candidates are cloned (default: outside the repository, "
+                         "in the user cache)")
+    au.add_argument("--no-fetch", action="store_true",
+                    help="measure the clones as they are; clone only what is missing")
+    au.add_argument("--workers", type=_batch_size, default=4,
+                    help="repositories cloned and measured at once (default 4)")
+    au.add_argument("--timeout", type=_batch_size, default=20,
+                    help="minutes one repository may take to measure (default 20)")
+    au.add_argument("--markdown", type=Path, help="default: audit/audit.md")
+    au.add_argument("--json", type=Path, help="default: audit/audit.json")
+    au.set_defaults(func=cmd_audit)
 
     scan_p = sub.add_parser("scan", help="classify .dae files as visual / collision")
     scan_p.add_argument("--fork", action="append", help="limit to a submodule (repeatable)")
