@@ -151,9 +151,11 @@ an MJCF `.xml` with a body of its own (a `scene.xml` that only includes the robo
 a second one). A candidate is one row per robot file, evaluated with its default
 arguments. The catalog is one row per entry, evaluated with the entry's own arguments,
 so two entries rendering one xacro differently are two rows. xacro is evaluated with
-xacrodoc, as Kinema does, using the ROS packages of every repository audited (with
-`--only`, of every fork and every clone already in the cache, so a narrowed run
-resolves what the full one does). An MJCF's `<default>` classes are applied, and an
+xacrodoc, as Kinema does, using the ROS packages of every repository audited. With
+`--only`, that is the repositories named, every fork, and every candidate clone
+already in the cache: one not yet cloned is not fetched for a narrowed run, so after
+a full run the two resolve alike, and before one they may not. A name `--only` matches
+nothing with is refused before anything is written. An MJCF's `<default>` classes are applied, and an
 include it lacks is an error. SDF is counted, not measured.
 
 | Part | Points | Full marks when |
@@ -162,17 +164,20 @@ include it lacks is an error. SDF is counted, not measured.
 | alive | 10 | upstream committed to in the last year; half within three; none when archived |
 | flattens | 20 | the xacro evaluates, or the MJCF parses, and every visual mesh exists and can be read (one left in Git LFS cannot). Without this, the parts below score nothing |
 | limits | 15 | revolute and prismatic joints have position and velocity limits (MJCF: position only; continuous joints need none) |
-| inertia | 10 | every link with geometry has a mass (MJCF: an inertial, or geoms to derive one from) |
+| inertia | 10 | every link with geometry has a mass (MJCF: every body with geometry or a joint has an inertial, or geoms to derive one from; a bare frame is not asked) |
 | look | 20 | half for visual meshes with authored normals, half for materials: a mesh's own count whole, a whole-part colour in the description half |
-| weight | 10 | visual meshes under 200,000 triangles and 50 MB; none from 2,000,000 or 500 MB |
+| weight | 10 | visual meshes under 200,000 triangles and 50 MB; none from 2,000,000 or 500 MB. Triangles are counted as drawn, once per visual that uses a mesh; megabytes as downloaded, once per file |
 
 The weights are `WEIGHTS` in `audit.py`. Meshes are read from their own structure, not
 loaded, and streamed rather than held whole: STL has no normals or materials, a DAE's
 polygons count one triangle each, and a `.gltf` weighs what its buffers do too.
 
-The cache holds only what the audit put there. A folder at a clone's place that is not
-a clone of that repository is refused, not cleared, and a clone is made beside its
-place and moved in when complete.
+The audit resets, replaces or deletes only what it made, and marks what it makes:
+`.git/meshkit-audit` in a clone, `meshkit-audit` in the staging folder a clone is made
+in before it is moved into place. Anything unmarked at a clone's place is refused and
+left as it is, a clone of the same repository included, since it may be someone's
+checkout with changes in it; `--no-fetch` measures such a clone without touching it.
+Only marked staging folders of an earlier, interrupted run are cleared.
 
 **Not measured:** whether Kinema imports the robot, and whether two sources of the same
 robot have the same kinematics. Those are checked by hand in step 5, for the robots the

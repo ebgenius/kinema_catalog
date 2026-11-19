@@ -512,6 +512,106 @@ def test_a_packages_mesh_is_looked_for_in_every_copy_of_it(tmp_path):
     assert audit.package_copies(packages, "b")["grip"][0] == str(tmp_path / "b" / "grip")
 
 
+# ------------------------------------------------------------ review round 2
+
+def fake_git(monkeypatch, origin="https://github.com/x/y.git"):
+    """git as far as fetch needs it, without a network."""
+    calls = []
+
+    def run(*args, cwd=None, timeout=None):
+        calls.append(args)
+        if args[0] == "clone":
+            (Path(args[-1]) / ".git").mkdir(parents=True)
+        return {"remote": origin, "rev-parse": "c" * 40, "log": "2026-11-01T00:00:00Z"}.get(
+            args[0], "")
+    monkeypatch.setattr(audit, "_git", run)
+    return calls
+
+
+def test_a_staging_folder_is_cleared_only_when_the_audit_marked_it(tmp_path, monkeypatch):
+    fake_git(monkeypatch)
+    theirs = write(tmp_path / f"x__y{audit.PARTIAL}-mine" / "notes.txt", "keep me")
+    ours = tmp_path / f"x__y{audit.PARTIAL}-old"
+    write(ours / audit.OWNED, "made by meshkit audit")
+    dest, commit, _ = audit.fetch("x/y", tmp_path)
+    assert theirs.read_text() == "keep me" and not ours.exists()
+    assert (dest / ".git" / audit.OWNED).is_file() and commit == "c" * 40
+    # The staging folder this run used is gone; only the unmarked one is left.
+    assert [p.name for p in tmp_path.glob(f"x__y{audit.PARTIAL}-*")] == [theirs.parent.name]
+
+
+def test_an_unmarked_clone_of_the_same_repository_is_never_reset(tmp_path, monkeypatch):
+    calls = fake_git(monkeypatch)
+    (tmp_path / "x__y" / ".git").mkdir(parents=True)
+    with pytest.raises(RuntimeError, match="not cloned by the audit"):
+        audit.fetch("x/y", tmp_path)
+    assert not any(c[0] in ("fetch", "reset") for c in calls)
+    # Without fetching it is only read, so it can be measured as it stands.
+    assert audit.fetch("x/y", tmp_path, update=False)[0] == tmp_path / "x__y"
+    write(tmp_path / "x__y" / ".git" / audit.OWNED, "made by meshkit audit")
+    audit.fetch("x/y", tmp_path)
+    assert [c[0] for c in calls if c[0] in ("fetch", "reset")] == ["fetch", "reset"]
+
+
+def test_an_stl_too_short_to_measure_is_unreadable(tmp_path):
+    assert audit.mesh_facts(write(tmp_path / "a.stl", b""))["error"].startswith(
+        "not a readable STL")
+    short = audit.mesh_facts(write(tmp_path / "b.stl", binary_stl(10)[:-50]))
+    assert "10 triangles promised" in short["error"] and short["triangles"] is None
+    padded = audit.mesh_facts(write(tmp_path / "c.stl", binary_stl(2) + b"\0\0"))
+    assert padded["triangles"] == 2 and padded["error"] is None
+
+
+def test_a_gltf_buffer_in_lfs_or_short_of_its_length_is_unreadable(tmp_path):
+    write(tmp_path / "lfs.bin", "version https://git-lfs.github.com/spec/v1\nsize 9000\n")
+    write(tmp_path / "short.bin", b"\0" * 10)
+    lfs = audit.mesh_facts(write(tmp_path / "a.gltf", json.dumps(
+        {"buffers": [{"uri": "lfs.bin", "byteLength": 9000}]})))
+    assert lfs["error"] == "its buffer lfs.bin is in Git LFS, not fetched"
+    short = audit.mesh_facts(write(tmp_path / "b.gltf", json.dumps(
+        {"buffers": [{"uri": "short.bin", "byteLength": 100}]})))
+    assert short["error"] == "its buffer short.bin has 10 of the 100 bytes it declares"
+    good = audit.mesh_facts(write(tmp_path / "c.gltf", json.dumps(
+        {"buffers": [{"uri": "short.bin", "byteLength": 10}]})))
+    assert good["error"] is None
+
+
+def test_an_mjcf_frame_without_geometry_or_joint_is_not_asked_for_a_mass(tmp_path):
+    model = write(tmp_path / "m.xml", '<mujoco><worldbody><body name="frame">'
+                  '<body name="arm"><joint type="hinge" range="0 1"/><geom type="box"/></body>'
+                  '<body name="bare"><joint type="slide" range="0 1"/></body>'
+                  "</body></worldbody></mujoco>")
+    result = audit.measure(model, "mjcf", {})
+    assert result["links"] == 3 and result["inertia_share"] == 0.5   # arm yes, bare no
+    no_geoms = write(tmp_path / "n.xml", '<mujoco><compiler inertiafromgeom="false"/>'
+                     '<worldbody><body name="arm"><joint/><geom type="box"/></body>'
+                     "</worldbody></mujoco>")
+    assert audit.measure(no_geoms, "mjcf", {})["inertia_share"] == 0.0
+
+
+def test_triangles_count_each_visual_that_draws_a_mesh(tmp_path):
+    write(tmp_path / "meshes" / "finger.stl", binary_stl(100))
+    text = urdf(*(link(f"f{i}", "meshes/finger.stl", mass=1) for i in range(12)))
+    path = write(tmp_path / "hand.urdf", text)
+    result = audit.measure(path, "urdf", {})
+    assert result["triangles"] == 1200
+    assert result["megabytes"] == round((84 + 50 * 100) / 1e6, 2)   # downloaded once
+
+
+def test_an_only_name_that_matches_nothing_is_refused():
+    c = [audit.Candidate("fork:turtlebot4", "me/turtlebot4", fork="turtlebot4")]
+    with pytest.raises(audit.SelectionError, match="turtlebot44"):
+        audit.select(c, ["turtlebot4", "turtlebot44"])
+
+
+def test_the_markdown_links_the_json_it_was_written_with():
+    report = audit.RepoReport("x/y", "x/y", "", ["s"], None, "MIT", False)
+    audit_ = audit.Audit("now", dict(audit.WEIGHTS), [report])
+    assert "[`audit.json`](audit.json)" in audit.render_markdown(audit_)
+    assert "[`report.json`](../json/report.json)" in audit.render_markdown(
+        audit_, json_link="../json/report.json")
+
+
 def test_select_narrows_by_key_repository_or_submodule():
     c = [audit.Candidate("fork:arm", "me/arm", fork="arm"), audit.Candidate("k", "a/b")]
     assert audit.select(c, None) == c

@@ -153,9 +153,18 @@ def select(candidates: list[Candidate], only: list[str] | None) -> list[Candidat
     """The candidates ``--only`` names (by list key, repository or submodule), or all."""
     if not only:
         return candidates
+    names = [{c.key.lower(), c.repo.lower(), (c.fork or "").lower()} for c in candidates]
+    # A name that matches nothing is a typo, not a request for an empty audit
+    # written over the committed one.
+    unmatched = [o for o in only if not any(o.lower() in n for n in names)]
+    if unmatched:
+        raise SelectionError("--only matches nothing: " + ", ".join(unmatched))
     wanted = {o.lower() for o in only}
-    return [c for c in candidates
-            if {c.key.lower(), c.repo.lower(), (c.fork or "").lower()} & wanted]
+    return [c for c, n in zip(candidates, names) if n & wanted]
+
+
+class SelectionError(ValueError):
+    """``--only`` named something the audit does not know."""
 
 
 # ----------------------------------------------------------------------- cache
@@ -194,14 +203,24 @@ def _remove(path: Path) -> None:
     shutil.rmtree(path, onexc=writable)
 
 
+OWNED = "meshkit-audit"          # the mark of a folder the audit made
+
+
+def _mark(folder: Path, repo: str) -> None:
+    (folder / OWNED).write_text(f"made by meshkit audit: {repo}\n", encoding="utf-8")
+
+
 def fetch(repo: str, cache: Path, *, update: bool = True) -> tuple[Path, str, str]:
     """A shallow clone of ``repo``'s default branch: (where, commit, its date).
 
-    Only what the audit made is ever replaced or deleted. A folder already at
-    the clone's place that is not a clone of ``repo`` is refused, not cleared:
-    ``--cache`` can point anywhere. A clone is made beside its place and moved
-    in when complete, so one that dies halfway leaves only its own partial
-    folder, which the next run clears.
+    Only what the audit made is ever reset, replaced or deleted, and it knows
+    what it made by a mark it leaves: ``.git/meshkit-audit`` in a clone, and
+    ``meshkit-audit`` in a staging folder. ``--cache`` can point anywhere, so
+    anything unmarked is refused and left as it is, a clone of the very same
+    repository included: it may be someone's checkout, with their changes in
+    it. With ``--no-fetch`` nothing is changed, so such a clone is measured as
+    it stands. A clone is made in a staging folder of its own and moved in
+    when complete; one that died halfway is cleared by the next run.
     """
     dest = cache_dir(cache, repo)
     url = f"https://github.com/{repo}.git"
@@ -211,17 +230,28 @@ def fetch(repo: str, cache: Path, *, update: bool = True) -> tuple[Path, str, st
             raise RuntimeError(f"{dest.name} in the cache is a clone of {origin}, "
                                f"not of {repo}: left as it is")
         if update:
+            if not (dest / ".git" / OWNED).is_file():
+                raise RuntimeError(f"{dest.name} in the cache was not cloned by the audit, "
+                                   "so it is not reset: left as it is (--no-fetch measures it)")
             _git("fetch", "--depth", "1", "--no-tags", "origin", "HEAD", cwd=dest)
             _git("reset", "--hard", "-q", "FETCH_HEAD", cwd=dest)
     elif dest.exists():
         raise RuntimeError(f"{dest.name} in the cache is not a git clone: left as it is")
     else:
-        partial = dest.with_name(dest.name + PARTIAL)
-        if partial.exists():
-            _remove(partial)          # the audit's own clone that died halfway
         dest.parent.mkdir(parents=True, exist_ok=True)
-        _git("clone", "--depth", "1", "--no-tags", "--single-branch", "-q", url, str(partial))
-        partial.rename(dest)
+        # Earlier runs' staging folders for this clone: only marked ones are ours.
+        for old in dest.parent.glob(f"{dest.name}{PARTIAL}-*"):
+            if (old / OWNED).is_file():
+                _remove(old)
+        import tempfile
+
+        staging = Path(tempfile.mkdtemp(prefix=f"{dest.name}{PARTIAL}-", dir=dest.parent))
+        _mark(staging, repo)
+        clone = staging / "clone"
+        _git("clone", "--depth", "1", "--no-tags", "--single-branch", "-q", url, str(clone))
+        _mark(clone / ".git", repo)
+        clone.rename(dest)
+        _remove(staging)
     commit = _git("rev-parse", "HEAD", cwd=dest)
     date = _git("log", "-1", "--format=%cI", cwd=dest)
     return dest, commit, date
@@ -374,8 +404,15 @@ def _stl(handle, _path, size) -> dict:
     if head[:5].lower() == b"solid" and b"facet" in head:
         handle.seek(0)
         facts["triangles"] = _count(handle, b"facet normal")
-    elif len(head) >= 84:
-        facts["triangles"] = int.from_bytes(head[80:84], "little")
+    elif len(head) < 84:
+        facts["error"] = "not a readable STL: too short for a header"
+    else:
+        count = int.from_bytes(head[80:84], "little")
+        # Trailing bytes are common and harmless; fewer than the count says are not.
+        if size < 84 + 50 * count:
+            facts["error"] = f"not a readable STL: {count} triangles promised, fewer there"
+        else:
+            facts["triangles"] = count
     return facts
 
 
@@ -429,10 +466,25 @@ def _glb(handle, path, size) -> dict:
 
 
 def _gltf(handle, path, size) -> dict:
-    return _gltf_facts(handle.read(), path, size, external=True)
+    return _gltf_facts(handle.read(), path, size)
 
 
-def _gltf_facts(data: bytes, path: Path, size: int, *, external: bool = False) -> dict:
+def _buffer_problem(where: Path, uri: str, declared) -> tuple[int, str | None]:
+    """A named buffer's size, and what is wrong with it if anything is."""
+    try:
+        size = where.stat().st_size
+        with open(where, "rb") as handle:
+            lfs = handle.read(len(_LFS)) == _LFS
+    except OSError:
+        return 0, f"its buffer {uri} cannot be read"
+    if lfs:
+        return size, f"its buffer {uri} is in Git LFS, not fetched"
+    if isinstance(declared, int) and size < declared:
+        return size, f"its buffer {uri} has {size} of the {declared} bytes it declares"
+    return size, None
+
+
+def _gltf_facts(data: bytes, path: Path, size: int) -> dict:
     try:
         document = json.loads(data)
     except ValueError:
@@ -454,18 +506,21 @@ def _gltf_facts(data: bytes, path: Path, size: int, *, external: bool = False) -
                 triangles += count // 3 if mode == 4 else max(count - 2, 0)
     facts = {"triangles": triangles, "normals": normals,
              "materials": bool(document.get("materials"))}
-    if external:
-        # A .gltf keeps its geometry in the buffers it names, beside it.
-        from urllib.parse import unquote
+    # A .gltf keeps its geometry in the buffers it names, beside it (a .glb may
+    # too): they weigh what they hold, and one left in Git LFS, or shorter
+    # than it says, makes the mesh unreadable.
+    from urllib.parse import unquote
 
-        for buffer in document.get("buffers", []):
-            uri = buffer.get("uri")
-            if isinstance(uri, str) and not uri.startswith("data:"):
-                try:
-                    size += (path.parent / unquote(uri)).stat().st_size
-                except OSError:
-                    facts["error"] = f"its buffer {uri} cannot be read"
-        facts["bytes"] = size
+    for buffer in document.get("buffers", []):
+        uri = buffer.get("uri")
+        if isinstance(uri, str) and not uri.startswith("data:"):
+            extra, problem = _buffer_problem(path.parent / unquote(uri), uri,
+                                             buffer.get("byteLength"))
+            size += extra
+            facts["error"] = facts.get("error") or problem
+    facts["bytes"] = size
+    if facts.get("error") is None:
+        facts.pop("error", None)
     return facts
 
 
@@ -662,8 +717,15 @@ def measure_mjcf(path: Path, *, facts: dict | None = None) -> dict:
     joints = [a for tag, a in elements
               if tag == "joint" and a.get("type", "hinge") in ("hinge", "slide")]
     limited = sum(1 for j in joints if j.get("range") and j.get("limited") != "false")
-    # MuJoCo gives a body without <inertial> the inertia of its geoms.
-    massed = sum(1 for b in bodies if b.find("inertial") is not None or b.find("geom") is not None)
+    # Asked of a mass: a body with geometry, as of a URDF link, and a body that
+    # moves, which MuJoCo refuses without one. A bare frame is asked nothing.
+    # MuJoCo gives a body without <inertial> the inertia of its geoms, unless
+    # the compiler says not to.
+    from_geoms = compiler is None or compiler.get("inertiafromgeom", "auto") != "false"
+    weighed = [b for b in bodies if b.find("geom") is not None or b.find("joint") is not None
+               or b.find("freejoint") is not None]
+    massed = sum(1 for b in weighed if b.find("inertial") is not None
+                 or (from_geoms and b.find("geom") is not None))
     visuals = []
     for geom in (a for tag, a in elements if tag == "geom"):
         colour = bool(geom.get("material") or geom.get("rgba"))
@@ -676,7 +738,7 @@ def measure_mjcf(path: Path, *, facts: dict | None = None) -> dict:
             visuals.append({"mesh": None, "found": True, "colour": colour})
     # MJCF has no velocity limits: that half of the score is not asked of it.
     return _summarise(root.get("model"), len(bodies), len(joints), limited, None,
-                      len(bodies), massed, visuals, facts)
+                      len(weighed), massed, visuals, facts)
 
 
 def _summarise(name, links, moving, limited, velocity, bodies, massed, visuals, facts) -> dict:
@@ -718,7 +780,9 @@ def _summarise(name, links, moving, limited, velocity, bodies, massed, visuals, 
         "formats": formats,
         "normals_share": _share(normals, len(readable)),
         "materials_share": round(material_points / len(visuals), 3) if visuals else None,
-        "triangles": sum(f["triangles"] or 0 for f in files.values()),
+        # Drawn per visual: a mesh used by twelve links is drawn twelve times.
+        # Downloaded per file: it is fetched once.
+        "triangles": sum(files[v["mesh"]]["triangles"] or 0 for v in meshed),
         "megabytes": round(sum(f["bytes"] for f in files.values()) / 1e6, 2),
     }
 
@@ -1024,7 +1088,7 @@ def run(root: Path, github, cache: Path, *, lists: bool = True, only: list[str] 
             continue
         where = root / "src" / other.fork if other.fork else cache_dir(cache, other.repo)
         if (where / ".git").exists():
-            bases.add(where)
+            bases.add(where)          # read only: nothing is fetched or reset
     # In a fixed order: a package found in two repositories must come from the
     # same one every run.
     bases = sorted(bases, key=str)
@@ -1077,10 +1141,13 @@ def _robot_licence(candidate: Candidate, robot: dict, entries: dict) -> str | No
 
 # --------------------------------------------------------------------- report
 
-def render_markdown(audit: Audit, *, listed: int = 40, top_rows: int = 100) -> str:
+def render_markdown(audit: Audit, *, listed: int = 40, top_rows: int = 100,
+                    json_link: str = "audit.json") -> str:
+    from urllib.parse import quote
+
     from meshkit.upstream import _code, _inert
 
-    forks = [r for r in audit.repos if r.fork]
+    forks =[r for r in audit.repos if r.fork]
     candidates = [r for r in audit.repos if not r.fork]
     measured = [r for r in candidates if r.robots]
     robots = [(r, robot) for r in measured for robot in r.robots]
@@ -1090,7 +1157,8 @@ def render_markdown(audit: Audit, *, listed: int = 40, top_rows: int = 100) -> s
         f"Written by `meshkit audit` on {audit.generated}. Every robot in the catalog's forks, "
         "and every robot in the repositories the upstream report's lists name, measured "
         "the same way and scored out of 100. "
-        "[`audit.json`](audit.json) has every measurement.",
+        f"[`{_inert(json_link.rsplit('/', 1)[-1])}`]({quote(json_link)}) has every "
+        "measurement.",
         "",
         f"- **The catalog:** {sum(len(r.robots) for r in forks)} entries in {len(forks)} forks.",
         f"- **Candidates:** {len(robots)} robots in {len(measured)} of {len(candidates)} "
@@ -1109,11 +1177,13 @@ def render_markdown(audit: Audit, *, listed: int = 40, top_rows: int = 100) -> s
         "visual mesh is there. Without it the parts below score nothing |",
         f"| Limits | {WEIGHTS['limits']} | Every moving joint has position and velocity limits "
         "(MJCF: position only) |",
-        f"| Inertia | {WEIGHTS['inertia']} | Every link with geometry has a mass |",
+        f"| Inertia | {WEIGHTS['inertia']} | Every link with geometry has a mass (MJCF: every "
+        "body with geometry or a joint) |",
         f"| Look | {WEIGHTS['look']} | Half for meshes with authored normals, half for "
         "materials (a whole-part colour counts half) |",
         f"| Weight | {WEIGHTS['weight']} | Under {TRIANGLES[0]:,} triangles and "
-        f"{MEGABYTES[0]} MB of visual meshes, none from {TRIANGLES[1]:,} or {MEGABYTES[1]} MB |",
+        f"{MEGABYTES[0]} MB of visual meshes, none from {TRIANGLES[1]:,} or {MEGABYTES[1]} MB "
+        "(triangles as drawn, once per visual; megabytes once per file) |",
         "",
         "Not measured: whether Kinema imports the robot, and whether its kinematics match "
         "the maker's own description. A xacro is evaluated with its default arguments, "
@@ -1185,7 +1255,8 @@ def render_markdown(audit: Audit, *, listed: int = 40, top_rows: int = 100) -> s
             lines.append(f"| {robot['score']} | {_code(robot['path'])} | {robot['kind']} | "
                          f"{parts} | {note} |")
         if len(report.robots) > listed:
-            lines.append(f"| | and {len(report.robots) - listed} more, in `audit.json` | | | |")
+            lines.append(f"| | and {len(report.robots) - listed} more, in "
+                         f"`{_inert(json_link.rsplit('/', 1)[-1])}` | | | |")
         lines += ["", "</details>", ""]
 
     empty = [r for r in candidates if not r.robots and not r.error]
