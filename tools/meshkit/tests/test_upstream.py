@@ -745,3 +745,27 @@ def test_a_previous_path_not_there_yet_is_a_first_run(tmp_path, monkeypatch):
     with pytest.raises(SystemExit, match="stop here"):
         main(["--root", str(tmp_path), "upstream", "--previous", str(tmp_path / "none.md")])
     assert seen["previous"] == {}
+
+
+# ------------------------------------------------------ seventh review round
+
+@pytest.mark.parametrize("cut", ["<!--", "<!-- meshk", "<!-- meshkit-upstream-state:v"])
+def test_a_footer_cut_inside_the_marker_name_is_an_error_not_a_first_run(cut):
+    with pytest.raises(GitHubError, match="cut short, or is not at its end"):
+        upstream.read_previous(f"# Upstream report\n\n- **sync:** ...\n\n{cut}\n")
+
+
+def test_a_root_without_gitmodules_is_an_error_not_an_empty_report(tmp_path):
+    make_catalog(tmp_path)
+    (tmp_path / ".gitmodules").unlink()
+    with pytest.raises(GitHubError, match="cannot read"):
+        upstream.read_forks(tmp_path)
+
+
+def test_gitmodules_with_no_fork_under_src_is_an_error(tmp_path):
+    make_catalog(tmp_path)
+    (tmp_path / ".gitmodules").write_text(
+        '[submodule "tools/x"]\n\tpath = tools/x\n\turl = git@github.com:me/x.git\n',
+        encoding="utf-8")
+    with pytest.raises(GitHubError, match="names no submodule under src/"):
+        upstream.read_forks(tmp_path)

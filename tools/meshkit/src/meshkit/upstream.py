@@ -152,8 +152,14 @@ _GITHUB_URL = re.compile(r"github\.com[/:]([\w.-]+)/([\w.-]+?)(?:\.git)?/?$")
 
 def read_forks(root: Path) -> list[Fork]:
     """Every submodule under src/, as .gitmodules and the index's gitlinks give it."""
+    # read() would skip a missing file without a word, and an empty report
+    # ("0 of 0 forks are level") would then replace the last good issue.
     parser = configparser.ConfigParser()
-    parser.read(root / ".gitmodules", encoding="utf-8")
+    try:
+        with open(root / ".gitmodules", encoding="utf-8") as handle:
+            parser.read_file(handle)
+    except (OSError, UnicodeDecodeError, configparser.Error) as exc:
+        raise GitHubError(f"cannot read {root / '.gitmodules'}: {exc}") from None
     forks = []
     for section in parser.sections():
         path = parser[section].get("path", "")
@@ -169,6 +175,8 @@ def read_forks(root: Path) -> list[Fork]:
             raise GitHubError(f".gitmodules: {path} names no branch; the report compares "
                               "the branch the catalog tracks")
         forks.append(Fork(name, f"{match.group(1)}/{match.group(2)}", branch, _pin(root, path)))
+    if not forks:
+        raise GitHubError(f"{root / '.gitmodules'} names no submodule under src/")
     return sorted(forks, key=lambda f: f.name.lower())
 
 
@@ -555,7 +563,12 @@ def read_previous(text: str) -> dict:
     # A report whose footer is cut short, or has text after it, must not pass
     # for a first run: that records today's candidates as the baseline, and
     # loses what is new since the last good report.
-    if re.search(rf"<!--\s*{re.escape(STATE_MARKER)}", text):
+    # That covers a marker anywhere, and a body cut off inside the marker's
+    # own name ("<!-- meshkit-upst"), which the full name cannot match.
+    opener = f"<!-- {STATE_MARKER}"
+    tail = text.rstrip()
+    if (re.search(rf"<!--\s*{re.escape(STATE_MARKER)}", text)
+            or any(tail.endswith(opener[:k]) for k in range(len("<!--"), len(opener)))):
         raise GitHubError("the previous report's state is cut short, or is not at its end")
     # A report from before there was any state, or not a report at all: start
     # again, so every list reads as a new baseline.
