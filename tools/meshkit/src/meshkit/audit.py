@@ -153,7 +153,9 @@ def select(candidates: list[Candidate], only: list[str] | None) -> list[Candidat
     """The candidates ``--only`` names (by list key, repository or submodule), or all."""
     if not only:
         return candidates
-    names = [{c.key.lower(), c.repo.lower(), (c.fork or "").lower()} for c in candidates]
+    # Each candidate's names, as a set: matching is by whole name, never part.
+    names = [{c.key.lower(), c.repo.lower()} | ({c.fork.lower()} if c.fork else set())
+             for c in candidates]
     # A name that matches nothing is a typo, not a request for an empty audit
     # written over the committed one.
     unmatched = [o for o in only if not any(o.lower() in n for n in names)]
@@ -210,6 +212,31 @@ def _mark(folder: Path, repo: str) -> None:
     (folder / OWNED).write_text(f"made by meshkit audit: {repo}\n", encoding="utf-8")
 
 
+# A staging folder older than this cannot belong to a clone still running:
+# git is stopped at CLONE_TIMEOUT.
+STALE = CLONE_TIMEOUT + 10 * 60
+
+
+def _clear_dead_staging(dest: Path, *, now: float | None = None) -> None:
+    """Remove staging folders for ``dest`` that the audit marked and that died.
+
+    A run's own staging folder is removed by that run, however it fails; one is
+    left only when the process itself was killed. Such a folder is cleared once
+    its mark is older than ``STALE``: a younger one may be another audit's,
+    sharing the cache, with git still writing into it.
+    """
+    import time
+
+    now = time.time() if now is None else now
+    for old in dest.parent.glob(f"{dest.name}{PARTIAL}-*"):
+        try:
+            age = now - (old / OWNED).stat().st_mtime
+        except OSError:
+            continue                      # unmarked: not the audit's
+        if age > STALE:
+            _remove(old)
+
+
 def fetch(repo: str, cache: Path, *, update: bool = True) -> tuple[Path, str, str]:
     """A shallow clone of ``repo``'s default branch: (where, commit, its date).
 
@@ -220,7 +247,7 @@ def fetch(repo: str, cache: Path, *, update: bool = True) -> tuple[Path, str, st
     repository included: it may be someone's checkout, with their changes in
     it. With ``--no-fetch`` nothing is changed, so such a clone is measured as
     it stands. A clone is made in a staging folder of its own and moved in
-    when complete; one that died halfway is cleared by the next run.
+    when complete; see ``_clear_dead_staging`` for one whose run was killed.
     """
     dest = cache_dir(cache, repo)
     url = f"https://github.com/{repo}.git"
@@ -239,19 +266,26 @@ def fetch(repo: str, cache: Path, *, update: bool = True) -> tuple[Path, str, st
         raise RuntimeError(f"{dest.name} in the cache is not a git clone: left as it is")
     else:
         dest.parent.mkdir(parents=True, exist_ok=True)
-        # Earlier runs' staging folders for this clone: only marked ones are ours.
-        for old in dest.parent.glob(f"{dest.name}{PARTIAL}-*"):
-            if (old / OWNED).is_file():
-                _remove(old)
+        _clear_dead_staging(dest)
         import tempfile
 
         staging = Path(tempfile.mkdtemp(prefix=f"{dest.name}{PARTIAL}-", dir=dest.parent))
-        _mark(staging, repo)
-        clone = staging / "clone"
-        _git("clone", "--depth", "1", "--no-tags", "--single-branch", "-q", url, str(clone))
-        _mark(clone / ".git", repo)
-        clone.rename(dest)
-        _remove(staging)
+        try:
+            _mark(staging, repo)
+            clone = staging / "clone"
+            _git("clone", "--depth", "1", "--no-tags", "--single-branch", "-q", url, str(clone))
+            _mark(clone / ".git", repo)
+            try:
+                clone.rename(dest)
+            except OSError:
+                # Another audit sharing the cache finished this clone first:
+                # its clone is as good as ours, if it is the audit's.
+                if not (dest / ".git" / OWNED).is_file():
+                    raise RuntimeError(f"{dest.name} appeared in the cache while cloning, "
+                                       "and not from the audit: left as it is") from None
+        finally:
+            _remove(staging)
+    commit = _git("rev-parse", "HEAD", cwd=dest)
     commit = _git("rev-parse", "HEAD", cwd=dest)
     date = _git("log", "-1", "--format=%cI", cwd=dest)
     return dest, commit, date
@@ -1142,12 +1176,19 @@ def _robot_licence(candidate: Candidate, robot: dict, entries: dict) -> str | No
 # --------------------------------------------------------------------- report
 
 def render_markdown(audit: Audit, *, listed: int = 40, top_rows: int = 100,
-                    json_link: str = "audit.json") -> str:
+                    json_link: str | None = "audit.json", json_name: str | None = None
+                    ) -> str:
+    """The audit as Markdown. ``json_link`` is the JSON's path from the
+    Markdown's folder; None when there is none (another drive), and then the
+    JSON is named, by ``json_name``, but not linked."""
     from urllib.parse import quote
 
     from meshkit.upstream import _code, _inert
 
-    forks =[r for r in audit.repos if r.fork]
+    json_name = _inert(json_name or (json_link or "audit.json").rsplit("/", 1)[-1])
+    json_ref = (f"[`{json_name}`]({quote(json_link)})" if json_link
+                else f"`{json_name}`, written with this report,")
+    forks = [r for r in audit.repos if r.fork]
     candidates = [r for r in audit.repos if not r.fork]
     measured = [r for r in candidates if r.robots]
     robots = [(r, robot) for r in measured for robot in r.robots]
@@ -1157,8 +1198,7 @@ def render_markdown(audit: Audit, *, listed: int = 40, top_rows: int = 100,
         f"Written by `meshkit audit` on {audit.generated}. Every robot in the catalog's forks, "
         "and every robot in the repositories the upstream report's lists name, measured "
         "the same way and scored out of 100. "
-        f"[`{_inert(json_link.rsplit('/', 1)[-1])}`]({quote(json_link)}) has every "
-        "measurement.",
+        f"{json_ref} has every measurement.",
         "",
         f"- **The catalog:** {sum(len(r.robots) for r in forks)} entries in {len(forks)} forks.",
         f"- **Candidates:** {len(robots)} robots in {len(measured)} of {len(candidates)} "
@@ -1256,7 +1296,7 @@ def render_markdown(audit: Audit, *, listed: int = 40, top_rows: int = 100,
                          f"{parts} | {note} |")
         if len(report.robots) > listed:
             lines.append(f"| | and {len(report.robots) - listed} more, in "
-                         f"`{_inert(json_link.rsplit('/', 1)[-1])}` | | | |")
+                         f"`{json_name}` | | | |")
         lines += ["", "</details>", ""]
 
     empty = [r for r in candidates if not r.robots and not r.error]

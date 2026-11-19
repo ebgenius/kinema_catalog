@@ -154,8 +154,8 @@ so two entries rendering one xacro differently are two rows. xacro is evaluated 
 xacrodoc, as Kinema does, using the ROS packages of every repository audited. With
 `--only`, that is the repositories named, every fork, and every candidate clone
 already in the cache: one not yet cloned is not fetched for a narrowed run, so after
-a full run the two resolve alike, and before one they may not. A name `--only` matches
-nothing with is refused before anything is written. An MJCF's `<default>` classes are applied, and an
+a full run the two resolve alike, and before one they may not. Any `--only` name that
+matches nothing is refused before anything is written. An MJCF's `<default>` classes are applied, and an
 include it lacks is an error. SDF is counted, not measured.
 
 | Part | Points | Full marks when |
@@ -177,7 +177,11 @@ The audit resets, replaces or deletes only what it made, and marks what it makes
 in before it is moved into place. Anything unmarked at a clone's place is refused and
 left as it is, a clone of the same repository included, since it may be someone's
 checkout with changes in it; `--no-fetch` measures such a clone without touching it.
-Only marked staging folders of an earlier, interrupted run are cleared.
+A run removes its own staging folder however it fails. One is left only by a run that
+was killed, and is cleared once its mark is older than the clone time limit (30
+minutes) plus ten: a younger one may be another audit's, sharing the cache, still
+cloning. Two audits that clone the same repository at once both succeed; the first to
+finish puts its clone in place, and the other uses it.
 
 **Not measured:** whether Kinema imports the robot, and whether two sources of the same
 robot have the same kinematics. Those are checked by hand in step 5, for the robots the

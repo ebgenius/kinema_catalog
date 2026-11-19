@@ -533,6 +533,11 @@ def test_a_staging_folder_is_cleared_only_when_the_audit_marked_it(tmp_path, mon
     theirs = write(tmp_path / f"x__y{audit.PARTIAL}-mine" / "notes.txt", "keep me")
     ours = tmp_path / f"x__y{audit.PARTIAL}-old"
     write(ours / audit.OWNED, "made by meshkit audit")
+    import os
+    import time
+
+    dead = time.time() - audit.STALE - 60          # a run killed long ago
+    os.utime(ours / audit.OWNED, (dead, dead))
     dest, commit, _ = audit.fetch("x/y", tmp_path)
     assert theirs.read_text() == "keep me" and not ours.exists()
     assert (dest / ".git" / audit.OWNED).is_file() and commit == "c" * 40
@@ -610,6 +615,48 @@ def test_the_markdown_links_the_json_it_was_written_with():
     assert "[`audit.json`](audit.json)" in audit.render_markdown(audit_)
     assert "[`report.json`](../json/report.json)" in audit.render_markdown(
         audit_, json_link="../json/report.json")
+    # On another drive there is no relative path: named, never linked wrongly.
+    other = audit.render_markdown(audit_, json_link=None, json_name="report.json")
+    assert "`report.json`, written with this report, has every" in other
+    assert "](report.json)" not in other
+
+
+def test_a_live_staging_folder_is_left_and_a_dead_one_cleared(tmp_path):
+    import os
+
+    dest = tmp_path / "x__y"
+    live, dead, theirs = (tmp_path / f"x__y{audit.PARTIAL}-{n}" for n in ("live", "dead", "z"))
+    for folder in (live, dead):
+        write(folder / audit.OWNED, "made by meshkit audit")
+    write(theirs / "notes.txt", "keep me")
+    old = 1_000_000.0
+    os.utime(dead / audit.OWNED, (old, old))
+    os.utime(live / audit.OWNED, (old + audit.STALE, old + audit.STALE))
+    audit._clear_dead_staging(dest, now=old + audit.STALE + 1)
+    assert live.exists() and theirs.exists() and not dead.exists()
+
+
+def test_a_clone_another_audit_finished_first_is_used(tmp_path, monkeypatch):
+    def run(*args, cwd=None, timeout=None):
+        if args[0] == "clone":
+            # Meanwhile the other audit put its clone in place.
+            write(tmp_path / "x__y" / ".git" / audit.OWNED, "made by meshkit audit")
+            write(tmp_path / "x__y" / "a.urdf", "<robot/>")
+            (Path(args[-1]) / ".git").mkdir(parents=True)
+        return {"rev-parse": "c" * 40, "log": "2026-11-01T00:00:00Z"}.get(args[0], "")
+    monkeypatch.setattr(audit, "_git", run)
+    dest, commit, _ = audit.fetch("x/y", tmp_path)
+    assert (dest / "a.urdf").is_file() and commit == "c" * 40
+    assert not list(tmp_path.glob(f"x__y{audit.PARTIAL}-*"))      # ours removed
+
+
+def test_a_failed_clone_leaves_no_staging_folder(tmp_path, monkeypatch):
+    def run(*args, cwd=None, timeout=None):
+        raise RuntimeError("fatal: repository not found")
+    monkeypatch.setattr(audit, "_git", run)
+    with pytest.raises(RuntimeError):
+        audit.fetch("x/y", tmp_path)
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_select_narrows_by_key_repository_or_submodule():

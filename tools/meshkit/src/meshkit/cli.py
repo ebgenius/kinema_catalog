@@ -307,13 +307,17 @@ def cmd_audit(args) -> int:
     except (upstream.GitHubError, CatalogError, audit.SelectionError) as exc:
         raise SystemExit(f"meshkit: {exc}") from None
     json_path.write_text(json.dumps(report.as_json(), indent=1) + "\n", encoding="utf-8")
-    # The Markdown links to the JSON written beside it, wherever that is.
+    # The Markdown links to the JSON written with it, wherever that is. On
+    # another drive no relative path reaches it, and an absolute one would put
+    # this machine's paths in the report: it is named, not linked.
     try:
         link = Path(os.path.relpath(json_path.absolute(),
                                     markdown_path.absolute().parent)).as_posix()
-    except ValueError:                    # another drive: no relative path exists
-        link = json_path.name
-    markdown_path.write_text(audit.render_markdown(report, json_link=link), encoding="utf-8")
+    except ValueError:
+        link = None
+    markdown_path.write_text(audit.render_markdown(report, json_link=link,
+                                                   json_name=json_path.name),
+                             encoding="utf-8")
     robots = sum(len(r.robots) for r in report.repos)
     failed = sum(1 for r in report.repos if r.error)
     print(f"wrote {markdown_path} and {json_path}: {robots} robots in "
