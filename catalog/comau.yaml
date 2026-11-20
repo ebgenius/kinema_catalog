@@ -1,0 +1,140 @@
+# Comau. Hand-edited; `meshkit index` builds catalog.json from these files.
+# From Comau's own repositories: COMAU-ROS2-DRIVER (industrial arms, AURA, e.DO)
+# and MyCo-ROS2 (the MyCo cobots).
+family: comau
+maker: Comau
+entries:
+  - id: aura
+    name: Comau AURA
+    category: arm
+    submodule: COMAU-ROS2-DRIVER
+    entry: src/COMAU-ROS2-DRIVER/comau_ros2_client/comau_description/aura_description/robots/aura_robot.urdf.xacro
+    licence: MIT
+    licence_note: the repository's LICENSE is MIT; each package.xml says BSD-2-Clause
+  - id: edo
+    name: Comau e.DO
+    category: arm
+    submodule: COMAU-ROS2-DRIVER
+    entry: src/COMAU-ROS2-DRIVER/comau_ros2_client/comau_description/edo_description/robots/edo_robot.urdf.xacro
+    licence: MIT
+    licence_note: the repository's LICENSE is MIT; each package.xml says BSD-2-Clause
+  - id: nj165_30
+    name: Comau NJ 165-3.0
+    category: arm
+    submodule: COMAU-ROS2-DRIVER
+    entry: src/COMAU-ROS2-DRIVER/comau_ros2_client/comau_description/nj-165-30_description/robots/nj-165-30_robot.urdf.xacro
+    licence: MIT
+    licence_note: the repository's LICENSE is MIT; each package.xml says BSD-2-Clause
+  - id: nj130_26
+    name: Comau NJ 130-2.6
+    category: arm
+    submodule: COMAU-ROS2-DRIVER
+    entry: src/COMAU-ROS2-DRIVER/comau_ros2_client/comau_description/nj130-26_description/robots/nj130-26_robot.urdf.xacro
+    licence: MIT
+    licence_note: the repository's LICENSE is MIT; each package.xml says BSD-2-Clause
+  - id: nj220
+    name: Comau NJ 220
+    category: arm
+    submodule: COMAU-ROS2-DRIVER
+    entry: src/COMAU-ROS2-DRIVER/comau_ros2_client/comau_description/nj220_description/robots/nj220_robot.urdf.xacro
+    licence: MIT
+    licence_note: the repository's LICENSE is MIT; each package.xml says BSD-2-Clause
+  - id: nj4_110
+    name: Comau NJ4 110
+    category: arm
+    submodule: COMAU-ROS2-DRIVER
+    entry: src/COMAU-ROS2-DRIVER/comau_ros2_client/comau_description/nj4-110_description/robots/nj4-110_robot.urdf.xacro
+    licence: MIT
+    licence_note: the repository's LICENSE is MIT; each package.xml says BSD-2-Clause
+  - id: nj4_170_29
+    name: Comau NJ4 170-2.9
+    category: arm
+    submodule: COMAU-ROS2-DRIVER
+    entry: src/COMAU-ROS2-DRIVER/comau_ros2_client/comau_description/nj4-170-29_description/robots/nj4-170-29_robot.urdf.xacro
+    licence: MIT
+    licence_note: the repository's LICENSE is MIT; each package.xml says BSD-2-Clause
+  - id: nj60
+    name: Comau NJ 60
+    category: arm
+    submodule: COMAU-ROS2-DRIVER
+    entry: src/COMAU-ROS2-DRIVER/comau_ros2_client/comau_description/nj60_description/robots/nj60_robot.urdf.xacro
+    licence: MIT
+    licence_note: the repository's LICENSE is MIT; each package.xml says BSD-2-Clause
+  - id: racer3_robolab
+    name: Comau Racer-3 (RoboLab)
+    category: arm
+    submodule: COMAU-ROS2-DRIVER
+    entry: src/COMAU-ROS2-DRIVER/comau_ros2_client/comau_description/racer3-robolab_description/robots/racer3-robolab_robot.urdf.xacro
+    licence: MIT
+    licence_note: the repository's LICENSE is MIT; each package.xml says BSD-2-Clause
+  - id: racer3_063
+    name: Comau Racer-3 0.63
+    category: arm
+    submodule: COMAU-ROS2-DRIVER
+    entry: src/COMAU-ROS2-DRIVER/comau_ros2_client/comau_description/racer3_0_63_description/robots/racer3_0_63_robot.urdf.xacro
+    licence: MIT
+    licence_note: the repository's LICENSE is MIT; each package.xml says BSD-2-Clause
+  - id: racer5_080
+    name: Comau Racer-5 0.80
+    category: arm
+    submodule: COMAU-ROS2-DRIVER
+    entry: src/COMAU-ROS2-DRIVER/comau_ros2_client/comau_description/racer5-0-80_description/robots/racer5-0-80_robot.urdf.xacro
+    licence: MIT
+    licence_note: the repository's LICENSE is MIT; each package.xml says BSD-2-Clause
+  - id: racer5_cobot_rail
+    name: Comau Racer-5 COBOT on a rail
+    category: arm
+    submodule: COMAU-ROS2-DRIVER
+    entry: src/COMAU-ROS2-DRIVER/comau_ros2_client/comau_description/racer5-cobot-rail_description/robots/racer5-cobot-rail_robot.urdf.xacro
+    licence: MIT
+    licence_note: the repository's LICENSE is MIT; each package.xml says BSD-2-Clause
+  - id: racer5_cobot
+    name: Comau Racer-5 COBOT
+    category: arm
+    submodule: COMAU-ROS2-DRIVER
+    entry: src/COMAU-ROS2-DRIVER/comau_ros2_client/comau_description/racer5-cobot_description/robots/racer5-cobot_robot.urdf.xacro
+    licence: MIT
+    licence_note: the repository's LICENSE is MIT; each package.xml says BSD-2-Clause
+  - id: racer7_14
+    name: Comau Racer-7 1.4
+    category: arm
+    submodule: COMAU-ROS2-DRIVER
+    entry: src/COMAU-ROS2-DRIVER/comau_ros2_client/comau_description/racer7-14_description/robots/racer7-14_robot.urdf.xacro
+    licence: MIT
+    licence_note: the repository's LICENSE is MIT; each package.xml says BSD-2-Clause
+  - id: myco_10_100
+    name: Comau MyCo-10-1.00
+    category: arm
+    submodule: MyCo-ROS2
+    entry: src/MyCo-ROS2/myco_description/urdf/MyCo-10-1.00.urdf.xacro
+    licence: MIT
+  - id: myco_15_130
+    name: Comau MyCo-15-1.30
+    category: arm
+    submodule: MyCo-ROS2
+    entry: src/MyCo-ROS2/myco_description/urdf/MyCo-15-1.30.urdf.xacro
+    licence: MIT
+  - id: myco_3_059
+    name: Comau MyCo-3-0.59
+    category: arm
+    submodule: MyCo-ROS2
+    entry: src/MyCo-ROS2/myco_description/urdf/MyCo-3-0.59.urdf.xacro
+    licence: MIT
+  - id: myco_3_5_095
+    name: Comau MyCo-3.5-0.95
+    category: arm
+    submodule: MyCo-ROS2
+    entry: src/MyCo-ROS2/myco_description/urdf/MyCo-3.5-0.95.urdf.xacro
+    licence: MIT
+  - id: myco_5_080
+    name: Comau MyCo-5-0.80
+    category: arm
+    submodule: MyCo-ROS2
+    entry: src/MyCo-ROS2/myco_description/urdf/MyCo-5-0.80.urdf.xacro
+    licence: MIT
+  - id: myco_8_130
+    name: Comau MyCo-8-1.30
+    category: arm
+    submodule: MyCo-ROS2
+    entry: src/MyCo-ROS2/myco_description/urdf/MyCo-8-1.30.urdf.xacro
+    licence: MIT

@@ -72,6 +72,10 @@ local ROS install.
 | `lbr_med14_r820_description` | [lbr-stack/…](https://github.com/lbr-stack/lbr_med14_r820_description) | `main` | KUKA LBR Med 14 R820 |
 | `kuka_robot_descriptions` | [kuka-ros/…](https://github.com/kuka-ros/kuka_robot_descriptions) | `master` | KUKA KR AGILUS, CYBERTECH, FORTEC, IONTEC, QUANTEC; LBR iico, iisy |
 | `doosan-robot2` | [DoosanRobotics/doosan-robot2](https://github.com/DoosanRobotics/doosan-robot2) | `jazzy` | Doosan A, E, H, M and P series |
+| `fanuc_description` | [FANUC-CORPORATION/fanuc_description](https://github.com/FANUC-CORPORATION/fanuc_description) | `main` | FANUC CRX, CR, LR Mate, M-10/20/710/800/810, P-350, R-1000, R-2000 |
+| `motoman_ros2_support_packages` | [Yaskawa-Global/…](https://github.com/Yaskawa-Global/motoman_ros2_support_packages) | `main` | Yaskawa Motoman AR, ES, GP, HC, MA, MH, MotoMINI, MPX, MS, SIA, UP |
+| `COMAU-ROS2-DRIVER` | [Comau/COMAU-ROS2-DRIVER](https://github.com/Comau/COMAU-ROS2-DRIVER) | `main` | Comau AURA, e.DO, NJ, Racer |
+| `MyCo-ROS2` | [Comau/MyCo-ROS2](https://github.com/Comau/MyCo-ROS2) | `main` | Comau MyCo 3 to 15 |
 | `abb_ros2` | [PickNikRobotics/abb_ros2](https://github.com/PickNikRobotics/abb_ros2) | `rolling` | ABB IRB series |
 | `interbotix_ros_manipulators` | [Interbotix/…](https://github.com/Interbotix/interbotix_ros_manipulators) | `main` | ViperX, WidowX, PincherX |
 | `SO-ARM100` | [TheRobotStudio/SO-ARM100](https://github.com/TheRobotStudio/SO-ARM100) | `main` | SO-ARM100 / SO-101 |
@@ -93,6 +97,7 @@ local ROS install.
 | `unitree_ros` | [unitreerobotics/unitree_ros](https://github.com/unitreerobotics/unitree_ros) | `master` | Go1/Go2, A1, B1/B2, H1, G1, Z1 |
 | `anymal_b_simple_description` | [ANYbotics/…](https://github.com/ANYbotics/anymal_b_simple_description) | `master` | ANYmal B |
 | `anymal_c_simple_description` | [ANYbotics/…](https://github.com/ANYbotics/anymal_c_simple_description) | `master` | ANYmal C |
+| `anymal_d_simple_description` | [ANYbotics/…](https://github.com/ANYbotics/anymal_d_simple_description) | `master` | ANYmal D |
 | `spot_description` | [rai-opensource/spot_description](https://github.com/rai-opensource/spot_description) | `main` | Boston Dynamics Spot |
 
 ## Layout

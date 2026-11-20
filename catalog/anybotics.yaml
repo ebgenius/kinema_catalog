@@ -14,3 +14,9 @@ entries:
     submodule: anymal_c_simple_description
     entry: src/anymal_c_simple_description/urdf/anymal.urdf
     licence: BSD-3-Clause
+  - id: anymal_d
+    name: ANYbotics ANYmal D
+    category: legged
+    submodule: anymal_d_simple_description
+    entry: src/anymal_d_simple_description/urdf/anymal.urdf
+    licence: BSD-3-Clause

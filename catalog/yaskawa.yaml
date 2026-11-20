@@ -1,0 +1,337 @@
+# Yaskawa. Hand-edited; `meshkit index` builds catalog.json from these files.
+# From Yaskawa's own repository, Yaskawa-Global/motoman_ros2_support_packages.
+# Left out: the SDA10F and CSDA10F dual arms, which wait for #34's categories;
+# the MotoPos D500 and MH1655 positioners, which are not arms; and the GP165R
+# 'equipped' variant beside the plain GP165R.
+family: yaskawa
+maker: Yaskawa
+entries:
+  - id: ar2010
+    name: Yaskawa Motoman AR2010
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_ar2010_support/urdf/ar2010.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: es165
+    name: Yaskawa Motoman ES165
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_es_support/urdf/es165.xacro
+    licence: Apache-2.0
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: es200_120
+    name: Yaskawa Motoman ES200-120
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_es_support/urdf/es200_120.xacro
+    licence: Apache-2.0
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp110
+    name: Yaskawa Motoman GP110
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp110_support/urdf/gp110.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp12
+    name: Yaskawa Motoman GP12
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp12_support/urdf/gp12.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp165r
+    name: Yaskawa Motoman GP165R
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp165r_support/urdf/gp165r.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp180
+    name: Yaskawa Motoman GP180
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp180_support/urdf/gp180.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp180_120
+    name: Yaskawa Motoman GP180-120
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp180_support/urdf/gp180_120.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp200r
+    name: Yaskawa Motoman GP200R
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp200r_support/urdf/gp200r.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp20hl
+    name: Yaskawa Motoman GP20HL
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp20hl_support/urdf/gp20hl.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp215
+    name: Yaskawa Motoman GP215
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp215_support/urdf/gp215.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp225
+    name: Yaskawa Motoman GP225
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp225_support/urdf/gp225.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp250
+    name: Yaskawa Motoman GP250
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp250_support/urdf/gp250.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp25
+    name: Yaskawa Motoman GP25
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp25_support/urdf/gp25.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp25_12
+    name: Yaskawa Motoman GP25-12
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp25_support/urdf/gp25_12.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp25_20
+    name: Yaskawa Motoman GP25-20
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp25_support/urdf/gp25_20.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp35l
+    name: Yaskawa Motoman GP35L
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp35l_support/urdf/gp35l.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp4
+    name: Yaskawa Motoman GP4
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp4_support/urdf/gp4.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp50
+    name: Yaskawa Motoman GP50
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp50_support/urdf/gp50.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp70l
+    name: Yaskawa Motoman GP70L
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp70l_support/urdf/gp70l.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp7
+    name: Yaskawa Motoman GP7
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp7_support/urdf/gp7.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp88
+    name: Yaskawa Motoman GP88
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp88_support/urdf/gp88.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp8
+    name: Yaskawa Motoman GP8
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp8_support/urdf/gp8.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: gp8l
+    name: Yaskawa Motoman GP8L
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_gp8l_support/urdf/gp8l.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: hc10
+    name: Yaskawa Motoman HC10
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_hc10_support/urdf/hc10.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: hc10dt
+    name: Yaskawa Motoman HC10DT
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_hc10_support/urdf/hc10dt.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: hc10dt_b10
+    name: Yaskawa Motoman HC10DT B10
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_hc10_support/urdf/hc10dt_b10.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: hc10dtp_b00
+    name: Yaskawa Motoman HC10DTP B00
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_hc10_support/urdf/hc10dtp_b00.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: hc20dt
+    name: Yaskawa Motoman HC20DT
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_hc20_support/urdf/hc20dt.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: hc20dtp
+    name: Yaskawa Motoman HC20DTP
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_hc20_support/urdf/hc20dtp.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: hc30pl
+    name: Yaskawa Motoman HC30PL
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_hc20_support/urdf/hc30pl.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: ma2010
+    name: Yaskawa Motoman MA2010
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_ma2010_support/urdf/ma2010.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: mh110
+    name: Yaskawa Motoman MH110
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_mh110_support/urdf/mh110.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: mh12
+    name: Yaskawa Motoman MH12
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_mh12_support/urdf/mh12.xacro
+    licence: Apache-2.0
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: mh50
+    name: Yaskawa Motoman MH50
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_mh50_support/urdf/mh50.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: mh5
+    name: Yaskawa Motoman MH5
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_mh5_support/urdf/mh5.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: mh5l
+    name: Yaskawa Motoman MH5L
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_mh5_support/urdf/mh5l.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: motomini
+    name: Yaskawa Motoman MotoMINI
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_motomini_support/urdf/motomini.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: mpx1950
+    name: Yaskawa Motoman MPX1950
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_mpx1950_support/urdf/mpx1950.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: ms210
+    name: Yaskawa Motoman MS210
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_ms210_support/urdf/ms210.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: sia10d
+    name: Yaskawa Motoman SIA10D
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_sia10d_support/urdf/sia10d.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: sia10f
+    name: Yaskawa Motoman SIA10F
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_sia10f_support/urdf/sia10f.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: sia20d
+    name: Yaskawa Motoman SIA20D
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_sia20d_support/urdf/sia20d.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: sia30d
+    name: Yaskawa Motoman SIA30D
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_sia30d_support/urdf/sia30d.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: sia50
+    name: Yaskawa Motoman SIA50
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_sia50_support/urdf/sia50.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: sia5d
+    name: Yaskawa Motoman SIA5D
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_sia5d_support/urdf/sia5d.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
+  - id: up50n_35
+    name: Yaskawa Motoman UP50N-35
+    category: arm
+    submodule: motoman_ros2_support_packages
+    entry: src/motoman_ros2_support_packages/motoman_up50n_support/urdf/up50n_35.xacro
+    licence: BSD-3-Clause
+    licence_note: as each package.xml states it; the repository has no licence text
