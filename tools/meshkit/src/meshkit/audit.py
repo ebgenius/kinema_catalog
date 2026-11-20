@@ -61,6 +61,7 @@ LICENCE_FILES = ("license", "licence", "copying")
 # What package.xml templates leave in <license> before anyone fills it in.
 PLACEHOLDERS = {"todo", "todo: license declaration", "tbd", "unknown", "various",
                 "see license", "see license file", "n/a", "na"}
+LICENCE_TAGS = 10   # <license> names kept from one package.xml, each whole
 REPO_TIMEOUT = 20 * 60
 CLONE_TIMEOUT = 30 * 60
 _LFS = b"version https://git-lfs"
@@ -1059,7 +1060,11 @@ def package_licence(path: Path, up_to: Path) -> str | None:
     # Free text from someone else's file: one line, and not a page of it.
     named = [" ".join((tag.text or "").split())[:100] for tag in found[1].findall("license")]
     named = [n for n in named if n.upper() not in UNNAMED and n.lower() not in PLACEHOLDERS]
-    return " AND ".join(dict.fromkeys(named))[:100] or None
+    # Whole names only: cutting the joined text mid-name turns "MPL-2.0" into
+    # "AN", a licence nobody wrote. Past a handful, say how many were left out.
+    named = list(dict.fromkeys(named))
+    kept, extra = named[:LICENCE_TAGS], len(named) - LICENCE_TAGS
+    return (" AND ".join(kept) + (f" (and {extra} more)" if extra > 0 else "")) or None
 
 
 def audit_repo(spec: dict) -> dict:

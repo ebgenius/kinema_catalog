@@ -479,7 +479,11 @@ def package_xml(*licences):
     (["Apache-2.0", "BSD-3-Clause", "Apache-2.0"], "Apache-2.0 AND BSD-3-Clause"),
     (["TODO: License declaration"], None), (["TODO"], None), (["Various"], None), (["N/A"], None), ([], None),
     (["  BSD\n   licence  "], "BSD licence"), (["x" * 300], "x" * 100),
-    (["a" * 60, "b" * 60], ("a" * 60 + " AND " + "b" * 60)[:100])])   # the whole, not each
+    (["a" * 60, "b" * 60], "a" * 60 + " AND " + "b" * 60),            # never cut mid-name
+    (["BSD-2-Clause", "Apache-2.0", "BSD-3-Clause", "BSD", "CC-BY-NC-ND-4.0", "CC-BY-SA-4.0",
+      "ISC", "MPL-2.0"], "BSD-2-Clause AND Apache-2.0 AND BSD-3-Clause AND BSD AND "
+                         "CC-BY-NC-ND-4.0 AND CC-BY-SA-4.0 AND ISC AND MPL-2.0"),
+    ([f"L{i}" for i in range(12)], " AND ".join(f"L{i}" for i in range(10)) + " (and 2 more)")])
 def test_a_package_names_its_licence(tmp_path, licences, named):
     write(tmp_path / "pkg" / "package.xml", package_xml(*licences))
     robot = write(tmp_path / "pkg" / "urdf" / "a.urdf", "<robot/>")

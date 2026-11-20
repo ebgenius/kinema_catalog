@@ -172,7 +172,7 @@ include it lacks is an error. SDF is counted, not measured.
 
 | Part | Points | Full marks when |
 | --- | --: | --- |
-| licence | 15 | a licence is named (the catalog's for an entry; for a candidate GitHub's, or where GitHub names none, the `<license>` tags of the robot's `package.xml`) and a licence text is beside the robot or above it in its repository: `LICENSE`, `LICENCE` or `COPYING` (also `LICENSE-MIT` and the like), or a REUSE `LICENSES/` folder with a file in it; half for one of the two. The text's presence is checked, not what it says |
+| licence | 15 | a licence is named (the catalog's for an entry; for a candidate GitHub's, or where GitHub names none, the `<license>` tags of the robot's `package.xml`, joined with AND, each name whole and at most ten, then a count of the rest) and a licence text is beside the robot or above it in its repository: `LICENSE`, `LICENCE` or `COPYING` (also `LICENSE-MIT` and the like), or a REUSE `LICENSES/` folder with a file in it; half for one of the two. The text's presence is checked, not what it says |
 | alive | 10 | upstream committed to in the last year; half within three; none when archived |
 | flattens | 20 | the xacro evaluates, or the MJCF parses, and every visual mesh exists and can be read (one left in Git LFS cannot). Without this, the parts below score nothing |
 | limits | 15 | revolute and prismatic joints have position and velocity limits (MJCF: position only; continuous joints need none) |
