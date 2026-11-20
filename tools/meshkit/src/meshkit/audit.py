@@ -91,20 +91,27 @@ class Candidate:
     error: str | None = None
 
 
-def gather(root: Path, github, *, lists: bool = True, only: list[str] | None = None
-           ) -> list[Candidate]:
-    """The catalog's forks, then every candidate the lists name, once each."""
+REPO_SOURCE = "--repo"       # the source of a repository named on the command line
+
+
+def gather(root: Path, github, *, lists: bool = True, only: list[str] | None = None,
+           repos: list[str] | None = None) -> list[Candidate]:
+    """The catalog's forks, then every candidate the lists name, once each, then
+    the repositories ``--repo`` names that neither has."""
     from meshkit import upstream
 
     forks = upstream.read_forks(root)
     candidates: list[Candidate] = []
     known: set[str] = set()
+    fork_of: dict[str, Candidate] = {}       # a fork, by its name and its upstream's
     for fork in forks:
         candidate = Candidate(f"fork:{fork.name}", fork.repo, fork=fork.name, sources=["catalog"])
+        fork_of[fork.repo.lower()] = candidate
         try:
             meta = github.repo(fork.repo)
             parent = meta.get("parent") or meta
             known |= {fork.repo.lower(), parent["full_name"].lower()}
+            fork_of[parent["full_name"].lower()] = candidate
             candidate.licence = (parent.get("license") or {}).get("spdx_id")
             candidate.archived = bool(parent.get("archived"))
             candidate.pushed = parent.get("pushed_at")
@@ -146,11 +153,57 @@ def gather(root: Path, github, *, lists: bool = True, only: list[str] | None = N
             seen[(candidate.repo.lower(), candidate.folder)] = candidate
         candidates += sorted(seen.values(), key=lambda c: (c.repo.lower(), c.folder))
 
-    return select(candidates, only)
+    def already(name: str) -> Candidate | None:
+        """A fork or a list's candidate by that name: marked, not added again."""
+        return fork_of.get(name.lower()) or next(
+            (c for c in candidates if c.repo.lower() == name.lower() and not c.folder), None)
+
+    for text in repos or []:
+        name = repo_name(text)
+        same = already(name)
+        if same is None:
+            try:
+                meta = github.repo(name)
+            except upstream.GitHubError as exc:
+                # A name GitHub does not know is a typo, as with --only.
+                raise SelectionError(f"--repo {text}: {exc}") from None
+            full = meta["full_name"]
+            same = already(full)
+        if same is None:
+            same = Candidate(full, full, licence=(meta.get("license") or {}).get("spdx_id"),
+                             archived=bool(meta.get("archived")), pushed=meta.get("pushed_at"))
+            candidates.append(same)
+        if REPO_SOURCE not in same.sources:
+            same.sources.append(REPO_SOURCE)
+
+    return select(candidates, only, named=bool(repos))
 
 
-def select(candidates: list[Candidate], only: list[str] | None) -> list[Candidate]:
-    """The candidates ``--only`` names (by list key, repository or submodule), or all."""
+def repo_name(text: str) -> str:
+    """owner/name, from that or a GitHub URL (https, ssh, with or without .git)."""
+    name = text.strip().rstrip("/")
+    for prefix in ("https://github.com/", "http://github.com/", "git@github.com:",
+                   "github.com/"):
+        if name.lower().startswith(prefix):
+            name = name[len(prefix):]
+            break
+    name = name.removesuffix(".git")
+    owner, _, repo = name.partition("/")
+    if not owner or not repo or "/" in repo or ":" in name:
+        raise SelectionError(f"--repo {text}: not a GitHub repository (owner/name)")
+    return name
+
+
+def select(candidates: list[Candidate], only: list[str] | None, *,
+           named: bool = False) -> list[Candidate]:
+    """The candidates ``--only`` names (by list key, repository or submodule), or all.
+
+    With ``named``, the repositories ``--repo`` named are chosen too, and the
+    rest only if ``--only`` names them: ``--repo`` audits what it names.
+    """
+    if named:
+        chosen = select(candidates, only) if only else []
+        return [c for c in candidates if REPO_SOURCE in c.sources or c in chosen]
     if not only:
         return candidates
     # Each candidate's names, as a set: matching is by whole name, never part.
@@ -585,9 +638,11 @@ _READERS = {"stl": _stl, "obj": _obj, "dae": _dae, "ply": _ply, "glb": _glb, "gl
 def _resolve(filename: str, source: Path, mapping: dict[str, str],
              mesh_base: Path | None, copies: dict[str, list[str]] | None = None
              ) -> Path | None:
+    from meshkit.scan import strip_file_uri
+
     text = filename.strip()
     if text.startswith("file://"):
-        text = text[len("file://"):]
+        text = strip_file_uri(text)
         if re.match(r"^/[A-Za-z]:", text):
             text = text[1:]
     if text.startswith("package://"):
@@ -1051,9 +1106,12 @@ class Audit:
     generated: str
     weights: dict
     repos: list[RepoReport]
+    # What --only and --repo named, when the audit is not of everything.
+    selection: list[str] | None = None
 
     def as_json(self) -> dict:
         return {"generated": self.generated, "weights": self.weights,
+                "selection": self.selection,
                 "thresholds": {"triangles": TRIANGLES, "megabytes": MEGABYTES},
                 "not_measured": ["imports in Kinema",
                                  "kinematics against the maker's own description"],
@@ -1071,15 +1129,15 @@ def _run_worker(spec: dict, timeout: int) -> dict:
 
 
 def run(root: Path, github, cache: Path, *, lists: bool = True, only: list[str] | None = None,
-        update: bool = True, workers: int = 4, timeout: int = REPO_TIMEOUT,
-        progress=print) -> Audit:
+        repos: list[str] | None = None, update: bool = True, workers: int = 4,
+        timeout: int = REPO_TIMEOUT, progress=print) -> Audit:
     from meshkit.catalog import load as load_catalog
 
     # Absolute: xacro is evaluated from the robot's own folder, where a path
     # relative to here would point somewhere else.
     root, cache = root.absolute(), cache.absolute()
-    everyone = gather(root, github, lists=lists)
-    candidates = select(everyone, only)
+    everyone = gather(root, github, lists=lists, repos=repos)
+    candidates = select(everyone, only, named=bool(repos))
     entries: dict[str, list[dict]] = {}
     for entry in load_catalog(root):
         entries.setdefault(entry["submodule"], []).append(entry)
@@ -1182,7 +1240,8 @@ def run(root: Path, github, cache: Path, *, lists: bool = True, only: list[str] 
                 progress(f"  {done} of {len(candidates)} measured")
 
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    return Audit(generated, dict(WEIGHTS), [reports[c.key] for c in candidates])
+    selection = [*(only or []), *(repo_name(r) for r in repos or [])] or None
+    return Audit(generated, dict(WEIGHTS), [reports[c.key] for c in candidates], selection)
 
 
 def _robot_licence(candidate: Candidate, robot: dict, entries: dict) -> str | None:
@@ -1213,15 +1272,25 @@ def render_markdown(audit: Audit, *, listed: int = 40, top_rows: int = 100,
     candidates = [r for r in audit.repos if not r.fork]
     measured = [r for r in candidates if r.robots]
     robots = [(r, robot) for r in measured for robot in r.robots]
+    if audit.selection:
+        named = ", ".join(_code(name) for name in audit.selection)
+        scope = (f"Only what `--only` and `--repo` named ({named}), not the whole audit; "
+                 "every robot in it measured the way the full audit measures them and "
+                 "scored out of 100. ")
+    else:
+        scope = ("Every robot in the catalog's forks, and every robot in the repositories "
+                 "the upstream report's lists name, measured the same way and scored out "
+                 "of 100. ")
+    # A selection with no fork in it has no catalog to show.
+    catalog = bool(forks or not audit.selection)
     lines = [
         "# Robot description audit",
         "",
-        f"Written by `meshkit audit` on {audit.generated}. Every robot in the catalog's forks, "
-        "and every robot in the repositories the upstream report's lists name, measured "
-        "the same way and scored out of 100. "
+        f"Written by `meshkit audit` on {audit.generated}. {scope}"
         f"{json_ref} has every measurement.",
         "",
-        f"- **The catalog:** {sum(len(r.robots) for r in forks)} entries in {len(forks)} forks.",
+        *([f"- **The catalog:** {sum(len(r.robots) for r in forks)} entries in "
+           f"{len(forks)} forks."] if catalog else []),
         f"- **Candidates:** {len(robots)} robots in {len(measured)} of {len(candidates)} "
         "repositories or folders; "
         f"{sum(1 for r in candidates if r.error)} could not be audited (listed at the end).",
@@ -1250,13 +1319,16 @@ def render_markdown(audit: Audit, *, listed: int = 40, top_rows: int = 100,
         "the maker's own description. A xacro is evaluated with its default arguments, "
         "using packages from every repository audited; one that needs a package none of "
         "them carries does not flatten. A DAE's polygons count as one triangle each.",
-        "",
-        "## The catalog's entries",
-        "",
-        "| Entry | Fork | Score | Licence | Limits | Inertia | Normals | Materials | "
-        "Triangles | MB |",
-        "|---|---|--:|---|--:|--:|--:|--:|--:|--:|",
     ]
+    if catalog:
+        lines += [
+            "",
+            "## The catalog's entries",
+            "",
+            "| Entry | Fork | Score | Licence | Limits | Inertia | Normals | Materials | "
+            "Triangles | MB |",
+            "|---|---|--:|---|--:|--:|--:|--:|--:|--:|",
+        ]
     pct = lambda v: "-" if v is None else f"{round(v * 100)}%"  # noqa: E731
     for report in forks:
         for robot in sorted(report.robots, key=lambda r: (-r["score"], r.get("id") or "")):

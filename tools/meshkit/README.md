@@ -135,7 +135,15 @@ uv run meshkit audit                            # the forks and every candidate
 uv run meshkit audit --forks-only               # the catalog's own entries, no cloning
 uv run meshkit audit --only unitreerobotics/unitree_mujoco
 uv run meshkit audit --no-fetch                 # measure the clones as they are
+uv run meshkit audit --repo kuka-ros/kuka_robot_descriptions --markdown k.md --json k.json
 ```
+
+**`--repo`** scores a repository the lists don't name, before choosing it as a source:
+an `owner/name` or a GitHub URL, repeatable. It is measured like any candidate, its
+source shown as `--repo`. One already in the audit (a fork, by its own name or its
+upstream's, or a listed candidate) is marked, not added twice. `--repo` audits only what
+it and `--only` name, so it needs `--markdown` and `--json`: a run written over
+`audit/audit.md` would drop every other row. A name GitHub doesn't know is refused.
 
 **What is audited.** Every entry in `catalog.json`, rendered with its own arguments,
 and every repository the upstream report's lists name that the catalog doesn't carry

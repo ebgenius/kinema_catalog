@@ -286,6 +286,11 @@ def cmd_audit(args) -> int:
     from meshkit.catalog import CatalogError
 
     root = _root(args)
+    # --repo audits only what it names: written over the committed audit, that
+    # would replace every other row with these few.
+    if args.repo and not (args.markdown and args.json):
+        raise SystemExit("meshkit: --repo audits only the repositories it names; give "
+                         "--markdown and --json, so audit/audit.md is not replaced")
     markdown_path = args.markdown or root / "audit" / "audit.md"
     json_path = args.json or root / "audit" / "audit.json"
     if _same_file(markdown_path, json_path):
@@ -301,7 +306,7 @@ def cmd_audit(args) -> int:
     print(f"cache: {cache}")
     try:
         report = audit.run(root, upstream.GitHub(upstream.token()), cache,
-                           lists=not args.forks_only, only=args.only,
+                           lists=not args.forks_only, only=args.only, repos=args.repo,
                            update=not args.no_fetch, workers=args.workers,
                            timeout=args.timeout * 60)
     except (upstream.GitHubError, CatalogError, audit.SelectionError) as exc:
@@ -384,6 +389,10 @@ def build_parser() -> argparse.ArgumentParser:
     au.add_argument("--only", action="append",
                     help="limit to a fork, a repository (owner/name) or a list key "
                          "(repeatable)")
+    au.add_argument("--repo", action="append",
+                    help="audit a GitHub repository (owner/name or URL), listed or not; "
+                         "only what --repo and --only name is measured (repeatable; "
+                         "needs --markdown and --json)")
     au.add_argument("--forks-only", action="store_true",
                     help="the catalog's forks alone, no candidates")
     au.add_argument("--cache", type=Path,
