@@ -42,7 +42,7 @@ from pathlib import Path
 # What a score is made of, out of 100. Kept here, in one place, so a change of
 # mind is one edit; the report prints this table.
 WEIGHTS = {
-    "licence": 15,    # a licence named, and a LICENSE file present (not read)
+    "licence": 15,    # a licence named, and a licence text present (not read)
     "alive": 10,      # upstream committed to in the last year (half: in three)
     "flattens": 20,   # xacro evaluates, or the MJCF parses, and every mesh is there
     "limits": 15,     # position and velocity limits on every moving joint
@@ -58,6 +58,9 @@ MESH_SUFFIXES = (".stl", ".dae", ".obj", ".glb", ".gltf", ".ply")
 SKIP_DIRS = {".git", "build", "install", "log", "__pycache__", "node_modules", ".github"}
 UNNAMED = {None, "", "NOASSERTION", "NONE", "OTHER"}
 LICENCE_FILES = ("license", "licence", "copying")
+# What package.xml templates leave in <license> before anyone fills it in.
+PLACEHOLDERS = {"todo", "todo: license declaration", "tbd", "unknown", "various",
+                "see license", "see license file", "n/a", "na"}
 REPO_TIMEOUT = 20 * 60
 CLONE_TIMEOUT = 30 * 60
 _LFS = b"version https://git-lfs"
@@ -984,13 +987,22 @@ def score(row: dict, *, today: datetime | None = None) -> tuple[int, dict]:
 
 # --------------------------------------------------------------------- worker
 
+def _is_licence(path: Path) -> bool:
+    """LICENSE, LICENCE.md, COPYING, LICENSE-APACHE, LICENSE_MIT.txt..., or a
+    REUSE-style LICENSES/ folder with a text in it (FANUC's)."""
+    stem = path.name.lower().split(".")[0]
+    if path.is_dir():
+        return stem in ("licenses", "licences") and any(p.is_file() for p in path.iterdir())
+    return path.is_file() and any(stem == word or stem.startswith((word + "-", word + "_"))
+                                  for word in LICENCE_FILES)
+
+
 def licence_file(base: Path, up_to: Path) -> bool:
-    """A LICENSE (or LICENCE, COPYING) beside the robot or in a folder above it."""
+    """A licence text beside the robot or in a folder above it (``_is_licence``)."""
     here = base if base.is_dir() else base.parent
     while True:
         try:
-            if any(p.is_file() and p.name.lower().split(".")[0] in LICENCE_FILES
-                   for p in here.iterdir()):
+            if any(_is_licence(p) for p in here.iterdir()):
                 return True
         except OSError:
             return False
@@ -999,25 +1011,53 @@ def licence_file(base: Path, up_to: Path) -> bool:
         here = here.parent
 
 
+def _manifest(path: Path, up_to: Path) -> tuple[Path, ET.Element | None] | None:
+    """The nearest package.xml above a robot file: its folder, and its root
+    element (None when it does not parse). None when there is no package.xml."""
+    here = path.parent
+    while here.is_relative_to(up_to):
+        manifest = here / "package.xml"
+        if manifest.is_file():
+            try:
+                return here, ET.parse(manifest).getroot()
+            except (ET.ParseError, OSError):
+                return here, None
+        if here == up_to or here.parent == here:
+            break
+        here = here.parent
+    return None
+
+
 def package_of(path: Path, up_to: Path) -> str | None:
     """The ROS package a robot file belongs to: the nearest package.xml above it.
 
     A package's variants (robot.xacro, ros2_control/robot.xacro, a URDF
     generated from them) are one robot as far as forking goes.
     """
-    here = path.parent
-    while here.is_relative_to(up_to):
-        manifest = here / "package.xml"
-        if manifest.is_file():
-            try:
-                name = ET.parse(manifest).getroot().findtext("name")
-            except (ET.ParseError, OSError):
-                name = None
-            return (name or here.name).strip()
-        if here == up_to or here.parent == here:
-            break
-        here = here.parent
-    return None
+    found = _manifest(path, up_to)
+    if found is None:
+        return None
+    here, root = found
+    name = root.findtext("name") if root is not None else None
+    return (name or here.name).strip()
+
+
+def package_licence(path: Path, up_to: Path) -> str | None:
+    """The licence the robot's package.xml declares, or None.
+
+    For a repository GitHub cannot name a licence for (Yaskawa states it
+    per package, FANUC in a LICENSES/ folder GitHub does not read). Several
+    <license> tags, which ROS uses when parts are licensed differently, are
+    kept as they are written, joined with " AND ". A placeholder is not a
+    licence.
+    """
+    found = _manifest(path, up_to)
+    if found is None or found[1] is None:
+        return None
+    # Free text from someone else's file: one line, and not a page of it.
+    named = [" ".join((tag.text or "").split())[:100] for tag in found[1].findall("license")]
+    named = [n for n in named if n.upper() not in UNNAMED and n.lower() not in PLACEHOLDERS]
+    return " AND ".join(dict.fromkeys(named)) or None
 
 
 def audit_repo(spec: dict) -> dict:
@@ -1045,7 +1085,8 @@ def audit_repo(spec: dict) -> dict:
         # LICENSE is the one that covers it.
         result.update(path=relative, kind=kind, id=(entry or {}).get("id"),
                       package=package_of(path, base),
-                      licence_file=licence_file(path, base) or licence_file(base, base))
+                      licence_file=licence_file(path, base) or licence_file(base, base),
+                      package_licence=package_licence(path, base))
         rows.append(result)
     sdf = sum(1 for p in _walk(scope) if p.suffix.lower() == ".sdf")
     places = [(base, ""), (Path(spec["root"]), "")] + [(Path(p), label) for p, label in
@@ -1272,15 +1313,25 @@ def run(root: Path, github, cache: Path, *, lists: bool = True, only: list[str] 
 
 
 def _robot_licence(candidate: Candidate, robot: dict, entries: dict) -> str | None:
-    """The catalog's own licence for its entries; GitHub's for a candidate."""
+    """The catalog's own licence for its entries. For a candidate, GitHub's,
+    or where GitHub names none, the one its package.xml declares."""
     if candidate.fork:
         for entry in entries.get(candidate.fork, []):
             if entry["id"] == robot.get("id"):
                 return entry["licence"]
+    if candidate.licence in UNNAMED and robot.get("package_licence"):
+        return robot["package_licence"]
     return candidate.licence
 
 
 # --------------------------------------------------------------------- report
+
+def _cell(text: str) -> str:
+    """Text from someone else's file (a package.xml licence), safe in a table cell."""
+    from meshkit.upstream import _inert
+
+    return _inert(" ".join(text.split())).replace("|", "\\|")
+
 
 def render_markdown(audit: Audit, *, listed: int = 40, top_rows: int = 100,
                     json_link: str | None = "audit.json", json_name: str | None = None
@@ -1328,8 +1379,9 @@ def render_markdown(audit: Audit, *, listed: int = 40, top_rows: int = 100,
         "",
         "| Part | Points | Full marks when |",
         "|---|--:|---|",
-        f"| Licence | {WEIGHTS['licence']} | A licence is named and there is a LICENSE file "
-        "(present, not read; half for one of the two) |",
+        f"| Licence | {WEIGHTS['licence']} | A licence is named (by GitHub, else by the "
+        "robot's package.xml) and there is a licence text: LICENSE, COPYING or a LICENSES/ "
+        "folder (present, not read; half for one of the two) |",
         f"| Alive | {WEIGHTS['alive']} | Upstream committed to in the last year (half: in "
         "three); not archived |",
         f"| Flattens | {WEIGHTS['flattens']} | xacro evaluates (or the MJCF parses) and every "
@@ -1363,7 +1415,7 @@ def render_markdown(audit: Audit, *, listed: int = 40, top_rows: int = 100,
         for robot in sorted(report.robots, key=lambda r: (-r["score"], r.get("id") or "")):
             lines.append(
                 f"| {robot.get('id')} | {report.fork} | {robot['score']} | "
-                f"{robot.get('licence') or '-'} | {pct(robot.get('limited_share'))} | "
+                f"{_cell(robot.get('licence') or '-')} | {pct(robot.get('limited_share'))} | "
                 f"{pct(robot.get('inertia_share'))} | {pct(robot.get('normals_share'))} | "
                 f"{pct(robot.get('materials_share'))} | {robot.get('triangles') or 0:,} | "
                 f"{robot.get('megabytes') or 0} |")
@@ -1393,7 +1445,7 @@ def render_markdown(audit: Audit, *, listed: int = 40, top_rows: int = 100,
     for report, robot, count in top:
         lines.append(f"| {robot['score']} | {_inert(robot.get('package') or '-')} | "
                      f"{_code(robot['path'])} | {robot.get('links') or 0} | {count} | "
-                     f"{_repo_link(report)} | {robot.get('licence') or '-'} | "
+                     f"{_repo_link(report)} | {_cell(robot.get('licence') or '-')} | "
                      f"{_formats(robot)} | {robot.get('triangles') or 0:,} |")
 
     lines += ["", "## Every candidate, by repository", "",
