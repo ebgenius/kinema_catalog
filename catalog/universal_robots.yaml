@@ -85,3 +85,81 @@ entries:
       name: ur30
     licence: BSD-3-Clause AND LicenseRef-UR-Graphical-Documentation
     licence_note: "Meshes under Universal Robots' Terms and Conditions for Use of Graphical Documentation (meshes/ur30/LICENSE.txt): use is limited to simulating and representing UR products, hobby and research use is non-commercial only, and UR owns derivative works."
+  - id: ur7e
+    name: Universal Robots UR7e
+    category: arm
+    submodule: Universal_Robots_ROS2_Description
+    entry: src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro
+    args:
+      ur_type: ur7e
+      name: ur7e
+    licence: BSD-3-Clause
+  - id: ur12e
+    name: Universal Robots UR12e
+    category: arm
+    submodule: Universal_Robots_ROS2_Description
+    entry: src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro
+    args:
+      ur_type: ur12e
+      name: ur12e
+    licence: BSD-3-Clause
+  - id: ur8long
+    name: Universal Robots UR8LONG
+    category: arm
+    submodule: Universal_Robots_ROS2_Description
+    entry: src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro
+    args:
+      ur_type: ur8long
+      name: ur8long
+    licence: BSD-3-Clause AND LicenseRef-UR-Graphical-Documentation
+    licence_note: "Meshes under Universal Robots' Terms and Conditions for Use of Graphical Documentation (meshes/ur8long/, meshes/ur15/): use is limited to simulating and representing UR products, hobby and research use is non-commercial only, and UR owns derivative works."
+  - id: ur15
+    name: Universal Robots UR15
+    category: arm
+    submodule: Universal_Robots_ROS2_Description
+    entry: src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro
+    args:
+      ur_type: ur15
+      name: ur15
+    licence: BSD-3-Clause AND LicenseRef-UR-Graphical-Documentation
+    licence_note: "Meshes under Universal Robots' Terms and Conditions for Use of Graphical Documentation (meshes/ur15/): use is limited to simulating and representing UR products, hobby and research use is non-commercial only, and UR owns derivative works."
+  - id: ur18
+    name: Universal Robots UR18
+    category: arm
+    submodule: Universal_Robots_ROS2_Description
+    entry: src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro
+    args:
+      ur_type: ur18
+      name: ur18
+    licence: BSD-3-Clause AND LicenseRef-UR-Graphical-Documentation
+    licence_note: "Meshes under Universal Robots' Terms and Conditions for Use of Graphical Documentation (meshes/ur18/, meshes/ur15/): use is limited to simulating and representing UR products, hobby and research use is non-commercial only, and UR owns derivative works."
+  - id: ur10g_1750
+    name: Universal Robots UR10g-1750
+    category: arm
+    submodule: Universal_Robots_ROS2_Description
+    entry: src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro
+    args:
+      ur_type: ur10g-1750
+      name: ur10g_1750
+    licence: BSD-3-Clause AND LicenseRef-UR-Graphical-Documentation
+    licence_note: "Meshes under Universal Robots' Terms and Conditions for Use of Graphical Documentation (meshes/ur10g-1750/, meshes/ur17g-1300/, meshes/common/smart_panel/): use is limited to simulating and representing UR products, hobby and research use is non-commercial only, and UR owns derivative works."
+  - id: ur17g_1300
+    name: Universal Robots UR17g-1300
+    category: arm
+    submodule: Universal_Robots_ROS2_Description
+    entry: src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro
+    args:
+      ur_type: ur17g-1300
+      name: ur17g_1300
+    licence: BSD-3-Clause AND LicenseRef-UR-Graphical-Documentation
+    licence_note: "Meshes under Universal Robots' Terms and Conditions for Use of Graphical Documentation (meshes/ur17g-1300/, meshes/common/smart_panel/): use is limited to simulating and representing UR products, hobby and research use is non-commercial only, and UR owns derivative works."
+  - id: ur18g_950
+    name: Universal Robots UR18g-950
+    category: arm
+    submodule: Universal_Robots_ROS2_Description
+    entry: src/Universal_Robots_ROS2_Description/urdf/ur.urdf.xacro
+    args:
+      ur_type: ur18g-950
+      name: ur18g_950
+    licence: BSD-3-Clause AND LicenseRef-UR-Graphical-Documentation
+    licence_note: "Meshes under Universal Robots' Terms and Conditions for Use of Graphical Documentation (meshes/ur18g-950/, meshes/ur17g-1300/, meshes/common/smart_panel/): use is limited to simulating and representing UR products, hobby and research use is non-commercial only, and UR owns derivative works."

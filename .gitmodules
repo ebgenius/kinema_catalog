@@ -82,3 +82,11 @@
 	path = src/create3_sim
 	url = git@github.com:ebgenius/create3_sim.git
 	branch = jazzy
+[submodule "src/kuka_robot_descriptions"]
+	path = src/kuka_robot_descriptions
+	url = git@github.com:ebgenius/kuka_robot_descriptions.git
+	branch = master
+[submodule "src/doosan-robot2"]
+	path = src/doosan-robot2
+	url = git@github.com:ebgenius/doosan-robot2.git
+	branch = jazzy

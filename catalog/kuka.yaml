@@ -26,3 +26,281 @@ entries:
     submodule: lbr_med14_r820_description
     entry: src/lbr_med14_r820_description/urdf/lbr_med14_r820.urdf.xacro
     licence: Apache-2.0
+  # The kuka-ros descriptions: one entry per robot file, KR series and LBR iico / iisy.
+  # Its LBR iiwa 14 is left out: the lbr-stack forks above carry the iiwa and Med.
+  - id: kr10_r1100_2
+    name: KUKA KR 10 R1100-2 (KR AGILUS)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_agilus_support/urdf/kr10_r1100_2.urdf.xacro
+    licence: Apache-2.0
+  - id: kr10_r1100_3
+    name: KUKA KR 10 R1100-3 (KR AGILUS)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_agilus_support/urdf/kr10_r1100_3.urdf.xacro
+    licence: Apache-2.0
+  - id: kr10_r900_2
+    name: KUKA KR 10 R900-2 (KR AGILUS)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_agilus_support/urdf/kr10_r900_2.urdf.xacro
+    licence: Apache-2.0
+  - id: kr13_r900_3
+    name: KUKA KR 13 R900-3 (KR AGILUS)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_agilus_support/urdf/kr13_r900_3.urdf.xacro
+    licence: Apache-2.0
+  - id: kr16_r1100_3
+    name: KUKA KR 16 R1100-3 (KR AGILUS)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_agilus_support/urdf/kr16_r1100_3.urdf.xacro
+    licence: Apache-2.0
+  - id: kr4_r600
+    name: KUKA KR 4 R600 (KR AGILUS)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_agilus_support/urdf/kr4_r600.urdf.xacro
+    licence: Apache-2.0
+  - id: kr6_r700_2
+    name: KUKA KR 6 R700-2 (KR AGILUS)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_agilus_support/urdf/kr6_r700_2.urdf.xacro
+    licence: Apache-2.0
+  - id: kr6_r900_2
+    name: KUKA KR 6 R900-2 (KR AGILUS)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_agilus_support/urdf/kr6_r900_2.urdf.xacro
+    licence: Apache-2.0
+  - id: kr7_r900_3
+    name: KUKA KR 7 R900-3 (KR AGILUS)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_agilus_support/urdf/kr7_r900_3.urdf.xacro
+    licence: Apache-2.0
+  - id: kr12_r1450_3_hw
+    name: KUKA KR 12 R1450-3 HW (KR CYBERTECH)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_cybertech_support/urdf/kr12_r1450_3_hw.urdf.xacro
+    licence: Apache-2.0
+  - id: kr16_r1610_2
+    name: KUKA KR 16 R1610-2 (KR CYBERTECH)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_cybertech_support/urdf/kr16_r1610_2.urdf.xacro
+    licence: Apache-2.0
+  - id: kr16_r2010_2
+    name: KUKA KR 16 R2010-2 (KR CYBERTECH)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_cybertech_support/urdf/kr16_r2010_2.urdf.xacro
+    licence: Apache-2.0
+  - id: kr20_r1810_2
+    name: KUKA KR 20 R1810-2 (KR CYBERTECH)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_cybertech_support/urdf/kr20_r1810_2.urdf.xacro
+    licence: Apache-2.0
+  - id: kr20_r1820_2_e
+    name: KUKA KR 20 R1820-2 E (KR CYBERTECH)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_cybertech_support/urdf/kr20_r1820_2_e.urdf.xacro
+    licence: Apache-2.0
+  - id: kr35_r1840_3
+    name: KUKA KR 35 R1840-3 (KR CYBERTECH)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_cybertech_support/urdf/kr35_r1840_3.urdf.xacro
+    licence: Apache-2.0
+  - id: kr35_r1840_3_hw
+    name: KUKA KR 35 R1840-3 HW (KR CYBERTECH)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_cybertech_support/urdf/kr35_r1840_3_hw.urdf.xacro
+    licence: Apache-2.0
+  - id: kr8_r1440_2_arc_hw
+    name: KUKA KR 8 R1440-2 arc HW (KR CYBERTECH)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_cybertech_support/urdf/kr8_r1440_2_arc_hw.urdf.xacro
+    licence: Apache-2.0
+  - id: kr8_r2100_2_arc_hw
+    name: KUKA KR 8 R2100-2 arc HW (KR CYBERTECH)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_cybertech_support/urdf/kr8_r2100_2_arc_hw.urdf.xacro
+    licence: Apache-2.0
+  - id: kr240_r3330
+    name: KUKA KR 240 R3330 (KR FORTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_fortec_support/urdf/kr240_r3330.urdf.xacro
+    licence: Apache-2.0
+  - id: kr300_r2800_2_mt
+    name: KUKA KR 300 R2800-2 MT (KR FORTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_fortec_support/urdf/kr300_r2800_2_mt.urdf.xacro
+    licence: Apache-2.0
+  - id: kr340_r3400_2
+    name: KUKA KR 340 R3400-2 (KR FORTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_fortec_support/urdf/kr340_r3400_2.urdf.xacro
+    licence: Apache-2.0
+  - id: kr360_r2830
+    name: KUKA KR 360 R2830 (KR FORTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_fortec_support/urdf/kr360_r2830.urdf.xacro
+    licence: Apache-2.0
+  - id: kr500_r2800_2
+    name: KUKA KR 500 R2800-2 (KR FORTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_fortec_support/urdf/kr500_r2800_2.urdf.xacro
+    licence: Apache-2.0
+  - id: kr560_r3100_2
+    name: KUKA KR 560 R3100-2 (KR FORTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_fortec_support/urdf/kr560_r3100_2.urdf.xacro
+    licence: Apache-2.0
+  - id: kr600_r2830
+    name: KUKA KR 600 R2830 (KR FORTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_fortec_support/urdf/kr600_r2830.urdf.xacro
+    licence: Apache-2.0
+  - id: kr800_r2800_2
+    name: KUKA KR 800 R2800-2 (KR FORTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_fortec_support/urdf/kr800_r2800_2.urdf.xacro
+    licence: Apache-2.0
+  - id: kr20_r3100
+    name: KUKA KR 20 R3100 (KR IONTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_iontec_support/urdf/kr20_r3100.urdf.xacro
+    licence: Apache-2.0
+  - id: kr30_r2100
+    name: KUKA KR 30 R2100 (KR IONTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_iontec_support/urdf/kr30_r2100.urdf.xacro
+    licence: Apache-2.0
+  - id: kr50_r2100
+    name: KUKA KR 50 R2100 (KR IONTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_iontec_support/urdf/kr50_r2100.urdf.xacro
+    licence: Apache-2.0
+  - id: kr50_r2500
+    name: KUKA KR 50 R2500 (KR IONTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_iontec_support/urdf/kr50_r2500.urdf.xacro
+    licence: Apache-2.0
+  - id: kr70_r2100
+    name: KUKA KR 70 R2100 (KR IONTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_iontec_support/urdf/kr70_r2100.urdf.xacro
+    licence: Apache-2.0
+  - id: lbr_iico12_r1260
+    name: KUKA LBR iico 12 R1260
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_lbr_iico_support/urdf/lbr_iico12_r1260.urdf.xacro
+    licence: Apache-2.0
+  - id: lbr_iico7_r900
+    name: KUKA LBR iico 7 R900
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_lbr_iico_support/urdf/lbr_iico7_r900.urdf.xacro
+    licence: Apache-2.0
+  - id: lbr_iisy11_r1300
+    name: KUKA LBR iisy 11 R1300
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_lbr_iisy_support/urdf/lbr_iisy11_r1300.urdf.xacro
+    licence: Apache-2.0
+  - id: lbr_iisy15_r930
+    name: KUKA LBR iisy 15 R930
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_lbr_iisy_support/urdf/lbr_iisy15_r930.urdf.xacro
+    licence: Apache-2.0
+  - id: lbr_iisy3_r760
+    name: KUKA LBR iisy 3 R760
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_lbr_iisy_support/urdf/lbr_iisy3_r760.urdf.xacro
+    licence: Apache-2.0
+  - id: lbr_iisy8_r930
+    name: KUKA LBR iisy 8 R930
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_lbr_iisy_support/urdf/lbr_iisy8_r930.urdf.xacro
+    licence: Apache-2.0
+  - id: kr120_r2700_2
+    name: KUKA KR 120 R2700-2 (KR QUANTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_quantec_support/urdf/kr120_r2700_2.urdf.xacro
+    licence: Apache-2.0
+  - id: kr150_r3100_2
+    name: KUKA KR 150 R3100-2 (KR QUANTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_quantec_support/urdf/kr150_r3100_2.urdf.xacro
+    licence: Apache-2.0
+  - id: kr210_r2700_2
+    name: KUKA KR 210 R2700-2 (KR QUANTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_quantec_support/urdf/kr210_r2700_2.urdf.xacro
+    licence: Apache-2.0
+  - id: kr210_r2700_extra
+    name: KUKA KR 210 R2700 extra (KR QUANTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_quantec_support/urdf/kr210_r2700_extra.urdf.xacro
+    licence: Apache-2.0
+  - id: kr210_r3100_2
+    name: KUKA KR 210 R3100-2 (KR QUANTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_quantec_support/urdf/kr210_r3100_2.urdf.xacro
+    licence: Apache-2.0
+  - id: kr210_r3100_ultra
+    name: KUKA KR 210 R3100 ultra (KR QUANTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_quantec_support/urdf/kr210_r3100_ultra.urdf.xacro
+    licence: Apache-2.0
+  - id: kr210_r3300_2_k
+    name: KUKA KR 210 R3300-2 K (KR QUANTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_quantec_support/urdf/kr210_r3300_2_k.urdf.xacro
+    licence: Apache-2.0
+  - id: kr240_r2900_2
+    name: KUKA KR 240 R2900-2 (KR QUANTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_quantec_support/urdf/kr240_r2900_2.urdf.xacro
+    licence: Apache-2.0
+  - id: kr300_r2700_2
+    name: KUKA KR 300 R2700-2 (KR QUANTEC)
+    category: arm
+    submodule: kuka_robot_descriptions
+    entry: src/kuka_robot_descriptions/kuka_quantec_support/urdf/kr300_r2700_2.urdf.xacro
+    licence: Apache-2.0

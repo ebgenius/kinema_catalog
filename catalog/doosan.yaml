@@ -1,0 +1,66 @@
+# Doosan Robotics. Hand-edited; `meshkit index` builds catalog.json from these files.
+# The single arms. The dual-arm and R100 mobile variants wait for the kind and
+# category labels (#34), which give them a category of their own.
+family: doosan
+maker: Doosan Robotics
+entries:
+  - id: a0509
+    name: Doosan Robotics A0509
+    category: arm
+    submodule: doosan-robot2
+    entry: src/doosan-robot2/dsr_description2/xacro/a0509.urdf.xacro
+    licence: Apache-2.0
+  - id: a0912
+    name: Doosan Robotics A0912
+    category: arm
+    submodule: doosan-robot2
+    entry: src/doosan-robot2/dsr_description2/xacro/a0912.urdf.xacro
+    licence: Apache-2.0
+  - id: e0509
+    name: Doosan Robotics E0509
+    category: arm
+    submodule: doosan-robot2
+    entry: src/doosan-robot2/dsr_description2/xacro/e0509.urdf.xacro
+    licence: Apache-2.0
+  - id: h2017
+    name: Doosan Robotics H2017
+    category: arm
+    submodule: doosan-robot2
+    entry: src/doosan-robot2/dsr_description2/xacro/h2017.urdf.xacro
+    licence: Apache-2.0
+  - id: h2515
+    name: Doosan Robotics H2515
+    category: arm
+    submodule: doosan-robot2
+    entry: src/doosan-robot2/dsr_description2/xacro/h2515.urdf.xacro
+    licence: Apache-2.0
+  - id: m0609
+    name: Doosan Robotics M0609
+    category: arm
+    submodule: doosan-robot2
+    entry: src/doosan-robot2/dsr_description2/xacro/m0609.urdf.xacro
+    licence: Apache-2.0
+  - id: m0617
+    name: Doosan Robotics M0617
+    category: arm
+    submodule: doosan-robot2
+    entry: src/doosan-robot2/dsr_description2/xacro/m0617.urdf.xacro
+    licence: Apache-2.0
+  - id: m1013
+    name: Doosan Robotics M1013
+    category: arm
+    submodule: doosan-robot2
+    entry: src/doosan-robot2/dsr_description2/xacro/m1013.urdf.xacro
+    licence: Apache-2.0
+  - id: m1509
+    name: Doosan Robotics M1509
+    category: arm
+    submodule: doosan-robot2
+    entry: src/doosan-robot2/dsr_description2/xacro/m1509.urdf.xacro
+    licence: Apache-2.0
+  - id: p3020
+    name: Doosan Robotics P3020
+    category: arm
+    submodule: doosan-robot2
+    entry: src/doosan-robot2/dsr_description2/xacro/p3020.urdf.xacro
+    licence: Apache-2.0
