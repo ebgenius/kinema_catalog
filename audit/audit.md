@@ -1,15 +1,15 @@
 # Robot description audit
 
-Written by `meshkit audit` on 2026-11-20 10:53 UTC. Every robot in the catalog's forks, and every robot in the repositories the upstream report's lists name, measured the same way and scored out of 100. [`audit.json`](audit.json) has every measurement.
+Written by `meshkit audit` on 2026-11-20 15:04 UTC. Every robot in the catalog's forks, and every robot in the repositories the upstream report's lists name, measured the same way and scored out of 100. [`audit.json`](audit.json) has every measurement.
 
-- **The catalog:** 64 entries in 21 forks.
+- **The catalog:** 128 entries in 23 forks.
 - **Candidates:** 3482 robots in 154 of 164 repositories or folders; 3 could not be audited (listed at the end).
 
 ## How a robot is scored
 
 | Part | Points | Full marks when |
 |---|--:|---|
-| Licence | 15 | A licence is named (by GitHub, else by the robot's package.xml) and there is a licence text: LICENSE, COPYING or a LICENSES/ folder (present, not read; half for one of the two) |
+| Licence | 15 | A licence is named (by GitHub, else by the robot's package.xml) and there is a licence text: a LICENSE, LICENCE or COPYING file (LICENSE-MIT and the like too) or a LICENSES/ folder with a file in it (present, not read; half for one of the two) |
 | Alive | 10 | Upstream committed to in the last year (half: in three); not archived |
 | Flattens | 20 | xacro evaluates (or the MJCF parses) and every visual mesh is there. Without it the parts below score nothing |
 | Limits | 15 | Every moving joint has position and velocity limits (MJCF: position only) |
@@ -37,12 +37,68 @@ Not measured: whether Kinema imports the robot, and whether its kinematics match
 | husky_a300 | clearpath_common | 80 | BSD-3-Clause | 100% | 38% | 20% | 60% | 592,090 | 15.77 |
 | ridgeback | clearpath_common | 79 | BSD-3-Clause | 100% | 44% | 0% | 50% | 4,228 | 0.12 |
 | create3 | create3_sim | 90 | BSD-3-Clause | 100% | 100% | 100% | 70% | 11,828 | 1.58 |
+| a0509 | doosan-robot2 | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 89,962 | 6.38 |
+| a0912 | doosan-robot2 | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 92,121 | 7.43 |
+| h2017 | doosan-robot2 | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 89,394 | 6.41 |
+| h2515 | doosan-robot2 | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 89,542 | 6.47 |
+| m0609 | doosan-robot2 | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 59,380 | 4.15 |
+| m0617 | doosan-robot2 | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 57,412 | 4.01 |
+| m1013 | doosan-robot2 | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 102,928 | 7.47 |
+| m1509 | doosan-robot2 | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 58,382 | 4.12 |
+| e0509 | doosan-robot2 | 95 | Apache-2.0 | 100% | 100% | 100% | 50% | 84,002 | 6.22 |
+| p3020 | doosan-robot2 | 85 | Apache-2.0 | 100% | 100% | 0% | 50% | 79,070 | 3.96 |
 | fer | franka_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 134,924 | 10.53 |
 | fp3 | franka_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 240,624 | 27.29 |
 | fr3 | franka_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 240,624 | 27.28 |
 | px100 | interbotix_ros_manipulators | 80 | BSD-3-Clause | 100% | 100% | 0% | 50% | 7,076 | 0.33 |
 | vx300s | interbotix_ros_manipulators | 80 | BSD-3-Clause | 100% | 100% | 0% | 50% | 28,664 | 1.39 |
 | wx250s | interbotix_ros_manipulators | 80 | BSD-3-Clause | 100% | 100% | 0% | 50% | 11,310 | 0.54 |
+| kr10_r1100_2 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 38,512 | 2.91 |
+| kr10_r1100_3 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 72,518 | 5.68 |
+| kr10_r900_2 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 38,838 | 2.93 |
+| kr120_r2700_2 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 223,143 | 17.75 |
+| kr12_r1450_3_hw | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 230,567 | 16.86 |
+| kr13_r900_3 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 71,177 | 5.59 |
+| kr16_r1100_3 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 108,415 | 8.31 |
+| kr16_r1610_2 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 196,221 | 16.74 |
+| kr20_r1810_2 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 198,183 | 16.84 |
+| kr20_r1820_2_e | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 293,570 | 25.43 |
+| kr20_r3100 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 169,354 | 13.6 |
+| kr210_r2700_extra | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 110,970 | 8.58 |
+| kr210_r3100_2 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 242,510 | 19.18 |
+| kr240_r2900_2 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 277,212 | 40.39 |
+| kr240_r3330 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 211,378 | 14.72 |
+| kr300_r2700_2 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 242,498 | 19.24 |
+| kr300_r2800_2_mt | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 298,601 | 24.18 |
+| kr30_r2100 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 156,202 | 12.51 |
+| kr340_r3400_2 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 214,771 | 17.66 |
+| kr35_r1840_3 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 216,067 | 23.21 |
+| kr35_r1840_3_hw | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 174,323 | 14.18 |
+| kr360_r2830 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 201,555 | 15.63 |
+| kr4_r600 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 46,921 | 3.67 |
+| kr500_r2800_2 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 227,769 | 18.66 |
+| kr50_r2100 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 156,202 | 12.49 |
+| kr50_r2500 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 157,186 | 12.54 |
+| kr600_r2830 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 207,064 | 16.03 |
+| kr6_r700_2 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 121,481 | 9.23 |
+| kr6_r900_2 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 38,838 | 2.93 |
+| kr70_r2100 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 156,293 | 12.48 |
+| kr7_r900_3 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 61,482 | 4.81 |
+| kr8_r1440_2_arc_hw | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 149,177 | 11.54 |
+| kr8_r2100_2_arc_hw | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 97,934 | 7.77 |
+| lbr_iisy8_r930 | kuka_robot_descriptions | 90 | Apache-2.0 | 100% | 100% | 100% | 100% | 237,327 | 18.48 |
+| kr560_r3100_2 | kuka_robot_descriptions | 89 | Apache-2.0 | 100% | 100% | 100% | 100% | 357,953 | 30.28 |
+| kr800_r2800_2 | kuka_robot_descriptions | 89 | Apache-2.0 | 100% | 100% | 100% | 100% | 351,658 | 28.06 |
+| lbr_iico12_r1260 | kuka_robot_descriptions | 89 | Apache-2.0 | 100% | 100% | 100% | 100% | 414,874 | 31.62 |
+| lbr_iico7_r900 | kuka_robot_descriptions | 89 | Apache-2.0 | 100% | 100% | 100% | 100% | 450,989 | 34.97 |
+| kr210_r3300_2_k | kuka_robot_descriptions | 88 | Apache-2.0 | 100% | 100% | 100% | 100% | 650,804 | 50.95 |
+| kr210_r3100_ultra | kuka_robot_descriptions | 87 | Apache-2.0 | 100% | 71% | 100% | 100% | 123,671 | 9.6 |
+| kr150_r3100_2 | kuka_robot_descriptions | 80 | Apache-2.0 | 100% | 100% | 0% | 100% | 264,444 | 28.27 |
+| lbr_iisy11_r1300 | kuka_robot_descriptions | 75 | Apache-2.0 | 100% | 100% | 0% | 50% | 222,811 | 11.14 |
+| lbr_iisy15_r930 | kuka_robot_descriptions | 75 | Apache-2.0 | 100% | 100% | 0% | 50% | 216,277 | 10.81 |
+| lbr_iisy3_r760 | kuka_robot_descriptions | 75 | Apache-2.0 | 100% | 100% | 0% | 50% | 56,525 | 2.83 |
+| kr210_r2700_2 | kuka_robot_descriptions | 70 | Apache-2.0 | 100% | 100% | 0% | 0% | 248,928 | 12.45 |
+| kr16_r2010_2 | kuka_robot_descriptions | 59 | Apache-2.0 | 100% | 0% | 0% | 0% | 311,642 | 15.58 |
 | iiwa14 | lbr_iiwa14_r820_description | 92 | Apache-2.0 | 100% | 100% | 100% | 100% | 68,224 | 9.1 |
 | iiwa7 | lbr_iiwa7_r800_description | 92 | Apache-2.0 | 100% | 100% | 100% | 100% | 74,738 | 9.99 |
 | med14 | lbr_med14_r820_description | 92 | Apache-2.0 | 100% | 100% | 100% | 100% | 61,781 | 8.22 |
@@ -75,13 +131,21 @@ Not measured: whether Kinema imports the robot, and whether its kinematics match
 | go2 | unitree_ros | 25 | BSD-3-Clause | 100% | 97% | 100% | 58% | 303,088 | 13.57 |
 | ur10 | Universal_Robots_ROS2_Description | 100 | BSD-3-Clause | 100% | 100% | 100% | 100% | 116,072 | 9.04 |
 | ur10e | Universal_Robots_ROS2_Description | 100 | BSD-3-Clause | 100% | 100% | 100% | 100% | 129,621 | 10.0 |
+| ur10g_1750 | Universal_Robots_ROS2_Description | 100 | BSD-3-Clause AND LicenseRef-UR-Graphical-Documentation | 100% | 100% | 100% | 100% | 15,838 | 1.18 |
+| ur12e | Universal_Robots_ROS2_Description | 100 | BSD-3-Clause | 100% | 100% | 100% | 100% | 129,621 | 10.0 |
+| ur15 | Universal_Robots_ROS2_Description | 100 | BSD-3-Clause AND LicenseRef-UR-Graphical-Documentation | 100% | 100% | 100% | 100% | 12,534 | 2.05 |
 | ur16e | Universal_Robots_ROS2_Description | 100 | BSD-3-Clause | 100% | 100% | 100% | 100% | 129,620 | 9.89 |
+| ur17g_1300 | Universal_Robots_ROS2_Description | 100 | BSD-3-Clause AND LicenseRef-UR-Graphical-Documentation | 100% | 100% | 100% | 100% | 18,180 | 1.39 |
+| ur18 | Universal_Robots_ROS2_Description | 100 | BSD-3-Clause AND LicenseRef-UR-Graphical-Documentation | 100% | 100% | 100% | 100% | 12,470 | 2.04 |
+| ur18g_950 | Universal_Robots_ROS2_Description | 100 | BSD-3-Clause AND LicenseRef-UR-Graphical-Documentation | 100% | 100% | 100% | 100% | 18,238 | 1.38 |
 | ur20 | Universal_Robots_ROS2_Description | 100 | BSD-3-Clause AND LicenseRef-UR-Graphical-Documentation | 100% | 100% | 100% | 100% | 16,987 | 3.14 |
 | ur3 | Universal_Robots_ROS2_Description | 100 | BSD-3-Clause | 100% | 100% | 100% | 100% | 68,588 | 6.92 |
 | ur30 | Universal_Robots_ROS2_Description | 100 | BSD-3-Clause AND LicenseRef-UR-Graphical-Documentation | 100% | 100% | 100% | 100% | 17,179 | 3.22 |
 | ur3e | Universal_Robots_ROS2_Description | 100 | BSD-3-Clause | 100% | 100% | 100% | 100% | 131,817 | 10.22 |
 | ur5 | Universal_Robots_ROS2_Description | 100 | BSD-3-Clause | 100% | 100% | 100% | 100% | 95,694 | 6.66 |
 | ur5e | Universal_Robots_ROS2_Description | 100 | BSD-3-Clause | 100% | 100% | 100% | 100% | 121,789 | 9.34 |
+| ur7e | Universal_Robots_ROS2_Description | 100 | BSD-3-Clause | 100% | 100% | 100% | 100% | 121,789 | 9.34 |
+| ur8long | Universal_Robots_ROS2_Description | 100 | BSD-3-Clause AND LicenseRef-UR-Graphical-Documentation | 100% | 100% | 100% | 100% | 12,534 | 2.05 |
 | lite6 | xarm_ros2 | 85 | BSD-3-Clause | 100% | 100% | 0% | 50% | 55,468 | 2.77 |
 | uf850 | xarm_ros2 | 85 | BSD-3-Clause | 100% | 100% | 0% | 50% | 48,262 | 2.41 |
 | xarm5 | xarm_ros2 | 85 | BSD-3-Clause | 100% | 100% | 0% | 50% | 51,421 | 2.57 |
