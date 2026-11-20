@@ -1,6 +1,7 @@
 """meshkit audit: finding robots, measuring them, scoring them."""
 
 import json
+import re
 import struct
 from datetime import datetime, timezone
 from pathlib import Path
@@ -449,6 +450,68 @@ def test_a_licence_file_is_looked_for_up_to_the_repository_and_no_further(tmp_pa
     assert not audit.licence_file(robot, tmp_path / "repo")
     write(tmp_path / "repo" / "pkg" / "COPYING", "x")
     assert audit.licence_file(robot, tmp_path / "repo")
+
+
+@pytest.mark.parametrize("name, found", [
+    ("LICENSE-APACHE", True), ("LICENCE_MIT.txt", True), ("license.md", True),
+    ("LICENSES/Apache-2.0.txt", True),           # REUSE, as FANUC keeps it
+    ("LICENSES/.gitkeep", False), ("LICENSES.backup/Apache-2.0.txt", False),
+    ("licenses_readme.txt", False), ("LICENSEE.txt", False), ("unlicensed.txt", False)])
+def test_a_licence_text_is_recognised_by_its_names(tmp_path, name, found):
+    robot = write(tmp_path / "pkg" / "urdf" / "a.urdf", "<robot/>")
+    write(tmp_path / name, "x")
+    assert audit.licence_file(robot, tmp_path) is found
+
+
+def test_an_empty_licenses_folder_is_no_licence(tmp_path):
+    robot = write(tmp_path / "pkg" / "urdf" / "a.urdf", "<robot/>")
+    (tmp_path / "LICENSES").mkdir()
+    assert not audit.licence_file(robot, tmp_path)
+
+
+def package_xml(*licences):
+    tags = "".join(f"<license>{name}</license>" for name in licences)
+    return f"<package><name>pkg</name>{tags}</package>"
+
+
+@pytest.mark.parametrize("licences, named", [
+    (["BSD-3-Clause"], "BSD-3-Clause"),
+    (["Apache-2.0", "BSD-3-Clause", "Apache-2.0"], "Apache-2.0 AND BSD-3-Clause"),
+    (["TODO: License declaration"], None), (["TODO"], None), (["Various"], None), (["N/A"], None), ([], None),
+    (["  BSD\n   licence  "], "BSD licence"), (["x" * 300], "x" * 100),
+    (["a" * 60, "b" * 60], ("a" * 60 + " AND " + "b" * 60)[:100])])   # the whole, not each
+def test_a_package_names_its_licence(tmp_path, licences, named):
+    write(tmp_path / "pkg" / "package.xml", package_xml(*licences))
+    robot = write(tmp_path / "pkg" / "urdf" / "a.urdf", "<robot/>")
+    assert audit.package_licence(robot, tmp_path) == named
+
+
+def test_a_licence_from_someone_elses_file_cannot_break_the_table():
+    robot = {"path": "a.urdf", "kind": "urdf", "score": 50, "package": "a", "links": 1,
+             "flattened": True, "parts": {k: 1.0 for k in audit.WEIGHTS}, "error": None,
+             "licence": "BSD | <b>[x](http://e)</b> @someone \\| y", "formats": {},
+             "triangles": 1}
+    report = audit.RepoReport("x/y", "x/y", "", ["s"], None, None, False, robots=[robot])
+    text = audit.render_markdown(audit.Audit("now", dict(audit.WEIGHTS), [report]))
+    row = next(line for line in text.splitlines() if "`a.urdf`" in line)
+    assert "BSD \\| &lt;b&gt;&#91;x&#93;(http://e)&lt;/b&gt; &#64;someone \\\\\\| y" in row
+    # The top table's nine columns, both bars inside one of them. GFM reads a
+    # backslash pair as one escaped backslash, then a bar that is escaped or not.
+    cells = re.findall(r"((?:\\.|[^|\\])*)\|", row.strip().removeprefix("|"))
+    assert len(cells) == 9
+
+
+def test_a_package_licence_counts_only_where_github_names_none():
+    unnamed = audit.Candidate("a/b", "a/b", licence="NOASSERTION")
+    named = audit.Candidate("c/d", "c/d", licence="MIT")
+    robot = {"package_licence": "BSD-3-Clause"}
+    assert audit._robot_licence(unnamed, robot, {}) == "BSD-3-Clause"
+    assert audit._robot_licence(named, robot, {}) == "MIT"
+    assert audit._robot_licence(unnamed, {}, {}) == "NOASSERTION"
+    fork = audit.Candidate("fork:arm", "me/arm", fork="arm")
+    entries = {"arm": [{"id": "arm", "licence": "LicenseRef-Maker"}]}
+    assert audit._robot_licence(fork, {"id": "arm", "package_licence": "MIT"},
+                                entries) == "LicenseRef-Maker"
 
 
 # -------------------------------------------------------------------- report

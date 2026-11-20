@@ -1,6 +1,6 @@
 # Robot description audit
 
-Written by `meshkit audit` on 2026-11-19 20:38 UTC. Every robot in the catalog's forks, and every robot in the repositories the upstream report's lists name, measured the same way and scored out of 100. [`audit.json`](audit.json) has every measurement.
+Written by `meshkit audit` on 2026-11-20 10:53 UTC. Every robot in the catalog's forks, and every robot in the repositories the upstream report's lists name, measured the same way and scored out of 100. [`audit.json`](audit.json) has every measurement.
 
 - **The catalog:** 64 entries in 21 forks.
 - **Candidates:** 3482 robots in 154 of 164 repositories or folders; 3 could not be audited (listed at the end).
@@ -9,7 +9,7 @@ Written by `meshkit audit` on 2026-11-19 20:38 UTC. Every robot in the catalog's
 
 | Part | Points | Full marks when |
 |---|--:|---|
-| Licence | 15 | A licence is named and there is a LICENSE file (present, not read; half for one of the two) |
+| Licence | 15 | A licence is named (by GitHub, else by the robot's package.xml) and there is a licence text: LICENSE, COPYING or a LICENSES/ folder (present, not read; half for one of the two) |
 | Alive | 10 | Upstream committed to in the last year (half: in three); not archived |
 | Flattens | 20 | xacro evaluates (or the MJCF parses) and every visual mesh is there. Without it the parts below score nothing |
 | Limits | 15 | Every moving joint has position and velocity limits (MJCF: position only) |
@@ -110,6 +110,7 @@ One row per ROS package: 2531 packages (or files outside any) hold the 3482 cand
 | 100 | - | `gym_pybullet_drones/assets/cf2p.urdf` | 6 | 1 | [learnsyslab/gym-pybullet-drones](https://github.com/learnsyslab/gym-pybullet-drones) | MIT | 1 DAE | 7,058 |
 | 100 | - | `gym_pybullet_drones/assets/cf2x.urdf` | 6 | 1 | [learnsyslab/gym-pybullet-drones](https://github.com/learnsyslab/gym-pybullet-drones) | MIT | 1 DAE | 7,058 |
 | 100 | - | `gym_pybullet_drones/assets/racer.urdf` | 6 | 1 | [learnsyslab/gym-pybullet-drones](https://github.com/learnsyslab/gym-pybullet-drones) | MIT | 1 DAE | 7,058 |
+| 100 | ur_description | `ur_description/urdf/ur3.xacro` | 11 | 15 | [ros-industrial/universal_robot](https://github.com/ros-industrial/universal_robot) | BSD AND Universal Robots A/S' Terms and Conditions for Use of Graphical Documentation | 7 DAE | 68,588 |
 | 100 | schunk_svh_description | `schunk_svh_description/urdf/svh-standalone.urdf.xacro` | 32 | 1 | [SCHUNK-SE-Co-KG/schunk_svh_ros_driver](https://github.com/SCHUNK-SE-Co-KG/schunk_svh_ros_driver) | GPL-3.0 | 23 DAE | 18,247 |
 | 100 | schunk_svh_driver | `schunk_svh_driver/urdf/schunk_svh_driver.xacro` | 32 | 10 | [SCHUNK-SE-Co-KG/schunk_svh_ros_driver](https://github.com/SCHUNK-SE-Co-KG/schunk_svh_ros_driver) | GPL-3.0 | 23 DAE | 18,247 |
 | 100 | schunk_svh_simulation | `schunk_svh_simulation/urdf/schunk_svh_simulation.xacro` | 32 | 2 | [SCHUNK-SE-Co-KG/schunk_svh_ros_driver](https://github.com/SCHUNK-SE-Co-KG/schunk_svh_ros_driver) | GPL-3.0 | 23 DAE | 18,247 |
@@ -120,16 +121,20 @@ One row per ROS package: 2531 packages (or files outside any) hold the 3482 cand
 | 99 | agilex_aloha_description | `manipulator/agilex/agilex_aloha_description/xacro/base/tracer.xacro` | 13 | 15 | [fiveages-sim/robot_descriptions/manipulator/agilex/agilex_aloha_description](https://github.com/fiveages-sim/robot_descriptions/tree/HEAD/manipulator/agilex/agilex_aloha_description) | Apache-2.0 | 4 OBJ | 269,141 |
 | 99 | elite_ec_description | `manipulator/elite/elite_ec_description/xacro/ros2_control/robot.xacro` | 9 | 3 | [fiveages-sim/robot_descriptions/manipulator/elite/elite_ec_description](https://github.com/fiveages-sim/robot_descriptions/tree/HEAD/manipulator/elite/elite_ec_description) | Apache-2.0 | 7 OBJ | 341,740 |
 | 99 | galaxea_r1lite_description | `manipulator/galaxea/galaxea_r1lite_description/xacro/robot.xacro` | 38 | 3 | [fiveages-sim/robot_descriptions/manipulator/galaxea/galaxea_r1lite_description](https://github.com/fiveages-sim/robot_descriptions/tree/HEAD/manipulator/galaxea/galaxea_r1lite_description) | Apache-2.0 | 17 GLB | 298,033 |
+| 98 | arx5_description | `arx5_description/xacro/ros2_control/robot.xacro` | 16 | 8 | [fiveages-sim/robot-descriptions-arx](https://github.com/fiveages-sim/robot-descriptions-arx) | BSD | 11 GLB | 181,430 |
 | 98 | airbot_mmk2_description | `humanoid/airbot/airbot_mmk2_description/xacro/robot.xacro` | 32 | 4 | [fiveages-sim/robot_descriptions/humanoid/airbot/airbot_mmk2_description](https://github.com/fiveages-sim/robot_descriptions/tree/HEAD/humanoid/airbot/airbot_mmk2_description) | Apache-2.0 | 14 OBJ | 582,770 |
 | 98 | hsrb_description | `hsrb_description/robots/hsrb4s.urdf.xacro` | 48 | 2 | [hsr-project/hsrb_common](https://github.com/hsr-project/hsrb_common) | BSD-3-Clause-Clear | 22 DAE | 42,322 |
 | 97 | agibot_g1_description | `humanoid/agibot/agibot_g1_description/xacro/robot.xacro` | 52 | 5 | [fiveages-sim/robot_descriptions/humanoid/agibot/agibot_g1_description](https://github.com/fiveages-sim/robot_descriptions/tree/HEAD/humanoid/agibot/agibot_g1_description) | Apache-2.0 | 21 GLB | 513,773 |
 | 97 | aidal_description | `humanoid/realman/aidal_description/xacro/robot.xacro` | 44 | 4 | [fiveages-sim/robot_descriptions/humanoid/realman/aidal_description](https://github.com/fiveages-sim/robot_descriptions/tree/HEAD/humanoid/realman/aidal_description) | Apache-2.0 | 21 GLB | 538,788 |
 | 97 | - | `model/plugin/sdf/mug.xml` | 2 | 1 | [google-deepmind/mujoco](https://github.com/google-deepmind/mujoco) | Apache-2.0 | 1 OBJ | 24,544 |
 | 97 | hsrc_description | `hsrc_description/robots/hsrc1s.urdf.xacro` | 46 | 2 | [hsr-project/hsrb_common](https://github.com/hsr-project/hsrb_common) | BSD-3-Clause-Clear | 20 DAE | 24,834 |
+| 96 | arx_x7s_description | `arx_x7s_description/urdf/arx_x7s.urdf` | 30 | 5 | [fiveages-sim/robot-descriptions-arx](https://github.com/fiveages-sim/robot-descriptions-arx) | BSD | 1 GLB, 15 OBJ | 840,446 |
+| 96 | zsl1_description | `zsibot/zsl1_description/xacro/robot.xacro` | 17 | 1 | [fiveages-sim/robot-descriptions-quadruped](https://github.com/fiveages-sim/robot-descriptions-quadruped) | BSD3 | 5 OBJ | 837,007 |
 | 96 | zerith_h1_description | `humanoid/zerith/zerith_h1_description/xacro/robot.xacro` | 36 | 3 | [fiveages-sim/robot_descriptions/humanoid/zerith/zerith_h1_description](https://github.com/fiveages-sim/robot_descriptions/tree/HEAD/humanoid/zerith/zerith_h1_description) | Apache-2.0 | 19 GLB | 745,926 |
 | 96 | openarm_description | `manipulator/openarm/openarm_description/xacro/ros2_control/robot.xacro` | 26 | 5 | [fiveages-sim/robot_descriptions/manipulator/openarm/openarm_description](https://github.com/fiveages-sim/robot_descriptions/tree/HEAD/manipulator/openarm/openarm_description) | Apache-2.0 | 11 OBJ | 927,072 |
 | 95 | anymal_d_simple_description | `urdf/anymal.urdf` | 96 | 1 | [ANYbotics/anymal_d_simple_description](https://github.com/ANYbotics/anymal_d_simple_description) | BSD-3-Clause | 17 DAE | 19,584 |
 | 95 | - | `v2/cell/cell.xml` | 1 | 1 | [enactic/openarm_mujoco](https://github.com/enactic/openarm_mujoco) | Apache-2.0 | 22 OBJ, 8 STL | 56,457 |
+| 95 | unitree_go2_description | `unitree/unitree_go2_description/xacro/robot.xacro` | 21 | 5 | [fiveages-sim/robot-descriptions-quadruped](https://github.com/fiveages-sim/robot-descriptions-quadruped) | BSD | 5 DAE | 381,016 |
 | 95 | agibot_a2_description | `humanoid/agibot/agibot_a2_description/xacro/robot.xacro` | 57 | 2 | [fiveages-sim/robot_descriptions/humanoid/agibot/agibot_a2_description](https://github.com/fiveages-sim/robot_descriptions/tree/HEAD/humanoid/agibot/agibot_a2_description) | Apache-2.0 | 25 OBJ | 709,462 |
 | 95 | - | `model/cards/cards.xml` | 53 | 1 | [google-deepmind/mujoco](https://github.com/google-deepmind/mujoco) | Apache-2.0 | 1 OBJ | 4,028 |
 | 95 | - | `model/cards/house_of_cards.xml` | 26 | 1 | [google-deepmind/mujoco](https://github.com/google-deepmind/mujoco) | Apache-2.0 | 1 OBJ | 1,976 |
@@ -140,7 +145,9 @@ One row per ROS package: 2531 packages (or files outside any) hold the 3482 cand
 | 95 | - | `unitree_robots/go2/go2.xml` | 17 | 1 | [unitreerobotics/unitree_mujoco](https://github.com/unitreerobotics/unitree_mujoco) | BSD-3-Clause | 16 OBJ | 398,432 |
 | 95 | - | `models/rby1a/urdf/model.urdf` | 34 | 1 | [uynitsuj/rby1_description](https://github.com/uynitsuj/rby1_description) | MIT | 29 DAE | 262,104 |
 | 95 | - | `models/rby1t5/urdf/model.urdf` | 34 | 1 | [uynitsuj/rby1_description](https://github.com/uynitsuj/rby1_description) | MIT | 29 DAE | 262,104 |
+| 94 | arx_lift_description | `arx_lift_description/xacro/robot.xacro` | 41 | 3 | [fiveages-sim/robot-descriptions-arx](https://github.com/fiveages-sim/robot-descriptions-arx) | BSD | 12 GLB, 5 OBJ | 924,728 |
 | 94 | galbot_zero_description | `galbot_zero_description/xacro/robot.xacro` | 63 | 3 | [fiveages-sim/robot-descriptions-galbot](https://github.com/fiveages-sim/robot-descriptions-galbot) | Apache-2.0 | 19 GLB, 4 OBJ | 1,166,425 |
+| 94 | unitree_b2_description | `unitree/unitree_b2_description/xacro/robot.xacro` | 34 | 6 | [fiveages-sim/robot-descriptions-quadruped](https://github.com/fiveages-sim/robot-descriptions-quadruped) | BSD | 5 DAE | 288,093 |
 | 94 | galaxea_r1_description | `humanoid/galaxea/galaxea_r1_description/xacro/robot.xacro` | 45 | 3 | [fiveages-sim/robot_descriptions/humanoid/galaxea/galaxea_r1_description](https://github.com/fiveages-sim/robot_descriptions/tree/HEAD/humanoid/galaxea/galaxea_r1_description) | Apache-2.0 | 21 GLB | 957,744 |
 | 94 | galaxea_r1pro_description | `humanoid/galaxea/galaxea_r1pro_description/xacro/robot.xacro` | 45 | 3 | [fiveages-sim/robot_descriptions/humanoid/galaxea/galaxea_r1pro_description](https://github.com/fiveages-sim/robot_descriptions/tree/HEAD/humanoid/galaxea/galaxea_r1pro_description) | Apache-2.0 | 22 GLB | 913,226 |
 | 94 | - | `galaxea_sim/assets/r1_lite/robot.urdf` | 34 | 1 | [OpenGalaxea/GalaxeaManipSim](https://github.com/OpenGalaxea/GalaxeaManipSim) | Apache-2.0 | 32 OBJ | 305,819 |
@@ -149,6 +156,7 @@ One row per ROS package: 2531 packages (or files outside any) hold the 3482 cand
 | 94 | ur_schunk_gripper_description | `ur_schunk_gripper_description/urdf/ur_schunk_gripper.urdf.xacro` | 22 | 1 | [SCHUNK-SE-Co-KG/schunk_description](https://github.com/SCHUNK-SE-Co-KG/schunk_description) | GPL-3.0 | 10 DAE | 152,459 |
 | 94 | - | `unitree_robots/b2/b2.xml` | 13 | 1 | [unitreerobotics/unitree_mujoco](https://github.com/unitreerobotics/unitree_mujoco) | BSD-3-Clause | 28 OBJ, 3 STL | 499,366 |
 | 94 | - | `models/rby1m/urdf/model.urdf` | 36 | 1 | [uynitsuj/rby1_description](https://github.com/uynitsuj/rby1_description) | MIT | 30 DAE | 381,839 |
+| 93 | lite3_description | `deep_robotics/lite3_description/urdf/lite3.urdf` | 19 | 5 | [fiveages-sim/robot-descriptions-quadruped](https://github.com/fiveages-sim/robot-descriptions-quadruped) | MIT | 4 OBJ | 1,179,234 |
 | 93 | pm01_description | `humanoid/engineai/pm01_description/xacro/robot.xacro` | 29 | 1 | [fiveages-sim/robot_descriptions/humanoid/engineai/pm01_description](https://github.com/fiveages-sim/robot_descriptions/tree/HEAD/humanoid/engineai/pm01_description) | Apache-2.0 | 14 OBJ | 1,347,049 |
 | 93 | franka_gazebo | `franka_gazebo/test/launch/panda-gazebo.urdf` | 11 | 1 | [frankarobotics/franka_ros](https://github.com/frankarobotics/franka_ros) | Apache-2.0 | 8 DAE | 126,598 |
 | 93 | - | `galaxea_sim/assets/r1_pro/robot.urdf` | 36 | 1 | [OpenGalaxea/GalaxeaManipSim](https://github.com/OpenGalaxea/GalaxeaManipSim) | Apache-2.0 | 36 OBJ | 519,306 |
@@ -186,14 +194,6 @@ One row per ROS package: 2531 packages (or files outside any) hold the 3482 cand
 | 92 | - | `examples/pybullet/gym/pybullet_data/cube_small.urdf` | 1 | 1 | [bulletphysics/bullet3](https://github.com/bulletphysics/bullet3) | NOASSERTION | 1 OBJ | 12 |
 | 92 | - | `examples/pybullet/gym/pybullet_data/domino/domino.urdf` | 1 | 1 | [bulletphysics/bullet3](https://github.com/bulletphysics/bullet3) | NOASSERTION | 1 OBJ | 48 |
 | 92 | - | `examples/pybullet/gym/pybullet_data/jenga/jenga.urdf` | 1 | 1 | [bulletphysics/bullet3](https://github.com/bulletphysics/bullet3) | NOASSERTION | 1 OBJ | 12 |
-| 92 | - | `examples/pybullet/gym/pybullet_data/laikago/laikago.urdf` | 13 | 1 | [bulletphysics/bullet3](https://github.com/bulletphysics/bullet3) | NOASSERTION | 8 OBJ | 36,490 |
-| 92 | - | `examples/pybullet/gym/pybullet_data/soccerball.urdf` | 1 | 1 | [bulletphysics/bullet3](https://github.com/bulletphysics/bullet3) | NOASSERTION | 1 OBJ | 9,048 |
-| 92 | - | `examples/pybullet/gym/pybullet_data/sphere2.urdf` | 1 | 1 | [bulletphysics/bullet3](https://github.com/bulletphysics/bullet3) | NOASSERTION | 1 OBJ | 1,792 |
-| 92 | - | `examples/pybullet/gym/pybullet_data/sphere2red.urdf` | 1 | 1 | [bulletphysics/bullet3](https://github.com/bulletphysics/bullet3) | NOASSERTION | 1 OBJ | 1,792 |
-| 92 | - | `examples/pybullet/gym/pybullet_data/sphere8cube.urdf` | 1 | 1 | [bulletphysics/bullet3](https://github.com/bulletphysics/bullet3) | NOASSERTION | 1 OBJ | 12 |
-| 92 | - | `examples/pybullet/gym/pybullet_data/sphere_small.urdf` | 1 | 1 | [bulletphysics/bullet3](https://github.com/bulletphysics/bullet3) | NOASSERTION | 1 OBJ | 1,792 |
-| 92 | - | `examples/pybullet/gym/pybullet_data/sphere_transparent.urdf` | 1 | 1 | [bulletphysics/bullet3](https://github.com/bulletphysics/bullet3) | NOASSERTION | 1 OBJ | 1,792 |
-| 92 | - | `examples/pybullet/gym/pybullet_data/sphere_with_restitution.urdf` | 1 | 1 | [bulletphysics/bullet3](https://github.com/bulletphysics/bullet3) | NOASSERTION | 1 OBJ | 1,792 |
 
 ## Every candidate, by repository
 
@@ -234,6 +234,37 @@ From: robot_descriptions.py. Commit `1677e5040ad9`.
 | 25 | `assets/robot/openarm_v2.0/urdf/example/v2.urdf` | urdf | 15 · 10 · 0 · 0 · 0 · 0 · 0 | 1 visual mesh file(s) missing |
 | 25 | `assets/robot/openarm_v2.0/urdf/openarm_v20.urdf.xacro` | xacro | 15 · 10 · 0 · 0 · 0 · 0 · 0 | XacroException: &lt;class 'xacrodoc.packages.PackageNotFoundError'&gt;: Package not found: zed_description Package not found: zed_description |
 | 25 | `urdf/openarm.urdf.xacro` | xacro | 15 · 10 · 0 · 0 · 0 · 0 · 0 | XacroException: &lt;class 'xacrodoc.packages.PackageNotFoundError'&gt;: Package not found: zed_description Package not found: zed_description |
+
+</details>
+
+<details><summary><b>fiveages-sim/robot-descriptions-arx</b>: best 100, 22 robot(s), no licence named, last commit 2026-11-16</summary>
+
+From: fiveages submodules. Commit `b7ae0bea9ab8`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 100 | `arx_lift_description/xacro/component.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 98 | `arx5_description/urdf/arx5.urdf` | urdf | 15 · 10 · 20 · 15 · 8.2 · 20 · 10 |  |
+| 98 | `arx5_description/urdf/arx5_ac1.urdf` | urdf | 15 · 10 · 20 · 15 · 8.2 · 20 · 10 |  |
+| 98 | `arx5_description/urdf/arx5_agilex.urdf` | urdf | 15 · 10 · 20 · 15 · 8.2 · 20 · 10 |  |
+| 98 | `arx5_description/urdf/arx5_r5.urdf` | urdf | 15 · 10 · 20 · 15 · 8.2 · 20 · 10 |  |
+| 98 | `arx5_description/xacro/robot.xacro` | xacro | 15 · 10 · 20 · 15 · 8.2 · 20 · 10 |  |
+| 98 | `arx5_description/xacro/ros2_control/robot.xacro` | xacro | 15 · 10 · 20 · 15 · 8.2 · 20 · 10 |  |
+| 98 | `arx_x7s_description/xacro/component.xacro` | xacro | 15 · 10 · 20 · 15 · 8.3 · 20 · 9.9 |  |
+| 96 | `arx_x7s_description/urdf/arx_x7s.urdf` | urdf | 15 · 10 · 20 · 15 · 9.6 · 20 · 6.4 |  |
+| 96 | `arx_x7s_description/xacro/robot.xacro` | xacro | 15 · 10 · 20 · 15 · 9.6 · 20 · 6.4 |  |
+| 96 | `arx_x7s_description/xacro/robot_full.xacro` | xacro | 15 · 10 · 20 · 15 · 9.6 · 20 · 6.4 |  |
+| 96 | `arx_x7s_description/xacro/ros2_control/robot.xacro` | xacro | 15 · 10 · 20 · 15 · 9.6 · 20 · 6.4 |  |
+| 94 | `arx_lift_description/xacro/robot.xacro` | xacro | 15 · 10 · 20 · 15 · 8.4 · 20 · 6 |  |
+| 94 | `arx_lift_description/xacro/ros2_control/robot.xacro` | xacro | 15 · 10 · 20 · 15 · 8.4 · 20 · 6 |  |
+| 89 | `arx_acone_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 7.6 · 20 · 8.9 |  |
+| 89 | `arx_acone_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 7.6 · 20 · 8.9 |  |
+| 89 | `arx_lift2s_description/xacro/component.xacro` | xacro | 7.5 · 10 · 20 · 15 · 6.7 · 20 · 10 |  |
+| 86 | `arx_acone_description/xacro/component.xacro` | xacro | 7.5 · 10 · 20 · 15 · 3.3 · 20 · 10 |  |
+| 83 | `arx_lift2s_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 7.7 · 20 · 2.9 |  |
+| 83 | `arx_lift2s_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 7.7 · 20 · 2.9 |  |
+| 60 | `arx5_description/xacro/gripper.xacro` | xacro | 15 · 10 · 20 · 15 · 0 · 0 · 0 |  |
+| 25 | `arx5_description/xacro/component.xacro` | xacro | 15 · 10 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
 
 </details>
 
@@ -537,6 +568,31 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `6c255e258cd1`.
 
 </details>
 
+<details><summary><b>ros-industrial/universal_robot</b>: best 100, 16 robot(s), no licence named, last commit 2026-07-20</summary>
+
+From: awesome-robot-descriptions. Commit `39ad110d8f2e`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 100 | `ur_description/urdf/ur10.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 100 | `ur_description/urdf/ur10e.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 100 | `ur_description/urdf/ur12e.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 100 | `ur_description/urdf/ur15.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 100 | `ur_description/urdf/ur16e.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 100 | `ur_description/urdf/ur18.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 100 | `ur_description/urdf/ur20.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 100 | `ur_description/urdf/ur3.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 100 | `ur_description/urdf/ur30.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 100 | `ur_description/urdf/ur3e.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 100 | `ur_description/urdf/ur5.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 100 | `ur_description/urdf/ur5e.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 100 | `ur_description/urdf/ur7e.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 100 | `ur_description/urdf/ur8long.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 25 | `ur_description/urdf/ur.xacro` | xacro | 15 · 10 · 0 · 0 · 0 · 0 · 0 | XacroException: &#91;Errno 2&#93; No such file or directory: '.\\' when evaluating expression 'xacro.load_yaml(joint_limits_parameters_file)' when evaluating expression 'config_joint_limit_parameters&#91;'joint_limits'&#93;' when evaluating expression 'sec_limits&#91;'shoulder_pan'&#93;&#91;'min_position'&#93;' |
+| 25 | `ur_gazebo/urdf/ur.xacro` | xacro | 15 · 10 · 0 · 0 · 0 · 0 · 0 | XacroException: &#91;Errno 2&#93; No such file or directory: '.\\' when evaluating expression 'xacro.load_yaml(joint_limits_parameters_file)' when evaluating expression 'config_joint_limit_parameters&#91;'joint_limits'&#93;' when evaluating expression 'sec_limits&#91;'shoulder_pan'&#93;&#91;'min_position'&#93;' |
+
+</details>
+
 <details><summary><b>SCHUNK-SE-Co-KG/schunk_svh_ros_driver</b>: best 100, 13 robot(s), GPL-3.0, last commit 2026-11-19</summary>
 
 From: awesome-robot-descriptions. Commit `67bcc89cd5ca`.
@@ -682,6 +738,56 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `be581a690cdd`.
 | 85 | `model/humanoid/humanoid100.xml` | mjcf | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
 | 85 | `model/plastic/clay.xml` | mjcf | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
 | | and 325 more, in `audit.json` | | | |
+
+</details>
+
+<details><summary><b>fiveages-sim/robot-descriptions-quadruped</b>: best 96, 48 robot(s), no licence named, last commit 2025-12-15</summary>
+
+From: fiveages submodules. Commit `98107c72260b`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 96 | `zsibot/zsl1_description/xacro/robot.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 20 · 6.5 |  |
+| 95 | `unitree/unitree_go2_description/urdf/unitree_go2.urdf` | urdf | 15 · 10 · 20 · 15 · 9.5 · 16.8 · 9 |  |
+| 95 | `unitree/unitree_go2_description/xacro/robot.xacro` | xacro | 15 · 10 · 20 · 15 · 9.5 · 16.8 · 9 |  |
+| 95 | `unitree/unitree_go2_description/xacro/ros2_control/robot.xacro` | xacro | 15 · 10 · 20 · 15 · 9.5 · 16.8 · 9 |  |
+| 94 | `unitree/unitree_b2_description/urdf/unitree_b2.urdf` | urdf | 15 · 10 · 20 · 15 · 9.7 · 14.8 · 9.5 |  |
+| 94 | `unitree/unitree_b2_description/xacro/robot.xacro` | xacro | 15 · 10 · 20 · 15 · 9.7 · 14.8 · 9.5 |  |
+| 94 | `unitree/unitree_b2_description/xacro/ros2_control/robot.xacro` | xacro | 15 · 10 · 20 · 15 · 9.7 · 14.8 · 9.5 |  |
+| 93 | `deep_robotics/lite3_description/urdf/lite3.urdf` | urdf | 15 · 10 · 20 · 15 · 9.5 · 18.7 · 4.6 |  |
+| 93 | `deep_robotics/lite3_description/xacro/robot.xacro` | xacro | 15 · 10 · 20 · 15 · 9.5 · 18.7 · 4.6 |  |
+| 93 | `deep_robotics/lite3_description/xacro/ros2_control/robot.xacro` | xacro | 15 · 10 · 20 · 15 · 9.5 · 18.7 · 4.6 |  |
+| 90 | `deep_robotics/x30_description/xacro/robot.xacro` | xacro | 15 · 10 · 20 · 15 · 9.5 · 18.7 · 1.8 |  |
+| 90 | `deep_robotics/x30_description/xacro/ros2_control/robot.xacro` | xacro | 15 · 10 · 20 · 15 · 9.5 · 18.7 · 1.8 |  |
+| 88 | `magiclab/magicdog_description/urdf/magicdog.urdf` | urdf | 15 · 10 · 20 · 15 · 7.4 · 19.3 · 1.4 |  |
+| 88 | `magiclab/magicdog_description/xacro/robot.xacro` | xacro | 15 · 10 · 20 · 15 · 7.4 · 19.3 · 1.4 |  |
+| 88 | `magiclab/magicdog_description/xacro/ros2_control/robot.xacro` | xacro | 15 · 10 · 20 · 15 · 7.4 · 19.3 · 1.4 |  |
+| 87 | `unitree/aliengo_description/urdf/aliengo.urdf` | urdf | 7.5 · 10 · 20 · 15 · 9.7 · 14.8 · 10 |  |
+| 87 | `unitree/aliengo_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.7 · 14.8 · 10 |  |
+| 87 | `unitree/aliengo_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.7 · 14.8 · 10 |  |
+| 87 | `unitree/unitree_a1_description/urdf/unitree_a1.urdf` | urdf | 7.5 · 10 · 20 · 15 · 7.8 · 16.8 · 9.9 |  |
+| 87 | `unitree/unitree_a1_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 7.8 · 16.8 · 9.9 |  |
+| 87 | `unitree/unitree_a1_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 7.8 · 16.8 · 9.9 |  |
+| 86 | `unitree/unitree_go1_description/urdf/unitree_go1.urdf` | urdf | 7.5 · 10 · 20 · 15 · 9.7 · 15.4 · 8 |  |
+| 84 | `unitree/unitree_go1_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 7.7 · 15.4 · 8 |  |
+| 84 | `unitree/unitree_go1_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 7.7 · 15.4 · 8 |  |
+| 80 | `deep_robotics/x30_description/xacro/imu_link.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 0 · 10 |  |
+| 79 | `magiclab/cyberdog_description/urdf/cyberdog.urdf` | urdf | 0 · 10 · 20 · 15 · 7.5 · 16.8 · 10 |  |
+| 79 | `magiclab/cyberdog_description/xacro/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 7.5 · 16.8 · 10 |  |
+| 79 | `magiclab/cyberdog_description/xacro/ros2_control/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 7.5 · 16.8 · 10 |  |
+| 25 | `deep_robotics/lite3_description/xacro/ros2_control/gazebo.xacro` | xacro | 15 · 10 · 0 · 0 · 0 · 0 · 0 | XacroException: &lt;class 'xacrodoc.packages.PackageNotFoundError'&gt;: Package not found: gz_quadruped_hardware Package not found: gz_quadruped_hardware |
+| 25 | `deep_robotics/lite3_description/xacro/ros2_control/ros2_control.xacro` | xacro | 15 · 10 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+| 25 | `deep_robotics/x30_description/urdf/x30.urdf` | urdf | 15 · 10 · 0 · 0 · 0 · 0 · 0 | 4 visual mesh file(s) missing |
+| 25 | `deep_robotics/x30_description/urdf/x30_generated.urdf` | urdf | 15 · 10 · 0 · 0 · 0 · 0 · 0 | 4 visual mesh file(s) missing |
+| 25 | `deep_robotics/x30_description/xacro/ros2_control/gazebo.xacro` | xacro | 15 · 10 · 0 · 0 · 0 · 0 · 0 | XacroException: &lt;class 'xacrodoc.packages.PackageNotFoundError'&gt;: Package not found: gz_quadruped_hardware Package not found: gz_quadruped_hardware |
+| 25 | `deep_robotics/x30_description/xacro/ros2_control/ros2_control.xacro` | xacro | 15 · 10 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+| 25 | `magiclab/magicdog_description/xacro/ros2_control/gazebo.xacro` | xacro | 15 · 10 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+| 25 | `unitree/unitree_b2_description/xacro/materials.xacro` | xacro | 15 · 10 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+| 25 | `unitree/unitree_b2_description/xacro/ros2_control/gazebo.xacro` | xacro | 15 · 10 · 0 · 0 · 0 · 0 · 0 | XacroException: &lt;class 'xacrodoc.packages.PackageNotFoundError'&gt;: Package not found: gz_quadruped_hardware Package not found: gz_quadruped_hardware |
+| 25 | `unitree/unitree_b2_description/xacro/ros2_control/ros2_control.xacro` | xacro | 15 · 10 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+| 25 | `unitree/unitree_go2_description/xacro/ros2_control/gazebo.xacro` | xacro | 15 · 10 · 0 · 0 · 0 · 0 · 0 | XacroException: &lt;class 'xacrodoc.packages.PackageNotFoundError'&gt;: Package not found: gz_quadruped_hardware Package not found: gz_quadruped_hardware |
+| 25 | `unitree/unitree_go2_description/xacro/ros2_control/ros2_control.xacro` | xacro | 15 · 10 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+| | and 8 more, in `audit.json` | | | |
 
 </details>
 
@@ -926,6 +1032,56 @@ From: awesome-robot-descriptions. Commit `ddd2fffd9de4`. Also 5 SDF file(s), not
 
 </details>
 
+<details><summary><b>RobotLocomotion/drake</b>: best 93, 54 robot(s), NOASSERTION, last commit 2026-11-18</summary>
+
+From: robot_descriptions.py. Commit `407526d3e2bd`. Also 89 SDF file(s), not measured.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 93 | `multibody/parsing/test/urdf_parser_test/non_conflicting_materials_2.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 13.3 · 10 |  |
+| 90 | `multibody/parsing/test/drake_manifest_resolution_test/cube_visual.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 10 · 10 |  |
+| 90 | `multibody/parsing/test/links_with_visuals_and_collisions.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 10 · 10 |  |
+| 90 | `multibody/parsing/test/urdf_parser_test/all_geometries_as_visual.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 10 · 10 |  |
+| 85 | `examples/kuka_iiwa_arm/models/objects/black_box.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 85 | `examples/kuka_iiwa_arm/models/objects/block_for_pick_and_place.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 85 | `examples/kuka_iiwa_arm/models/objects/block_for_pick_and_place_large_size.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 85 | `examples/kuka_iiwa_arm/models/objects/block_for_pick_and_place_mid_size.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 85 | `examples/kuka_iiwa_arm/models/objects/folding_table.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 85 | `examples/kuka_iiwa_arm/models/objects/round_table.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 85 | `examples/kuka_iiwa_arm/models/objects/simple_cuboid.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 85 | `examples/kuka_iiwa_arm/models/objects/simple_cylinder.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 85 | `examples/kuka_iiwa_arm/models/objects/yellow_post.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 85 | `examples/multibody/strandbeest/model/StrandbeestBushings.urdf.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 85 | `examples/multibody/strandbeest/model/StrandbeestConstraints.urdf.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 85 | `examples/pendulum/Pendulum.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 85 | `examples/quadrotor/office.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 85 | `multibody/benchmarks/free_body/uniform_solid_cylinder.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 85 | `multibody/parsing/test/urdf_parser_test/duplicate_but_same_materials_with_texture.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 85 | `multibody/parsing/test/urdf_parser_test/non_conflicting_materials_3.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 85 | `multibody/parsing/test/urdf_parser_test/zero_dof_robot.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 82 | `bindings/pydrake/multibody/test/Acrobot_unicode.urdf` | urdf | 15 · 10 · 20 · 15 · 6.7 · 5 · 10 |  |
+| 82 | `examples/acrobot/Acrobot.urdf` | urdf | 15 · 10 · 20 · 15 · 6.7 · 5 · 10 |  |
+| 82 | `examples/acrobot/Acrobot_no_collision.urdf` | urdf | 15 · 10 · 20 · 15 · 6.7 · 5 · 10 |  |
+| 82 | `multibody/parsing/test/box_package/urdfs/box.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 10 · 10 |  |
+| 80 | `examples/kuka_iiwa_arm/models/objects/open_top_box.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 0 · 10 |  |
+| 80 | `multibody/models/box.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 0 · 10 |  |
+| 80 | `multibody/models/box_small.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 0 · 10 |  |
+| 80 | `multibody/plant/test/atlas_with_fixed_joints.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 0.3 · 10 |  |
+| 75 | `multibody/parsing/test/urdf_parser_test/conflicting_materials.urdf` | urdf | 15 · 10 · 20 · 15 · 0 · 5 · 10 |  |
+| 75 | `multibody/parsing/test/urdf_parser_test/duplicate_materials.urdf` | urdf | 15 · 10 · 20 · 15 · 0 · 5 · 10 |  |
+| 74 | `multibody/parsing/test/urdf_parser_test/non_conflicting_materials_1.urdf` | urdf | 15 · 10 · 20 · 15 · 0 · 3.8 · 10 |  |
+| 73 | `multibody/parsing/test/urdf_parser_test/accepting_renderer.urdf` | urdf | 15 · 10 · 20 · 15 · 0 · 3.3 · 10 |  |
+| 70 | `multibody/benchmarks/acrobot/acrobot.urdf` | urdf | 15 · 10 · 20 · 0 · 10 · 5 · 10 |  |
+| 70 | `multibody/benchmarks/acrobot/acrobot.xml` | mjcf | 15 · 10 · 20 · 0 · 10 · 5 · 10 |  |
+| 70 | `multibody/parsing/test/mujoco_parser_test/pendulum.xml` | mjcf | 15 · 10 · 20 · 0 · 10 · 5 · 10 |  |
+| 70 | `multibody/parsing/test/urdf_parser_test/all_geometries_as_collision.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 0 · 0 |  |
+| 60 | `bindings/pydrake/visualization/test/massless_robot.urdf` | urdf | 15 · 10 · 20 · 15 · 0 · 0 · 0 |  |
+| 60 | `multibody/benchmarks/acrobot/double_pendulum.urdf` | urdf | 15 · 10 · 20 · 15 · 0 · 0 · 0 |  |
+| 60 | `multibody/parsing/test/sdf_parser_test/imported_joint_frames.urdf` | urdf | 15 · 10 · 20 · 15 · 0 · 0 · 0 |  |
+| | and 14 more, in `audit.json` | | | |
+
+</details>
+
 <details><summary><b>bulletphysics/bullet3</b>: best 92, 1232 robot(s), NOASSERTION, last commit 2026-10-09</summary>
 
 From: awesome-robot-descriptions, robot_descriptions.py. Commit `d3afe76132fc`. Also 32 SDF file(s), not measured.
@@ -976,34 +1132,98 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `d3afe76132fc`. 
 
 </details>
 
-<details><summary><b>fiveages-sim/robot-descriptions-arx</b>: best 92, 22 robot(s), no licence named, last commit 2026-11-16</summary>
+<details><summary><b>fiveages-sim/fa-s2-description</b>: best 92, 3 robot(s), no licence named, last commit 2026-11-12</summary>
 
-From: fiveages submodules. Commit `b7ae0bea9ab8`.
+From: fiveages submodules. Commit `91ac627054d3`.
 
 | Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
 |--:|---|---|---|---|
-| 92 | `arx_lift_description/xacro/component.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 91 | `arx5_description/urdf/arx5.urdf` | urdf | 7.5 · 10 · 20 · 15 · 8.2 · 20 · 10 |  |
-| 91 | `arx5_description/urdf/arx5_ac1.urdf` | urdf | 7.5 · 10 · 20 · 15 · 8.2 · 20 · 10 |  |
-| 91 | `arx5_description/urdf/arx5_agilex.urdf` | urdf | 7.5 · 10 · 20 · 15 · 8.2 · 20 · 10 |  |
-| 91 | `arx5_description/urdf/arx5_r5.urdf` | urdf | 7.5 · 10 · 20 · 15 · 8.2 · 20 · 10 |  |
-| 91 | `arx5_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 8.2 · 20 · 10 |  |
-| 91 | `arx5_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 8.2 · 20 · 10 |  |
-| 91 | `arx_x7s_description/xacro/component.xacro` | xacro | 7.5 · 10 · 20 · 15 · 8.3 · 20 · 9.9 |  |
-| 88 | `arx_x7s_description/urdf/arx_x7s.urdf` | urdf | 7.5 · 10 · 20 · 15 · 9.6 · 20 · 6.4 |  |
-| 88 | `arx_x7s_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.6 · 20 · 6.4 |  |
-| 88 | `arx_x7s_description/xacro/robot_full.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.6 · 20 · 6.4 |  |
-| 88 | `arx_x7s_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.6 · 20 · 6.4 |  |
-| 87 | `arx_lift_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 8.4 · 20 · 6 |  |
-| 87 | `arx_lift_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 8.4 · 20 · 6 |  |
-| 82 | `arx_acone_description/xacro/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 7.6 · 20 · 8.9 |  |
-| 82 | `arx_acone_description/xacro/ros2_control/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 7.6 · 20 · 8.9 |  |
-| 82 | `arx_lift2s_description/xacro/component.xacro` | xacro | 0 · 10 · 20 · 15 · 6.7 · 20 · 10 |  |
-| 78 | `arx_acone_description/xacro/component.xacro` | xacro | 0 · 10 · 20 · 15 · 3.3 · 20 · 10 |  |
-| 76 | `arx_lift2s_description/xacro/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 7.7 · 20 · 2.9 |  |
-| 76 | `arx_lift2s_description/xacro/ros2_control/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 7.7 · 20 · 2.9 |  |
-| 52 | `arx5_description/xacro/gripper.xacro` | xacro | 7.5 · 10 · 20 · 15 · 0 · 0 · 0 |  |
-| 18 | `arx5_description/xacro/component.xacro` | xacro | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+| 92 | `xacro/component.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 9.3 |  |
+| 87 | `xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 8.8 · 20 · 5.3 |  |
+| 87 | `xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 8.8 · 20 · 5.3 |  |
+
+</details>
+
+<details><summary><b>fiveages-sim/fa-w1-description</b>: best 92, 4 robot(s), no licence named, last commit 2026-10-10</summary>
+
+From: fiveages submodules. Commit `b0f8b6f649d0`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 92 | `xacro/component.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 90 | `xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.6 · 20 · 7.5 |  |
+| 90 | `xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.6 · 20 · 7.5 |  |
+| 18 | `xacro/gazebo.xacro` | xacro | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+
+</details>
+
+<details><summary><b>fiveages-sim/fa-w2-components</b>: best 92, 1 robot(s), no licence named, last commit 2026-10-21</summary>
+
+From: fiveages submodules. Commit `78c595884616`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 92 | `xacro/component.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 9.3 |  |
+
+</details>
+
+<details><summary><b>fiveages-sim/fa-w2-description</b>: best 92, 3 robot(s), no licence named, last commit 2026-11-12</summary>
+
+From: fiveages submodules. Commit `812e1615b922`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 92 | `xacro/component.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 9.3 |  |
+| 82 | `xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 6.7 · 20 · 2.5 |  |
+| 82 | `xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 6.7 · 20 · 2.5 |  |
+
+</details>
+
+<details><summary><b>fiveages-sim/robot-descriptions-ht</b>: best 92, 4 robot(s), no licence named, last commit 2026-11-16</summary>
+
+From: fiveages submodules. Commit `4b7810f95bb5`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 92 | `panthera_ht_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 9.9 |  |
+| 92 | `panthera_ht_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 9.9 |  |
+| 91 | `openarm_ht_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 8.5 |  |
+| 91 | `openarm_ht_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 8.5 |  |
+
+</details>
+
+<details><summary><b>fiveages-sim/robot-descriptions-rokae</b>: best 92, 4 robot(s), no licence named, last commit 2026-11-19</summary>
+
+From: fiveages submodules. Commit `e5cca775371d`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 92 | `ar5_srs_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.4 · 20 · 9.7 |  |
+| 92 | `ar5_srs_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.4 · 20 · 9.7 |  |
+| 90 | `ar5_ccs_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.4 · 20 · 8.6 |  |
+| 90 | `ar5_ccs_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.4 · 20 · 8.6 |  |
+
+</details>
+
+<details><summary><b>fiveages-sim/robot-descriptions-tianji</b>: best 92, 13 robot(s), no licence named, last commit 2026-11-16</summary>
+
+From: fiveages submodules. Commit `9bca827ae4c6`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 92 | `m6_srs_description/urdf/m6_srs.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 92 | `m6_srs_description/urdf/m6_srs_right.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 92 | `m6_srs_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 92 | `m6_srs_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 92 | `marvin_pro_description/xacro/component.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
+| 91 | `m20s_ccs_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.4 · 20 · 9.4 |  |
+| 91 | `m20s_ccs_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.4 · 20 · 9.4 |  |
+| 91 | `m6_ccs_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.4 · 20 · 9.3 |  |
+| 91 | `m6_ccs_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.4 · 20 · 9.3 |  |
+| 90 | `m6s_lite_ccs_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.3 · 20 · 8.7 |  |
+| 90 | `m6s_lite_ccs_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.3 · 20 · 8.7 |  |
+| 87 | `marvin_pro_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 7.7 · 20 · 6.7 |  |
+| 87 | `marvin_pro_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 7.7 · 20 · 6.7 |  |
 
 </details>
 
@@ -1128,31 +1348,6 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `a7ba22fa4f54`. 
 
 </details>
 
-<details><summary><b>ros-industrial/universal_robot</b>: best 92, 16 robot(s), no licence named, last commit 2026-07-20</summary>
-
-From: awesome-robot-descriptions. Commit `39ad110d8f2e`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 92 | `ur_description/urdf/ur10.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 92 | `ur_description/urdf/ur10e.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 92 | `ur_description/urdf/ur12e.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 92 | `ur_description/urdf/ur15.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 92 | `ur_description/urdf/ur16e.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 92 | `ur_description/urdf/ur18.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 92 | `ur_description/urdf/ur20.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 92 | `ur_description/urdf/ur3.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 92 | `ur_description/urdf/ur30.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 92 | `ur_description/urdf/ur3e.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 92 | `ur_description/urdf/ur5.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 92 | `ur_description/urdf/ur5e.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 92 | `ur_description/urdf/ur7e.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 92 | `ur_description/urdf/ur8long.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 18 | `ur_description/urdf/ur.xacro` | xacro | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | XacroException: &#91;Errno 2&#93; No such file or directory: '.\\' when evaluating expression 'xacro.load_yaml(joint_limits_parameters_file)' when evaluating expression 'config_joint_limit_parameters&#91;'joint_limits'&#93;' when evaluating expression 'sec_limits&#91;'shoulder_pan'&#93;&#91;'min_position'&#93;' |
-| 18 | `ur_gazebo/urdf/ur.xacro` | xacro | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | XacroException: &#91;Errno 2&#93; No such file or directory: '.\\' when evaluating expression 'xacro.load_yaml(joint_limits_parameters_file)' when evaluating expression 'config_joint_limit_parameters&#91;'joint_limits'&#93;' when evaluating expression 'sec_limits&#91;'shoulder_pan'&#93;&#91;'min_position'&#93;' |
-
-</details>
-
 <details><summary><b>psyonicinc/ability-hand-api</b>: best 91, 26 robot(s), MIT, last commit 2026-11-16</summary>
 
 From: awesome-robot-descriptions, robot_descriptions.py. Commit `26ca07956df2`.
@@ -1203,6 +1398,21 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `eba23eb2f4db`.
 
 </details>
 
+<details><summary><b>Derek-TH-Wang/mini_cheetah_urdf</b>: best 90, 6 robot(s), no licence named, last commit 2021-02-02</summary>
+
+From: awesome-robot-descriptions, robot_descriptions.py. Commit `1988bceb26e8`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 90 | `urdf/laikago.urdf` | urdf | 15 · 0 · 20 · 15 · 10 · 20 · 10 |  |
+| 88 | `urdf/laikago_toes.urdf` | urdf | 15 · 0 · 20 · 15 · 10 · 17.7 · 10 |  |
+| 88 | `urdf/laikago_toes_limits.urdf` | urdf | 15 · 0 · 20 · 15 · 10 · 17.7 · 10 |  |
+| 88 | `urdf/laikago_toes_zup.urdf` | urdf | 15 · 0 · 20 · 15 · 10 · 17.7 · 10 |  |
+| 82 | `urdf/quadruped_robot.urdf` | urdf | 15 · 0 · 20 · 15 · 10 · 12.3 · 10 |  |
+| 15 | `urdf/mini_cheetah.urdf` | urdf | 15 · 0 · 0 · 0 · 0 · 0 · 0 | 4 visual mesh file(s) missing |
+
+</details>
+
 <details><summary><b>facebookresearch/differentiable-robot-model</b>: best 90, 13 robot(s), MIT, last commit 2022-04-22 **archived**</summary>
 
 From: awesome-robot-descriptions, robot_descriptions.py. Commit `d7bd1b3b8ef1`.
@@ -1247,6 +1457,16 @@ From: fiveages robots. Commit `bd491829961a`.
 | 87 | `humanoid/x2robot/quanta_x1_description/xacro/robot.xacro` | xacro | 15 · 10 · 20 · 15 · 6.1 · 19.8 · 0.7 |  |
 | 25 | `humanoid/x2robot/quanta_x1_description/urdf/ex001_robot.urdf` | urdf | 15 · 10 · 0 · 0 · 0 · 0 · 0 | 44 visual mesh file(s) missing |
 | 25 | `humanoid/x2robot/quanta_x1_description/urdf/ex001_robot_mock.urdf` | urdf | 15 · 10 · 0 · 0 · 0 · 0 · 0 | 44 visual mesh file(s) missing |
+
+</details>
+
+<details><summary><b>gundam-global-challenge/gundam_robot</b>: best 90, 1 robot(s), no licence named, last commit 2020-08-28</summary>
+
+From: awesome-robot-descriptions. Commit `411d5db72a12`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 90 | `gundam_rx78_description/urdf/GGC_TestModel_rx78_20170112.urdf` | urdf | 15 · 0 · 20 · 15 · 10 · 20 · 10 |  |
 
 </details>
 
@@ -1312,56 +1532,6 @@ From: awesome-robot-descriptions. Commit `df3ce76f7009`.
 
 </details>
 
-<details><summary><b>fiveages-sim/robot-descriptions-quadruped</b>: best 89, 48 robot(s), no licence named, last commit 2025-12-15</summary>
-
-From: fiveages submodules. Commit `98107c72260b`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 89 | `zsibot/zsl1_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 20 · 6.5 |  |
-| 88 | `unitree/unitree_go2_description/urdf/unitree_go2.urdf` | urdf | 7.5 · 10 · 20 · 15 · 9.5 · 16.8 · 9 |  |
-| 88 | `unitree/unitree_go2_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.5 · 16.8 · 9 |  |
-| 88 | `unitree/unitree_go2_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.5 · 16.8 · 9 |  |
-| 87 | `unitree/aliengo_description/urdf/aliengo.urdf` | urdf | 7.5 · 10 · 20 · 15 · 9.7 · 14.8 · 10 |  |
-| 87 | `unitree/aliengo_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.7 · 14.8 · 10 |  |
-| 87 | `unitree/aliengo_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.7 · 14.8 · 10 |  |
-| 87 | `unitree/unitree_a1_description/urdf/unitree_a1.urdf` | urdf | 7.5 · 10 · 20 · 15 · 7.8 · 16.8 · 9.9 |  |
-| 87 | `unitree/unitree_a1_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 7.8 · 16.8 · 9.9 |  |
-| 87 | `unitree/unitree_a1_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 7.8 · 16.8 · 9.9 |  |
-| 86 | `unitree/unitree_b2_description/urdf/unitree_b2.urdf` | urdf | 7.5 · 10 · 20 · 15 · 9.7 · 14.8 · 9.5 |  |
-| 86 | `unitree/unitree_b2_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.7 · 14.8 · 9.5 |  |
-| 86 | `unitree/unitree_b2_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.7 · 14.8 · 9.5 |  |
-| 86 | `unitree/unitree_go1_description/urdf/unitree_go1.urdf` | urdf | 7.5 · 10 · 20 · 15 · 9.7 · 15.4 · 8 |  |
-| 85 | `deep_robotics/lite3_description/urdf/lite3.urdf` | urdf | 7.5 · 10 · 20 · 15 · 9.5 · 18.7 · 4.6 |  |
-| 85 | `deep_robotics/lite3_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.5 · 18.7 · 4.6 |  |
-| 85 | `deep_robotics/lite3_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.5 · 18.7 · 4.6 |  |
-| 84 | `unitree/unitree_go1_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 7.7 · 15.4 · 8 |  |
-| 84 | `unitree/unitree_go1_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 7.7 · 15.4 · 8 |  |
-| 82 | `deep_robotics/x30_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.5 · 18.7 · 1.8 |  |
-| 82 | `deep_robotics/x30_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.5 · 18.7 · 1.8 |  |
-| 81 | `magiclab/magicdog_description/urdf/magicdog.urdf` | urdf | 7.5 · 10 · 20 · 15 · 7.4 · 19.3 · 1.4 |  |
-| 81 | `magiclab/magicdog_description/xacro/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 7.4 · 19.3 · 1.4 |  |
-| 81 | `magiclab/magicdog_description/xacro/ros2_control/robot.xacro` | xacro | 7.5 · 10 · 20 · 15 · 7.4 · 19.3 · 1.4 |  |
-| 79 | `magiclab/cyberdog_description/urdf/cyberdog.urdf` | urdf | 0 · 10 · 20 · 15 · 7.5 · 16.8 · 10 |  |
-| 79 | `magiclab/cyberdog_description/xacro/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 7.5 · 16.8 · 10 |  |
-| 79 | `magiclab/cyberdog_description/xacro/ros2_control/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 7.5 · 16.8 · 10 |  |
-| 72 | `deep_robotics/x30_description/xacro/imu_link.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 0 · 10 |  |
-| 18 | `deep_robotics/lite3_description/xacro/ros2_control/gazebo.xacro` | xacro | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | XacroException: &lt;class 'xacrodoc.packages.PackageNotFoundError'&gt;: Package not found: gz_quadruped_hardware Package not found: gz_quadruped_hardware |
-| 18 | `deep_robotics/lite3_description/xacro/ros2_control/ros2_control.xacro` | xacro | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
-| 18 | `deep_robotics/x30_description/urdf/x30.urdf` | urdf | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | 4 visual mesh file(s) missing |
-| 18 | `deep_robotics/x30_description/urdf/x30_generated.urdf` | urdf | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | 4 visual mesh file(s) missing |
-| 18 | `deep_robotics/x30_description/xacro/ros2_control/gazebo.xacro` | xacro | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | XacroException: &lt;class 'xacrodoc.packages.PackageNotFoundError'&gt;: Package not found: gz_quadruped_hardware Package not found: gz_quadruped_hardware |
-| 18 | `deep_robotics/x30_description/xacro/ros2_control/ros2_control.xacro` | xacro | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
-| 18 | `magiclab/magicdog_description/xacro/ros2_control/gazebo.xacro` | xacro | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
-| 18 | `unitree/aliengo_description/xacro/ros2_control/gazebo.xacro` | xacro | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | XacroException: &lt;class 'xacrodoc.packages.PackageNotFoundError'&gt;: Package not found: gz_quadruped_hardware Package not found: gz_quadruped_hardware |
-| 18 | `unitree/aliengo_description/xacro/ros2_control/ros2_control.xacro` | xacro | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
-| 18 | `unitree/unitree_a1_description/xacro/ros2_control/gazebo.xacro` | xacro | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | XacroException: &lt;class 'xacrodoc.packages.PackageNotFoundError'&gt;: Package not found: gz_quadruped_hardware Package not found: gz_quadruped_hardware |
-| 18 | `unitree/unitree_a1_description/xacro/ros2_control/ros2_control.xacro` | xacro | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
-| 18 | `unitree/unitree_b2_description/xacro/materials.xacro` | xacro | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
-| | and 8 more, in `audit.json` | | | |
-
-</details>
-
 <details><summary><b>ros-industrial-attic/robotiq</b>: best 89, 9 robot(s), BSD-2-Clause, last commit 2021-05-28</summary>
 
 From: awesome-robot-descriptions. Commit `45196f6558fe`.
@@ -1403,6 +1573,21 @@ From: awesome-robot-descriptions. Commit `d1ef3d0ca83d`.
 
 </details>
 
+<details><summary><b>tork-a/rtmros_nextage</b>: best 88, 6 robot(s), no licence named, last commit 2025-05-09</summary>
+
+From: awesome-robot-descriptions, robot_descriptions.py. Commit `5fe35ea32825`. Also 3 SDF file(s), not measured.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 88 | `nextage_calibration/models/checkerboard_horizontal.urdf` | urdf | 7.5 · 5 · 20 · 15 · 10 · 20 · 10 |  |
+| 88 | `nextage_calibration/models/checkerboard_waist.urdf` | urdf | 7.5 · 5 · 20 · 15 · 10 · 20 · 10 |  |
+| 88 | `nextage_description/urdf/NextageOpen.urdf` | urdf | 7.5 · 5 · 20 · 15 · 10 · 20 · 10 |  |
+| 86 | `nextage_description/urdf/nxo_gz.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 18.9 · 10 |  |
+| 12 | `nextage_calibration/models/sensor_kinect.xacro` | xacro | 7.5 · 5 · 0 · 0 · 0 · 0 · 0 | XacroException: &lt;class 'xacrodoc.packages.PackageNotFoundError'&gt;: Package not found: turtlebot_description Package not found: turtlebot_description |
+| 12 | `nextage_description/urdf/materials.urdf.xacro` | xacro | 7.5 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+
+</details>
+
 <details><summary><b>david-dorf/perseverance-ingenuity-urdfs</b>: best 86, 2 robot(s), Apache-2.0, last commit 2025-02-21</summary>
 
 From: awesome-robot-descriptions. Commit `17b93151ff60`.
@@ -1411,56 +1596,6 @@ From: awesome-robot-descriptions. Commit `17b93151ff60`.
 |--:|---|---|---|---|
 | 86 | `ingenuity/ingenuity.urdf` | urdf | 15 · 5 · 20 · 15 · 1.4 · 20 · 9.8 |  |
 | 73 | `perseverance/perseverance.urdf` | urdf | 15 · 5 · 20 · 15 · 0 · 10 · 8.1 |  |
-
-</details>
-
-<details><summary><b>RobotLocomotion/drake</b>: best 86, 54 robot(s), NOASSERTION, last commit 2026-11-18</summary>
-
-From: robot_descriptions.py. Commit `407526d3e2bd`. Also 89 SDF file(s), not measured.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 86 | `multibody/parsing/test/urdf_parser_test/non_conflicting_materials_2.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 13.3 · 10 |  |
-| 82 | `multibody/parsing/test/box_package/urdfs/box.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 10 · 10 |  |
-| 82 | `multibody/parsing/test/drake_manifest_resolution_test/cube_visual.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 10 · 10 |  |
-| 82 | `multibody/parsing/test/links_with_visuals_and_collisions.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 10 · 10 |  |
-| 82 | `multibody/parsing/test/urdf_parser_test/all_geometries_as_visual.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 10 · 10 |  |
-| 78 | `examples/kuka_iiwa_arm/models/objects/black_box.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 78 | `examples/kuka_iiwa_arm/models/objects/block_for_pick_and_place.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 78 | `examples/kuka_iiwa_arm/models/objects/block_for_pick_and_place_large_size.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 78 | `examples/kuka_iiwa_arm/models/objects/block_for_pick_and_place_mid_size.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 78 | `examples/kuka_iiwa_arm/models/objects/folding_table.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 78 | `examples/kuka_iiwa_arm/models/objects/round_table.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 78 | `examples/kuka_iiwa_arm/models/objects/simple_cuboid.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 78 | `examples/kuka_iiwa_arm/models/objects/simple_cylinder.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 78 | `examples/kuka_iiwa_arm/models/objects/yellow_post.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 78 | `examples/multibody/strandbeest/model/StrandbeestBushings.urdf.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 78 | `examples/multibody/strandbeest/model/StrandbeestConstraints.urdf.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 78 | `examples/pendulum/Pendulum.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 78 | `examples/quadrotor/office.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 78 | `multibody/benchmarks/free_body/uniform_solid_cylinder.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 78 | `multibody/parsing/test/urdf_parser_test/duplicate_but_same_materials_with_texture.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 78 | `multibody/parsing/test/urdf_parser_test/non_conflicting_materials_3.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 78 | `multibody/parsing/test/urdf_parser_test/zero_dof_robot.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 74 | `bindings/pydrake/multibody/test/Acrobot_unicode.urdf` | urdf | 7.5 · 10 · 20 · 15 · 6.7 · 5 · 10 |  |
-| 74 | `examples/acrobot/Acrobot.urdf` | urdf | 7.5 · 10 · 20 · 15 · 6.7 · 5 · 10 |  |
-| 74 | `examples/acrobot/Acrobot_no_collision.urdf` | urdf | 7.5 · 10 · 20 · 15 · 6.7 · 5 · 10 |  |
-| 73 | `multibody/plant/test/atlas_with_fixed_joints.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 0.3 · 10 |  |
-| 72 | `examples/kuka_iiwa_arm/models/objects/open_top_box.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 0 · 10 |  |
-| 72 | `multibody/models/box.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 0 · 10 |  |
-| 72 | `multibody/models/box_small.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 0 · 10 |  |
-| 68 | `multibody/parsing/test/urdf_parser_test/conflicting_materials.urdf` | urdf | 7.5 · 10 · 20 · 15 · 0 · 5 · 10 |  |
-| 68 | `multibody/parsing/test/urdf_parser_test/duplicate_materials.urdf` | urdf | 7.5 · 10 · 20 · 15 · 0 · 5 · 10 |  |
-| 66 | `multibody/parsing/test/urdf_parser_test/accepting_renderer.urdf` | urdf | 7.5 · 10 · 20 · 15 · 0 · 3.3 · 10 |  |
-| 66 | `multibody/parsing/test/urdf_parser_test/non_conflicting_materials_1.urdf` | urdf | 7.5 · 10 · 20 · 15 · 0 · 3.8 · 10 |  |
-| 62 | `multibody/benchmarks/acrobot/acrobot.urdf` | urdf | 7.5 · 10 · 20 · 0 · 10 · 5 · 10 |  |
-| 62 | `multibody/benchmarks/acrobot/acrobot.xml` | mjcf | 7.5 · 10 · 20 · 0 · 10 · 5 · 10 |  |
-| 62 | `multibody/parsing/test/mujoco_parser_test/pendulum.xml` | mjcf | 7.5 · 10 · 20 · 0 · 10 · 5 · 10 |  |
-| 62 | `multibody/parsing/test/urdf_parser_test/all_geometries_as_collision.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 0 · 0 |  |
-| 58 | `multibody/parsing/test/sdf_parser_test/interface_api_test/arm.xml` | mjcf | 7.5 · 10 · 20 · 0 · 10 · 0 · 10 |  |
-| 52 | `bindings/pydrake/visualization/test/massless_robot.urdf` | urdf | 7.5 · 10 · 20 · 15 · 0 · 0 · 0 |  |
-| 52 | `multibody/benchmarks/acrobot/double_pendulum.urdf` | urdf | 7.5 · 10 · 20 · 15 · 0 · 0 · 0 |  |
-| | and 14 more, in `audit.json` | | | |
 
 </details>
 
@@ -1522,54 +1657,6 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `24b61c71c07e`.
 | 10 | `urdfs/robots/val_description/model/robots/valkyrie_A.urdf` | urdf | 0 · 10 · 0 · 0 · 0 · 0 · 0 | 55 visual mesh file(s) missing |
 | 10 | `urdfs/robots/val_description/model/robots/valkyrie_A_arm_mass_sims.urdf` | urdf | 0 · 10 · 0 · 0 · 0 · 0 · 0 | 23 visual mesh file(s) missing |
 | | and 11 more, in `audit.json` | | | |
-
-</details>
-
-<details><summary><b>fiveages-sim/fa-w1-description</b>: best 85, 4 robot(s), no licence named, last commit 2026-10-10</summary>
-
-From: fiveages submodules. Commit `b0f8b6f649d0`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 85 | `xacro/component.xacro` | xacro | 0 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 82 | `xacro/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 9.6 · 20 · 7.5 |  |
-| 82 | `xacro/ros2_control/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 9.6 · 20 · 7.5 |  |
-| 10 | `xacro/gazebo.xacro` | xacro | 0 · 10 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
-
-</details>
-
-<details><summary><b>fiveages-sim/robot-descriptions-ht</b>: best 85, 4 robot(s), no licence named, last commit 2026-11-16</summary>
-
-From: fiveages submodules. Commit `4b7810f95bb5`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 85 | `panthera_ht_description/xacro/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 10 · 20 · 9.9 |  |
-| 85 | `panthera_ht_description/xacro/ros2_control/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 10 · 20 · 9.9 |  |
-| 84 | `openarm_ht_description/xacro/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 10 · 20 · 8.5 |  |
-| 84 | `openarm_ht_description/xacro/ros2_control/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 10 · 20 · 8.5 |  |
-
-</details>
-
-<details><summary><b>fiveages-sim/robot-descriptions-tianji</b>: best 85, 13 robot(s), no licence named, last commit 2026-11-16</summary>
-
-From: fiveages submodules. Commit `9bca827ae4c6`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 85 | `m6_srs_description/urdf/m6_srs.urdf` | urdf | 0 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 85 | `m6_srs_description/urdf/m6_srs_right.urdf` | urdf | 0 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 85 | `m6_srs_description/xacro/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 85 | `m6_srs_description/xacro/ros2_control/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 85 | `marvin_pro_description/xacro/component.xacro` | xacro | 0 · 10 · 20 · 15 · 10 · 20 · 10 |  |
-| 84 | `m20s_ccs_description/xacro/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 9.4 · 20 · 9.4 |  |
-| 84 | `m20s_ccs_description/xacro/ros2_control/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 9.4 · 20 · 9.4 |  |
-| 84 | `m6_ccs_description/xacro/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 9.4 · 20 · 9.3 |  |
-| 84 | `m6_ccs_description/xacro/ros2_control/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 9.4 · 20 · 9.3 |  |
-| 83 | `m6s_lite_ccs_description/xacro/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 9.3 · 20 · 8.7 |  |
-| 83 | `m6s_lite_ccs_description/xacro/ros2_control/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 9.3 · 20 · 8.7 |  |
-| 79 | `marvin_pro_description/xacro/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 7.7 · 20 · 6.7 |  |
-| 79 | `marvin_pro_description/xacro/ros2_control/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 7.7 · 20 · 6.7 |  |
 
 </details>
 
@@ -1645,6 +1732,40 @@ From: robot_descriptions.py. Commit `234d895b3e54`.
 
 </details>
 
+<details><summary><b>Kinovarobotics/ros_kortex</b>: best 85, 25 robot(s), NOASSERTION, last commit 2025-09-29</summary>
+
+From: awesome-robot-descriptions. Commit `c3280d8a6a6b`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 85 | `kortex_description/robots/gen3_robotiq_2f_85.xacro` | xacro | 15 · 5 · 20 · 15 · 8.9 · 11.3 · 10 |  |
+| 80 | `kortex_description/arms/gen3/6dof/urdf/GEN3-6DOF_NO-VISION_URDF_ARM_V01.urdf` | urdf | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `kortex_description/arms/gen3/6dof/urdf/GEN3-6DOF_VISION_URDF_ARM_V01.urdf` | urdf | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `kortex_description/arms/gen3/7dof/urdf/GEN3-7DOF-NOVISION_FOR_URDF_ARM_V12.urdf` | urdf | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `kortex_description/arms/gen3/7dof/urdf/GEN3-7DOF-VISION_ARM_URDF_V12.urdf` | urdf | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `kortex_description/arms/gen3/7dof/urdf/GEN3-7DOF_BRAKES_NO-VISION_URDF_ARM_V01.urdf` | urdf | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `kortex_description/arms/gen3/7dof/urdf/GEN3-7DOF_BRAKES_VISION_URDF_ARM_V01.urdf` | urdf | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `kortex_description/robots/gen3.urdf` | urdf | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `kortex_description/robots/gen3.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `kortex_description/robots/gen3_lite_gen3_lite_2f.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `kortex_move_it_config/gen3_6dof_dual_arm_move_it_config/config/gazebo_dual_robot.urdf` | urdf | 15 · 5 · 20 · 15 · 10 · 5 · 9.9 |  |
+| 80 | `kortex_move_it_config/gen3_7dof_dual_arm_move_it_config/config/gazebo_dual_robot.urdf` | urdf | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 79 | `kortex_description/robots/gen3_robotiq_2f_140.xacro` | xacro | 15 · 5 · 20 · 15 · 8.9 · 5 · 10 |  |
+| 20 | `kortex_description/arms/gen3/6dof/urdf/GEN3-6DOF_BRAKES_NO-VISION_URDF_ARM_V01.urdf` | urdf | 15 · 5 · 0 · 0 · 0 · 0 · 0 | 1 visual mesh file(s) missing |
+| 20 | `kortex_description/arms/gen3/6dof/urdf/GEN3-6DOF_BRAKES_VISION_URDF_ARM_V01.urdf` | urdf | 15 · 5 · 0 · 0 · 0 · 0 · 0 | 1 visual mesh file(s) missing |
+| 20 | `kortex_description/arms/gen3_lite/6dof/urdf/GEN3-LITE.urdf` | urdf | 15 · 5 · 0 · 0 · 0 · 0 · 0 | 6 visual mesh file(s) missing |
+| 20 | `kortex_description/grippers/gen3_lite_2f/urdf/GEN3-LITE-GRIPPER_URDF_SIMPLIFIED_V2.urdf` | urdf | 15 · 5 · 0 · 0 · 0 · 0 · 0 | 5 visual mesh file(s) missing |
+| 20 | `kortex_description/multiple_robots/kortex_dual_robots.xacro` | xacro | 15 · 5 · 0 · 0 · 0 · 0 · 0 | XacroException: No such file or directory: kortex_description/arms//dof/urdf/_macro.xacro &#91;Errno 2&#93; No such file or directory: 'kortex_description/arms//dof/urdf/_macro.xacro' |
+| 20 | `kortex_move_it_config/gen3_lite_gen3_lite_2f_move_it_config/config/gen3_lite_gen3_lite_2f.srdf.xacro` | xacro | 15 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+| 20 | `kortex_move_it_config/gen3_move_it_config/config/6dof/gen3.srdf.xacro` | xacro | 15 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+| 20 | `kortex_move_it_config/gen3_move_it_config/config/7dof/gen3.srdf.xacro` | xacro | 15 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+| 20 | `kortex_move_it_config/gen3_robotiq_2f_140_move_it_config/config/6dof/gen3_robotiq_2f_140.srdf.xacro` | xacro | 15 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+| 20 | `kortex_move_it_config/gen3_robotiq_2f_140_move_it_config/config/7dof/gen3_robotiq_2f_140.srdf.xacro` | xacro | 15 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+| 20 | `kortex_move_it_config/gen3_robotiq_2f_85_move_it_config/config/6dof/gen3_robotiq_2f_85.srdf.xacro` | xacro | 15 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+| 20 | `kortex_move_it_config/gen3_robotiq_2f_85_move_it_config/config/7dof/gen3_robotiq_2f_85.srdf.xacro` | xacro | 15 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+
+</details>
+
 <details><summary><b>pal-robotics/pmb2_robot</b>: best 85, 2 robot(s), Apache-2.0, last commit 2026-09-23</summary>
 
 From: robot_descriptions.py. Commit `e6584136f153`.
@@ -1706,14 +1827,26 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `42b4e72ffc37`. 
 
 | Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
 |--:|---|---|---|---|
+| 85 | `community/histology-slide-gripper/mujoco/so_101.urdf.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 5 · 9.8 |  |
 | 85 | `simulation/so_arm_101_description/urdf/so_101.urdf.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 5 · 9.8 |  |
-| 77 | `community/histology-slide-gripper/mujoco/so_101.urdf.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 5 · 9.8 |  |
-| 74 | `community/histology-slide-gripper/mujoco/so101_slide_gripper.xml` | mjcf | 7.5 · 10 · 20 · 13.1 · 10 · 3.3 · 10 |  |
-| 72 | `community/histology-slide-gripper/mujoco/scene_gripper.xml` | mjcf | 7.5 · 10 · 20 · 11.2 · 8.3 · 5 · 10 |  |
-| 72 | `community/histology-slide-gripper/mujoco/so_101_arm.xml` | mjcf | 7.5 · 10 · 20 · 15 · 10 · 0 · 9.9 |  |
+| 81 | `community/histology-slide-gripper/mujoco/so101_slide_gripper.xml` | mjcf | 15 · 10 · 20 · 13.1 · 10 · 3.3 · 10 |  |
+| 80 | `community/histology-slide-gripper/mujoco/scene_gripper.xml` | mjcf | 15 · 10 · 20 · 11.2 · 8.3 · 5 · 10 |  |
+| 80 | `community/histology-slide-gripper/mujoco/so_101_arm.xml` | mjcf | 15 · 10 · 20 · 15 · 10 · 0 · 9.9 |  |
+| 25 | `community/histology-slide-gripper/mujoco/so_101_arm.urdf` | urdf | 15 · 10 · 0 · 0 · 0 · 0 · 0 | 6 visual mesh file(s) missing |
 | 25 | `simulation/so_arm_101_description/urdf/materials.xacro` | xacro | 15 · 10 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
 | 25 | `simulation/so_arm_101_description/urdf/so_101.ros2_control.xacro` | xacro | 15 · 10 · 0 · 0 · 0 · 0 · 0 | XacroException: name 'plugin_name' is not defined when evaluating expression 'plugin_name' |
-| 18 | `community/histology-slide-gripper/mujoco/so_101_arm.urdf` | urdf | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | 6 visual mesh file(s) missing |
+
+</details>
+
+<details><summary><b>roboninecom/SO-ARM102</b>: best 85, 3 robot(s), CC-BY-4.0, last commit 2026-11-19</summary>
+
+From: awesome-robot-descriptions, robot_descriptions.py. Commit `c35b70c372a3`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 85 | `simulation/urdf/so_arm_102.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 85 | `simulation/urdf/so_arm_102.xacro` | xacro | 15 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 25 | `simulation/urdf/materials.xacro` | xacro | 15 · 10 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
 
 </details>
 
@@ -1738,53 +1871,6 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `5d1d5eb3c15c`. 
 | 15 | `eve_r3_description/urdf/eve_r3.urdf` | urdf | 15 · 0 · 0 · 0 · 0 · 0 · 0 | 9 visual mesh file(s) missing |
 | 15 | `eve_r3_description/urdf/eve_r3_robotiq_hand-e.urdf` | urdf | 15 · 0 · 0 · 0 · 0 · 0 · 0 | 4 visual mesh file(s) missing |
 | 15 | `eve_r3_description/urdf/eve_r3_upper_body.urdf` | urdf | 15 · 0 · 0 · 0 · 0 · 0 · 0 | 9 visual mesh file(s) missing |
-
-</details>
-
-<details><summary><b>fiveages-sim/fa-s2-description</b>: best 84, 3 robot(s), no licence named, last commit 2026-11-12</summary>
-
-From: fiveages submodules. Commit `91ac627054d3`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 84 | `xacro/component.xacro` | xacro | 0 · 10 · 20 · 15 · 10 · 20 · 9.3 |  |
-| 79 | `xacro/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 8.8 · 20 · 5.3 |  |
-| 79 | `xacro/ros2_control/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 8.8 · 20 · 5.3 |  |
-
-</details>
-
-<details><summary><b>fiveages-sim/fa-w2-components</b>: best 84, 1 robot(s), no licence named, last commit 2026-10-21</summary>
-
-From: fiveages submodules. Commit `78c595884616`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 84 | `xacro/component.xacro` | xacro | 0 · 10 · 20 · 15 · 10 · 20 · 9.3 |  |
-
-</details>
-
-<details><summary><b>fiveages-sim/fa-w2-description</b>: best 84, 3 robot(s), no licence named, last commit 2026-11-12</summary>
-
-From: fiveages submodules. Commit `812e1615b922`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 84 | `xacro/component.xacro` | xacro | 0 · 10 · 20 · 15 · 10 · 20 · 9.3 |  |
-| 74 | `xacro/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 6.7 · 20 · 2.5 |  |
-| 74 | `xacro/ros2_control/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 6.7 · 20 · 2.5 |  |
-
-</details>
-
-<details><summary><b>fiveages-sim/robot-descriptions-rokae</b>: best 84, 4 robot(s), no licence named, last commit 2026-11-19</summary>
-
-From: fiveages submodules. Commit `e5cca775371d`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 84 | `ar5_srs_description/xacro/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 9.4 · 20 · 9.7 |  |
-| 84 | `ar5_srs_description/xacro/ros2_control/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 9.4 · 20 · 9.7 |  |
-| 83 | `ar5_ccs_description/xacro/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 9.4 · 20 · 8.6 |  |
-| 83 | `ar5_ccs_description/xacro/ros2_control/robot.xacro` | xacro | 0 · 10 · 20 · 15 · 9.4 · 20 · 8.6 |  |
 
 </details>
 
@@ -1905,6 +1991,21 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `ac417d44656d`.
 
 </details>
 
+<details><summary><b>PR2/pr2_common</b>: best 84, 6 robot(s), no licence named, last commit 2025-01-14</summary>
+
+From: awesome-robot-descriptions. Commit `9a8e4fbcf665`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 84 | `pr2_description/robots/pr2.urdf.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 16.2 · 10 |  |
+| 84 | `pr2_description/robots/pr2_no_arms.urdf.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 16.3 · 10 |  |
+| 84 | `pr2_description/robots/pr2_no_kinect.urdf.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 16.2 · 10 |  |
+| 83 | `pr2_description/robots/pr2_se.urdf.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 15.2 · 10 |  |
+| 12 | `pr2_description/gazebo/gazebo.urdf.xacro` | xacro | 7.5 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+| 12 | `pr2_description/urdf/materials.urdf.xacro` | xacro | 7.5 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+
+</details>
+
 <details><summary><b>limxdynamics/tron2-robot-description</b>: best 83, 73 robot(s), Apache-2.0, last commit 2026-11-13</summary>
 
 From: awesome-robot-descriptions, robot_descriptions.py. Commit `d81d2a83a3c7`.
@@ -1955,31 +2056,6 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `d81d2a83a3c7`.
 
 </details>
 
-<details><summary><b>Derek-TH-Wang/mini_cheetah_urdf</b>: best 82, 6 robot(s), no licence named, last commit 2021-02-02</summary>
-
-From: awesome-robot-descriptions, robot_descriptions.py. Commit `1988bceb26e8`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 82 | `urdf/laikago.urdf` | urdf | 7.5 · 0 · 20 · 15 · 10 · 20 · 10 |  |
-| 80 | `urdf/laikago_toes.urdf` | urdf | 7.5 · 0 · 20 · 15 · 10 · 17.7 · 10 |  |
-| 80 | `urdf/laikago_toes_limits.urdf` | urdf | 7.5 · 0 · 20 · 15 · 10 · 17.7 · 10 |  |
-| 80 | `urdf/laikago_toes_zup.urdf` | urdf | 7.5 · 0 · 20 · 15 · 10 · 17.7 · 10 |  |
-| 75 | `urdf/quadruped_robot.urdf` | urdf | 7.5 · 0 · 20 · 15 · 10 · 12.3 · 10 |  |
-| 8 | `urdf/mini_cheetah.urdf` | urdf | 7.5 · 0 · 0 · 0 · 0 · 0 · 0 | 4 visual mesh file(s) missing |
-
-</details>
-
-<details><summary><b>gundam-global-challenge/gundam_robot</b>: best 82, 1 robot(s), no licence named, last commit 2020-08-28</summary>
-
-From: awesome-robot-descriptions. Commit `411d5db72a12`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 82 | `gundam_rx78_description/urdf/GGC_TestModel_rx78_20170112.urdf` | urdf | 7.5 · 0 · 20 · 15 · 10 · 20 · 10 |  |
-
-</details>
-
 <details><summary><b>openai/roboschool</b>: best 82, 15 robot(s), NOASSERTION, last commit 2019-10-09 **archived**</summary>
 
 From: awesome-robot-descriptions, robot_descriptions.py. Commit `d32bcb2b35b9`.
@@ -2001,6 +2077,74 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `d32bcb2b35b9`.
 | 60 | `roboschool/mujoco_assets/inverted_pendulum.xml` | mjcf | 7.5 · 0 · 20 · 7.5 · 10 · 5 · 10 |  |
 | 58 | `roboschool/mujoco_assets/inverted_double_pendulum.xml` | mjcf | 7.5 · 0 · 20 · 5 · 10 · 5 · 10 |  |
 | 8 | `roboschool/models_robot/atlas_description/urdf/atlas_v4_with_multisense.urdf` | urdf | 7.5 · 0 · 0 · 0 · 0 · 0 · 0 | 23 visual mesh file(s) missing |
+
+</details>
+
+<details><summary><b>ridgeback/ridgeback_manipulation</b>: best 82, 38 robot(s), no licence named, last commit 2023-09-26</summary>
+
+From: awesome-robot-descriptions. Commit `748d28497861`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 82 | `ridgeback_kinova_description/urdf/ridgeback_dual_j2n6s200_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 19.7 · 9.9 |  |
+| 82 | `ridgeback_kinova_description/urdf/ridgeback_dual_j2n6s300_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 20 · 10 |  |
+| 82 | `ridgeback_kinova_description/urdf/ridgeback_dual_j2n7s300_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 19.5 · 10 |  |
+| 82 | `ridgeback_kinova_description/urdf/ridgeback_dual_j2s6s300_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 19.5 · 10 |  |
+| 82 | `ridgeback_kinova_description/urdf/ridgeback_dual_j2s7s300_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 19.1 · 9.9 |  |
+| 82 | `ridgeback_kinova_description/urdf/ridgeback_dual_m1n6s200_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 19.1 · 9.9 |  |
+| 82 | `ridgeback_kinova_description/urdf/ridgeback_dual_m1n6s300_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 19.5 · 10 |  |
+| 82 | `ridgeback_kinova_description/urdf/ridgeback_j2n6s200_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 19.7 · 10 |  |
+| 82 | `ridgeback_kinova_description/urdf/ridgeback_j2n6s300_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 20 · 10 |  |
+| 82 | `ridgeback_kinova_description/urdf/ridgeback_j2n7s300_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 19.5 · 10 |  |
+| 82 | `ridgeback_kinova_description/urdf/ridgeback_j2s6s300_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 19.5 · 10 |  |
+| 82 | `ridgeback_kinova_description/urdf/ridgeback_j2s7s300_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 19.1 · 10 |  |
+| 82 | `ridgeback_kinova_description/urdf/ridgeback_m1n6s200_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 19.1 · 10 |  |
+| 82 | `ridgeback_kinova_description/urdf/ridgeback_m1n6s300_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 19.5 · 10 |  |
+| 82 | `ridgeback_ur_description/urdf/ridgeback_dual_ur10_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 20 · 9.8 |  |
+| 82 | `ridgeback_ur_description/urdf/ridgeback_dual_ur10_e_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 20 · 9.7 |  |
+| 82 | `ridgeback_ur_description/urdf/ridgeback_dual_ur5_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 20 · 10 |  |
+| 82 | `ridgeback_ur_description/urdf/ridgeback_dual_ur5_e_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 20 · 9.8 |  |
+| 82 | `ridgeback_ur_description/urdf/ridgeback_ur10_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 20 · 10 |  |
+| 82 | `ridgeback_ur_description/urdf/ridgeback_ur10_e_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 20 · 10 |  |
+| 82 | `ridgeback_ur_description/urdf/ridgeback_ur5_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 20 · 10 |  |
+| 82 | `ridgeback_ur_description/urdf/ridgeback_ur5_e_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 20 · 10 |  |
+| 73 | `ridgeback_kinova_description/urdf/ridgeback_dual_gen3_robotiq_2f_85_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 8.9 · 11.3 · 10 |  |
+| 73 | `ridgeback_kinova_description/urdf/ridgeback_gen3_robotiq_2f_85_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 8.9 · 11.3 · 10 |  |
+| 68 | `ridgeback_kinova_description/urdf/ridgeback_dual_gen3_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 5 · 10 |  |
+| 68 | `ridgeback_kinova_description/urdf/ridgeback_gen3_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 5 · 10 |  |
+| 66 | `ridgeback_kinova_description/urdf/ridgeback_dual_gen3_robotiq_2f_140_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 8.9 · 5 · 10 |  |
+| 66 | `ridgeback_kinova_description/urdf/ridgeback_gen3_robotiq_2f_140_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 8.9 · 5 · 10 |  |
+| 52 | `ridgeback_manipulation_description/urdf/fams.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 0 · 0 · 10 |  |
+| 52 | `ridgeback_manipulation_description/urdf/hams.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 0 · 0 · 10 |  |
+| 42 | `ridgeback_kinova_description/urdf/ridgeback_dual_kinova_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 0 · 0 · 0 |  |
+| 42 | `ridgeback_kinova_description/urdf/ridgeback_kinova_description.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 0 · 0 · 0 |  |
+| 8 | `ridgeback_franka_description/urdf/ridgeback_dual_panda_description.urdf.xacro` | xacro | 7.5 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: No such file or directory: &lt;cache&gt;/frankarobotics__franka_ros/franka_description/robots/panda_arm.xacro &#91;Errno 2&#93; No such file or directory: '&lt;cache&gt;/frankarobotics__franka_ros/franka_description/robots/panda_arm.xacro' |
+| 8 | `ridgeback_franka_description/urdf/ridgeback_dual_panda_hand_description.urdf.xacro` | xacro | 7.5 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: No such file or directory: &lt;cache&gt;/frankarobotics__franka_ros/franka_description/robots/panda_arm.xacro &#91;Errno 2&#93; No such file or directory: '&lt;cache&gt;/frankarobotics__franka_ros/franka_description/robots/panda_arm.xacro' |
+| 8 | `ridgeback_franka_description/urdf/ridgeback_panda_description.urdf.xacro` | xacro | 7.5 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: No such file or directory: &lt;cache&gt;/frankarobotics__franka_ros/franka_description/robots/panda_arm.xacro &#91;Errno 2&#93; No such file or directory: '&lt;cache&gt;/frankarobotics__franka_ros/franka_description/robots/panda_arm.xacro' |
+| 8 | `ridgeback_franka_description/urdf/ridgeback_panda_hand_description.urdf.xacro` | xacro | 7.5 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: No such file or directory: &lt;cache&gt;/frankarobotics__franka_ros/franka_description/robots/panda_arm.xacro &#91;Errno 2&#93; No such file or directory: '&lt;cache&gt;/frankarobotics__franka_ros/franka_description/robots/panda_arm.xacro' |
+| 8 | `ridgeback_iiwa_description/urdf/ridgeback_iiwa_14_description.urdf.xacro` | xacro | 7.5 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: Undefined parameters &#91;collision_postfix&#93; |
+| 8 | `ridgeback_iiwa_description/urdf/ridgeback_iiwa_7_description.urdf.xacro` | xacro | 7.5 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: Undefined parameters &#91;collision_postfix&#93; |
+
+</details>
+
+<details><summary><b>ros-aldebaran/romeo_robot</b>: best 82, 12 robot(s), no licence named, last commit 2017-03-28</summary>
+
+From: awesome-robot-descriptions, robot_descriptions.py. Commit `e53c8f3d7057`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 82 | `romeo_description/urdf/romeo_generated_urdf/romeo.urdf` | urdf | 7.5 · 0 · 20 · 15 · 10 · 19.8 · 10 |  |
+| 72 | `romeo_description/urdf/romeo_generated_urdf/romeo_cap.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 10 · 10 |  |
+| 52 | `romeo_description/urdf/romeo_generated_urdf/romeo_sensors.xacro` | xacro | 7.5 · 0 · 20 · 15 · 10 · 0 · 0 |  |
+| 8 | `romeo_description/urdf/romeo_generated_urdf/romeoGazebo.xacro` | xacro | 7.5 · 0 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+| 8 | `romeo_description/urdf/romeo_generated_urdf/romeoTransmission.xacro` | xacro | 7.5 · 0 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+| 8 | `romeo_description/urdf/romeo_generated_urdf/romeo_arms.xacro` | xacro | 7.5 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: unknown macro name: xacro:insert_visu_LShoulderYaw_link |
+| 8 | `romeo_description/urdf/romeo_generated_urdf/romeo_eyes.xacro` | xacro | 7.5 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: unknown macro name: xacro:insert_visu_LEye |
+| 8 | `romeo_description/urdf/romeo_generated_urdf/romeo_fingers.xacro` | xacro | 7.5 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: unknown macro name: xacro:insert_visu_RFinger13_link |
+| 8 | `romeo_description/urdf/romeo_generated_urdf/romeo_head.xacro` | xacro | 7.5 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: unknown macro name: xacro:insert_visu_NeckPitch_link |
+| 8 | `romeo_description/urdf/romeo_generated_urdf/romeo_legs.xacro` | xacro | 7.5 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: unknown macro name: xacro:insert_visu_LThigh |
+| 8 | `romeo_description/urdf/romeo_generated_urdf/romeo_material.xacro` | xacro | 7.5 · 0 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+| 8 | `romeo_description/urdf/romeo_generated_urdf/romeo_torso.xacro` | xacro | 7.5 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: unknown macro name: xacro:insert_visu_torso |
 
 </details>
 
@@ -2057,6 +2201,56 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `7d96c758f048`.
 
 </details>
 
+<details><summary><b>hello-robot/stretch_ros</b>: best 80, 125 robot(s), no licence named, last commit 2024-05-20</summary>
+
+From: awesome-robot-descriptions. Commit `7397a97a7843`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 80 | `stretch_description/batch/guthrie/urdf/stretch_base_imu.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/guthrie/urdf/stretch_dry_erase_marker.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/guthrie/urdf/stretch_gripper.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/guthrie/urdf/stretch_gripper_with_puller.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/guthrie/urdf/stretch_laser_range_finder.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/guthrie/urdf/stretch_respeaker.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/hank/urdf/stretch_base_imu.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/hank/urdf/stretch_dry_erase_marker.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/hank/urdf/stretch_gripper.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/hank/urdf/stretch_gripper_with_puller.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/hank/urdf/stretch_laser_range_finder.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/hank/urdf/stretch_respeaker.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/irma/urdf/stretch_base_imu.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/irma/urdf/stretch_dry_erase_marker.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/irma/urdf/stretch_gripper.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/irma/urdf/stretch_gripper_with_puller.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/irma/urdf/stretch_laser_range_finder.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/irma/urdf/stretch_respeaker.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/joplin/urdf/stretch_base_imu.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/joplin/urdf/stretch_dry_erase_marker.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/joplin/urdf/stretch_gripper.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/joplin/urdf/stretch_gripper_with_puller.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/joplin/urdf/stretch_laser_range_finder.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/joplin/urdf/stretch_respeaker.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/kendrick/urdf/stretch_base_imu.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/kendrick/urdf/stretch_dry_erase_marker.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/kendrick/urdf/stretch_gripper.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/kendrick/urdf/stretch_gripper_with_puller.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/kendrick/urdf/stretch_laser_range_finder.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/kendrick/urdf/stretch_respeaker.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/louis/urdf/stretch_base_imu.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/louis/urdf/stretch_dry_erase_marker.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/louis/urdf/stretch_gripper.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/louis/urdf/stretch_gripper_with_puller.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/louis/urdf/stretch_laser_range_finder.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/louis/urdf/stretch_respeaker.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/mitski/urdf/stretch_base_imu.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/mitski/urdf/stretch_dex_wrist.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/mitski/urdf/stretch_dry_erase_marker.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| 80 | `stretch_description/batch/mitski/urdf/stretch_gripper.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 10 |  |
+| | and 85 more, in `audit.json` | | | |
+
+</details>
+
 <details><summary><b>pal-robotics/pal_hey5</b>: best 80, 1 robot(s), Apache-2.0, last commit 2025-06-27</summary>
 
 From: robot_descriptions.py. Commit `344de441fa3c`.
@@ -2096,21 +2290,6 @@ From: awesome-robot-descriptions. Commit `0602b0c1e6a6`.
 
 </details>
 
-<details><summary><b>tork-a/rtmros_nextage</b>: best 80, 6 robot(s), no licence named, last commit 2025-05-09</summary>
-
-From: awesome-robot-descriptions, robot_descriptions.py. Commit `5fe35ea32825`. Also 3 SDF file(s), not measured.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 80 | `nextage_calibration/models/checkerboard_horizontal.urdf` | urdf | 0 · 5 · 20 · 15 · 10 · 20 · 10 |  |
-| 80 | `nextage_calibration/models/checkerboard_waist.urdf` | urdf | 0 · 5 · 20 · 15 · 10 · 20 · 10 |  |
-| 80 | `nextage_description/urdf/NextageOpen.urdf` | urdf | 0 · 5 · 20 · 15 · 10 · 20 · 10 |  |
-| 79 | `nextage_description/urdf/nxo_gz.xacro` | xacro | 0 · 5 · 20 · 15 · 10 · 18.9 · 10 |  |
-| 5 | `nextage_calibration/models/sensor_kinect.xacro` | xacro | 0 · 5 · 0 · 0 · 0 · 0 · 0 | XacroException: &lt;class 'xacrodoc.packages.PackageNotFoundError'&gt;: Package not found: turtlebot_description Package not found: turtlebot_description |
-| 5 | `nextage_description/urdf/materials.urdf.xacro` | xacro | 0 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
-
-</details>
-
 <details><summary><b>upkie/upkie_description</b>: best 80, 5 robot(s), Apache-2.0, last commit 2025-11-25</summary>
 
 From: awesome-robot-descriptions, robot_descriptions.py. Commit `94735fbe6137`.
@@ -2137,6 +2316,20 @@ From: fiveages robots. Commit `bd491829961a`.
 
 </details>
 
+<details><summary><b>iotdesignshop/dexhand_description</b>: best 79, 5 robot(s), NOASSERTION, last commit 2024-06-30</summary>
+
+From: awesome-robot-descriptions. Commit `211b0ea23e21`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 79 | `urdf/dexhand-left.urdf` | urdf | 15 · 5 · 20 · 15 · 10 · 5 · 9.4 |  |
+| 79 | `urdf/dexhand-left.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 9.4 |  |
+| 79 | `urdf/dexhand-right.urdf` | urdf | 15 · 5 · 20 · 15 · 10 · 5 · 9.1 |  |
+| 79 | `urdf/dexhand-right.xacro` | xacro | 15 · 5 · 20 · 15 · 10 · 5 · 9.1 |  |
+| 20 | `urdf/materials.xacro` | xacro | 15 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+
+</details>
+
 <details><summary><b>leap-hand/LEAP_Hand_Sim</b>: best 79, 3 robot(s), MIT, last commit 2024-05-18</summary>
 
 From: awesome-robot-descriptions, robot_descriptions.py. Commit `150bc3d4b61f`.
@@ -2146,6 +2339,16 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `150bc3d4b61f`.
 | 79 | `assets/leap_hand/robot.urdf` | urdf | 15 · 5 · 20 · 15 · 10 · 5 · 8.6 |  |
 | 75 | `assets/cube.urdf` | urdf | 15 · 5 · 20 · 15 · 10 · 0 · 10 |  |
 | 20 | `assets/ball.urdf` | urdf | 15 · 5 · 0 · 0 · 0 · 0 · 0 | 1 visual mesh file(s) missing |
+
+</details>
+
+<details><summary><b>rt-net/sciurus17_description</b>: best 79, 1 robot(s), NOASSERTION, last commit 2026-07-28</summary>
+
+From: awesome-robot-descriptions. Commit `607dea2f14e4`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 79 | `urdf/sciurus17.urdf.xacro` | xacro | 15 · 10 · 20 · 15 · 9.2 · 5 · 5 |  |
 
 </details>
 
@@ -2162,49 +2365,36 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `da396a06d6ee`.
 
 </details>
 
-<details><summary><b>Kinovarobotics/ros_kortex</b>: best 78, 25 robot(s), NOASSERTION, last commit 2025-09-29</summary>
+<details><summary><b>Chestnut-Robotics/aero-hand-open</b>: best 78, 2 robot(s), NOASSERTION, last commit 2026-09-15</summary>
 
-From: awesome-robot-descriptions. Commit `c3280d8a6a6b`.
+From: awesome-robot-descriptions, robot_descriptions.py. Commit `7bb2f23485a7`.
 
 | Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
 |--:|---|---|---|---|
-| 78 | `kortex_description/robots/gen3_robotiq_2f_85.xacro` | xacro | 7.5 · 5 · 20 · 15 · 8.9 · 11.3 · 10 |  |
-| 72 | `kortex_description/arms/gen3/6dof/urdf/GEN3-6DOF_NO-VISION_URDF_ARM_V01.urdf` | urdf | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `kortex_description/arms/gen3/6dof/urdf/GEN3-6DOF_VISION_URDF_ARM_V01.urdf` | urdf | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `kortex_description/arms/gen3/7dof/urdf/GEN3-7DOF-NOVISION_FOR_URDF_ARM_V12.urdf` | urdf | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `kortex_description/arms/gen3/7dof/urdf/GEN3-7DOF-VISION_ARM_URDF_V12.urdf` | urdf | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `kortex_description/arms/gen3/7dof/urdf/GEN3-7DOF_BRAKES_NO-VISION_URDF_ARM_V01.urdf` | urdf | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `kortex_description/arms/gen3/7dof/urdf/GEN3-7DOF_BRAKES_VISION_URDF_ARM_V01.urdf` | urdf | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `kortex_description/robots/gen3.urdf` | urdf | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `kortex_description/robots/gen3.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `kortex_description/robots/gen3_lite_gen3_lite_2f.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `kortex_move_it_config/gen3_6dof_dual_arm_move_it_config/config/gazebo_dual_robot.urdf` | urdf | 7.5 · 5 · 20 · 15 · 10 · 5 · 9.9 |  |
-| 72 | `kortex_move_it_config/gen3_7dof_dual_arm_move_it_config/config/gazebo_dual_robot.urdf` | urdf | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 71 | `kortex_description/robots/gen3_robotiq_2f_140.xacro` | xacro | 7.5 · 5 · 20 · 15 · 8.9 · 5 · 10 |  |
-| 12 | `kortex_description/arms/gen3/6dof/urdf/GEN3-6DOF_BRAKES_NO-VISION_URDF_ARM_V01.urdf` | urdf | 7.5 · 5 · 0 · 0 · 0 · 0 · 0 | 1 visual mesh file(s) missing |
-| 12 | `kortex_description/arms/gen3/6dof/urdf/GEN3-6DOF_BRAKES_VISION_URDF_ARM_V01.urdf` | urdf | 7.5 · 5 · 0 · 0 · 0 · 0 · 0 | 1 visual mesh file(s) missing |
-| 12 | `kortex_description/arms/gen3_lite/6dof/urdf/GEN3-LITE.urdf` | urdf | 7.5 · 5 · 0 · 0 · 0 · 0 · 0 | 6 visual mesh file(s) missing |
-| 12 | `kortex_description/grippers/gen3_lite_2f/urdf/GEN3-LITE-GRIPPER_URDF_SIMPLIFIED_V2.urdf` | urdf | 7.5 · 5 · 0 · 0 · 0 · 0 · 0 | 5 visual mesh file(s) missing |
-| 12 | `kortex_description/multiple_robots/kortex_dual_robots.xacro` | xacro | 7.5 · 5 · 0 · 0 · 0 · 0 · 0 | XacroException: No such file or directory: kortex_description/arms//dof/urdf/_macro.xacro &#91;Errno 2&#93; No such file or directory: 'kortex_description/arms//dof/urdf/_macro.xacro' |
-| 12 | `kortex_move_it_config/gen3_lite_gen3_lite_2f_move_it_config/config/gen3_lite_gen3_lite_2f.srdf.xacro` | xacro | 7.5 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
-| 12 | `kortex_move_it_config/gen3_move_it_config/config/6dof/gen3.srdf.xacro` | xacro | 7.5 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
-| 12 | `kortex_move_it_config/gen3_move_it_config/config/7dof/gen3.srdf.xacro` | xacro | 7.5 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
-| 12 | `kortex_move_it_config/gen3_robotiq_2f_140_move_it_config/config/6dof/gen3_robotiq_2f_140.srdf.xacro` | xacro | 7.5 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
-| 12 | `kortex_move_it_config/gen3_robotiq_2f_140_move_it_config/config/7dof/gen3_robotiq_2f_140.srdf.xacro` | xacro | 7.5 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
-| 12 | `kortex_move_it_config/gen3_robotiq_2f_85_move_it_config/config/6dof/gen3_robotiq_2f_85.srdf.xacro` | xacro | 7.5 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
-| 12 | `kortex_move_it_config/gen3_robotiq_2f_85_move_it_config/config/7dof/gen3_robotiq_2f_85.srdf.xacro` | xacro | 7.5 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+| 78 | `ros2/src/aero_hand_open_description/urdf/aero_hand_open_left.urdf` | urdf | 15 · 10 · 20 · 7.5 · 10 · 5 · 10 |  |
+| 78 | `ros2/src/aero_hand_open_description/urdf/aero_hand_open_right.urdf` | urdf | 15 · 10 · 20 · 7.5 · 10 · 5 · 10 |  |
 
 </details>
 
-<details><summary><b>roboninecom/SO-ARM102</b>: best 78, 3 robot(s), CC-BY-4.0, last commit 2026-11-19</summary>
+<details><summary><b>userguide-galaxea/robot_descriptions</b>: best 78, 13 robot(s), no licence named, last commit 2026-11-12</summary>
 
-From: awesome-robot-descriptions, robot_descriptions.py. Commit `c35b70c372a3`.
+From: awesome-robot-descriptions. Commit `72008ea950a4`.
 
 | Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
 |--:|---|---|---|---|
-| 78 | `simulation/urdf/so_arm_102.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 78 | `simulation/urdf/so_arm_102.xacro` | xacro | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 18 | `simulation/urdf/materials.xacro` | xacro | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
+| 78 | `a1x_description/urdf/a1x.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 78 | `a1y_description/urdf/a1y.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 78 | `a1z_description/a1z_flange_description/urdf/A1Z_Flange.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 10 |  |
+| 77 | `a1z_description/a1z_g1z_description/urdf/A1Z_G1Z.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 9.8 |  |
+| 76 | `lemo_description/urdf/LEMO.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 8 |  |
+| 75 | `r1_description/urdf/r1_v2_1_0.urdf` | urdf | 7.5 · 10 · 20 · 15 · 10 · 5 · 7.4 |  |
+| 71 | `r1pro_description/r1pro_g1z_2026_description/urdf/r1pro_2026.urdf` | urdf | 7.5 · 10 · 20 · 12.7 · 10 · 5 · 5.6 |  |
+| 18 | `a1_description/urdf/A1_URDF_0607_0028.urdf` | urdf | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | 9 visual mesh file(s) missing |
+| 18 | `a1x_description/meshes/mmp_revB_invconfig_upright_a1x.urdf` | urdf | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | 30 visual mesh file(s) missing |
+| 10 | `r1lite_description/urdf_r1lite_2025.urdf` | urdf | 0 · 10 · 0 · 0 · 0 · 0 · 0 | 32 visual mesh file(s) missing |
+| 10 | `r1lite_description/urdf_r1lite_2026/urdf_r1lite_2026_a1x.urdf` | urdf | 0 · 10 · 0 · 0 · 0 · 0 · 0 | 32 visual mesh file(s) missing |
+| 10 | `r1lite_description/urdf_r1lite_2026/urdf_r1lite_2026_a1z.urdf` | urdf | 0 · 10 · 0 · 0 · 0 · 0 · 0 | 37 visual mesh file(s) missing |
+| 10 | `r1pro_description/urdf_r1pro_2025.urdf` | urdf | 0 · 10 · 0 · 0 · 0 · 0 · 0 | 46 visual mesh file(s) missing |
 
 </details>
 
@@ -2228,21 +2418,6 @@ From: robot_descriptions.py. Commit `e5132226c9d6`.
 | 76 | `HU_L04_description/urdf/HU_L04_01.urdf` | urdf | 15 · 10 · 20 · 15 · 10 · 1.4 · 4.3 |  |
 | 75 | `HU_L04_description/xml/HU_L04_01.xml` | mjcf | 15 · 10 · 20 · 15 · 10 · 5 · 0 |  |
 | 75 | `HU_L04_description/xml/HU_L04_01_vis.xml` | mjcf | 15 · 10 · 20 · 15 · 10 · 5 · 0 |  |
-
-</details>
-
-<details><summary><b>PR2/pr2_common</b>: best 76, 6 robot(s), no licence named, last commit 2025-01-14</summary>
-
-From: awesome-robot-descriptions. Commit `9a8e4fbcf665`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 76 | `pr2_description/robots/pr2.urdf.xacro` | xacro | 0 · 5 · 20 · 15 · 10 · 16.2 · 10 |  |
-| 76 | `pr2_description/robots/pr2_no_arms.urdf.xacro` | xacro | 0 · 5 · 20 · 15 · 10 · 16.3 · 10 |  |
-| 76 | `pr2_description/robots/pr2_no_kinect.urdf.xacro` | xacro | 0 · 5 · 20 · 15 · 10 · 16.2 · 10 |  |
-| 75 | `pr2_description/robots/pr2_se.urdf.xacro` | xacro | 0 · 5 · 20 · 15 · 10 · 15.2 · 10 |  |
-| 5 | `pr2_description/gazebo/gazebo.urdf.xacro` | xacro | 0 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
-| 5 | `pr2_description/urdf/materials.urdf.xacro` | xacro | 0 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
 
 </details>
 
@@ -2293,74 +2468,6 @@ From: robot_descriptions.py. Commit `c8c6e27e1f87`.
 | 18 | `stretch_urdf/RE2V0/xacro/stretch_wrist_dw3.xacro` | xacro | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | 3 visual mesh file(s) missing |
 | 18 | `stretch_urdf/SE3/xacro/d405/_materials_d405.urdf.xacro` | xacro | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
 | | and 12 more, in `audit.json` | | | |
-
-</details>
-
-<details><summary><b>ridgeback/ridgeback_manipulation</b>: best 75, 38 robot(s), no licence named, last commit 2023-09-26</summary>
-
-From: awesome-robot-descriptions. Commit `748d28497861`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 75 | `ridgeback_kinova_description/urdf/ridgeback_dual_j2n6s200_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 19.7 · 9.9 |  |
-| 75 | `ridgeback_kinova_description/urdf/ridgeback_dual_j2n6s300_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 20 · 10 |  |
-| 75 | `ridgeback_kinova_description/urdf/ridgeback_j2n6s200_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 19.7 · 10 |  |
-| 75 | `ridgeback_kinova_description/urdf/ridgeback_j2n6s300_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 20 · 10 |  |
-| 75 | `ridgeback_ur_description/urdf/ridgeback_dual_ur10_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 20 · 9.8 |  |
-| 75 | `ridgeback_ur_description/urdf/ridgeback_dual_ur10_e_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 20 · 9.7 |  |
-| 75 | `ridgeback_ur_description/urdf/ridgeback_dual_ur5_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 20 · 10 |  |
-| 75 | `ridgeback_ur_description/urdf/ridgeback_dual_ur5_e_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 20 · 9.8 |  |
-| 75 | `ridgeback_ur_description/urdf/ridgeback_ur10_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 20 · 10 |  |
-| 75 | `ridgeback_ur_description/urdf/ridgeback_ur10_e_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 20 · 10 |  |
-| 75 | `ridgeback_ur_description/urdf/ridgeback_ur5_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 20 · 10 |  |
-| 75 | `ridgeback_ur_description/urdf/ridgeback_ur5_e_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 20 · 10 |  |
-| 74 | `ridgeback_kinova_description/urdf/ridgeback_dual_j2n7s300_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 19.5 · 10 |  |
-| 74 | `ridgeback_kinova_description/urdf/ridgeback_dual_j2s6s300_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 19.5 · 10 |  |
-| 74 | `ridgeback_kinova_description/urdf/ridgeback_dual_j2s7s300_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 19.1 · 9.9 |  |
-| 74 | `ridgeback_kinova_description/urdf/ridgeback_dual_m1n6s200_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 19.1 · 9.9 |  |
-| 74 | `ridgeback_kinova_description/urdf/ridgeback_dual_m1n6s300_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 19.5 · 10 |  |
-| 74 | `ridgeback_kinova_description/urdf/ridgeback_j2n7s300_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 19.5 · 10 |  |
-| 74 | `ridgeback_kinova_description/urdf/ridgeback_j2s6s300_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 19.5 · 10 |  |
-| 74 | `ridgeback_kinova_description/urdf/ridgeback_j2s7s300_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 19.1 · 10 |  |
-| 74 | `ridgeback_kinova_description/urdf/ridgeback_m1n6s200_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 19.1 · 10 |  |
-| 74 | `ridgeback_kinova_description/urdf/ridgeback_m1n6s300_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 19.5 · 10 |  |
-| 65 | `ridgeback_kinova_description/urdf/ridgeback_dual_gen3_robotiq_2f_85_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 8.9 · 11.3 · 10 |  |
-| 65 | `ridgeback_kinova_description/urdf/ridgeback_gen3_robotiq_2f_85_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 8.9 · 11.3 · 10 |  |
-| 60 | `ridgeback_kinova_description/urdf/ridgeback_dual_gen3_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 5 · 10 |  |
-| 60 | `ridgeback_kinova_description/urdf/ridgeback_gen3_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 5 · 10 |  |
-| 59 | `ridgeback_kinova_description/urdf/ridgeback_dual_gen3_robotiq_2f_140_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 8.9 · 5 · 10 |  |
-| 59 | `ridgeback_kinova_description/urdf/ridgeback_gen3_robotiq_2f_140_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 8.9 · 5 · 10 |  |
-| 45 | `ridgeback_manipulation_description/urdf/fams.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 0 · 0 · 10 |  |
-| 45 | `ridgeback_manipulation_description/urdf/hams.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 0 · 0 · 10 |  |
-| 35 | `ridgeback_kinova_description/urdf/ridgeback_dual_kinova_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 0 · 0 · 0 |  |
-| 35 | `ridgeback_kinova_description/urdf/ridgeback_kinova_description.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 0 · 0 · 0 |  |
-| 0 | `ridgeback_franka_description/urdf/ridgeback_dual_panda_description.urdf.xacro` | xacro | 0 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: No such file or directory: &lt;cache&gt;/frankarobotics__franka_ros/franka_description/robots/panda_arm.xacro &#91;Errno 2&#93; No such file or directory: '&lt;cache&gt;/frankarobotics__franka_ros/franka_description/robots/panda_arm.xacro' |
-| 0 | `ridgeback_franka_description/urdf/ridgeback_dual_panda_hand_description.urdf.xacro` | xacro | 0 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: No such file or directory: &lt;cache&gt;/frankarobotics__franka_ros/franka_description/robots/panda_arm.xacro &#91;Errno 2&#93; No such file or directory: '&lt;cache&gt;/frankarobotics__franka_ros/franka_description/robots/panda_arm.xacro' |
-| 0 | `ridgeback_franka_description/urdf/ridgeback_panda_description.urdf.xacro` | xacro | 0 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: No such file or directory: &lt;cache&gt;/frankarobotics__franka_ros/franka_description/robots/panda_arm.xacro &#91;Errno 2&#93; No such file or directory: '&lt;cache&gt;/frankarobotics__franka_ros/franka_description/robots/panda_arm.xacro' |
-| 0 | `ridgeback_franka_description/urdf/ridgeback_panda_hand_description.urdf.xacro` | xacro | 0 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: No such file or directory: &lt;cache&gt;/frankarobotics__franka_ros/franka_description/robots/panda_arm.xacro &#91;Errno 2&#93; No such file or directory: '&lt;cache&gt;/frankarobotics__franka_ros/franka_description/robots/panda_arm.xacro' |
-| 0 | `ridgeback_iiwa_description/urdf/ridgeback_iiwa_14_description.urdf.xacro` | xacro | 0 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: Undefined parameters &#91;collision_postfix&#93; |
-| 0 | `ridgeback_iiwa_description/urdf/ridgeback_iiwa_7_description.urdf.xacro` | xacro | 0 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: Undefined parameters &#91;collision_postfix&#93; |
-
-</details>
-
-<details><summary><b>ros-aldebaran/romeo_robot</b>: best 75, 12 robot(s), no licence named, last commit 2017-03-28</summary>
-
-From: awesome-robot-descriptions, robot_descriptions.py. Commit `e53c8f3d7057`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 75 | `romeo_description/urdf/romeo_generated_urdf/romeo.urdf` | urdf | 0 · 0 · 20 · 15 · 10 · 19.8 · 10 |  |
-| 65 | `romeo_description/urdf/romeo_generated_urdf/romeo_cap.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 10 · 10 |  |
-| 45 | `romeo_description/urdf/romeo_generated_urdf/romeo_sensors.xacro` | xacro | 0 · 0 · 20 · 15 · 10 · 0 · 0 |  |
-| 0 | `romeo_description/urdf/romeo_generated_urdf/romeoGazebo.xacro` | xacro | 0 · 0 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
-| 0 | `romeo_description/urdf/romeo_generated_urdf/romeoTransmission.xacro` | xacro | 0 · 0 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
-| 0 | `romeo_description/urdf/romeo_generated_urdf/romeo_arms.xacro` | xacro | 0 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: unknown macro name: xacro:insert_visu_LShoulderYaw_link |
-| 0 | `romeo_description/urdf/romeo_generated_urdf/romeo_eyes.xacro` | xacro | 0 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: unknown macro name: xacro:insert_visu_LEye |
-| 0 | `romeo_description/urdf/romeo_generated_urdf/romeo_fingers.xacro` | xacro | 0 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: unknown macro name: xacro:insert_visu_RFinger13_link |
-| 0 | `romeo_description/urdf/romeo_generated_urdf/romeo_head.xacro` | xacro | 0 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: unknown macro name: xacro:insert_visu_NeckPitch_link |
-| 0 | `romeo_description/urdf/romeo_generated_urdf/romeo_legs.xacro` | xacro | 0 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: unknown macro name: xacro:insert_visu_LThigh |
-| 0 | `romeo_description/urdf/romeo_generated_urdf/romeo_material.xacro` | xacro | 0 · 0 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
-| 0 | `romeo_description/urdf/romeo_generated_urdf/romeo_torso.xacro` | xacro | 0 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: unknown macro name: xacro:insert_visu_torso |
 
 </details>
 
@@ -2454,70 +2561,6 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `66d04eccece8`.
 
 </details>
 
-<details><summary><b>hello-robot/stretch_ros</b>: best 72, 125 robot(s), no licence named, last commit 2024-05-20</summary>
-
-From: awesome-robot-descriptions. Commit `7397a97a7843`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 72 | `stretch_description/batch/guthrie/urdf/stretch_base_imu.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/guthrie/urdf/stretch_dry_erase_marker.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/guthrie/urdf/stretch_gripper.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/guthrie/urdf/stretch_gripper_with_puller.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/guthrie/urdf/stretch_laser_range_finder.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/guthrie/urdf/stretch_main.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 9.1 |  |
-| 72 | `stretch_description/batch/guthrie/urdf/stretch_respeaker.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/hank/urdf/stretch_base_imu.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/hank/urdf/stretch_dry_erase_marker.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/hank/urdf/stretch_gripper.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/hank/urdf/stretch_gripper_with_puller.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/hank/urdf/stretch_laser_range_finder.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/hank/urdf/stretch_main.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 9.1 |  |
-| 72 | `stretch_description/batch/hank/urdf/stretch_respeaker.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/irma/urdf/stretch_base_imu.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/irma/urdf/stretch_dry_erase_marker.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/irma/urdf/stretch_gripper.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/irma/urdf/stretch_gripper_with_puller.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/irma/urdf/stretch_laser_range_finder.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/irma/urdf/stretch_main.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 9.1 |  |
-| 72 | `stretch_description/batch/irma/urdf/stretch_respeaker.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/joplin/urdf/stretch_base_imu.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/joplin/urdf/stretch_dry_erase_marker.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/joplin/urdf/stretch_gripper.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/joplin/urdf/stretch_gripper_with_puller.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/joplin/urdf/stretch_laser_range_finder.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/joplin/urdf/stretch_main.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 9.1 |  |
-| 72 | `stretch_description/batch/joplin/urdf/stretch_respeaker.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/kendrick/urdf/stretch_base_imu.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/kendrick/urdf/stretch_dry_erase_marker.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/kendrick/urdf/stretch_gripper.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/kendrick/urdf/stretch_gripper_with_puller.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/kendrick/urdf/stretch_laser_range_finder.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/kendrick/urdf/stretch_main.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 9.1 |  |
-| 72 | `stretch_description/batch/kendrick/urdf/stretch_respeaker.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/louis/urdf/stretch_base_imu.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/louis/urdf/stretch_dry_erase_marker.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/louis/urdf/stretch_gripper.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/louis/urdf/stretch_gripper_with_puller.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| 72 | `stretch_description/batch/louis/urdf/stretch_laser_range_finder.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 10 |  |
-| | and 85 more, in `audit.json` | | | |
-
-</details>
-
-<details><summary><b>iotdesignshop/dexhand_description</b>: best 72, 5 robot(s), NOASSERTION, last commit 2024-06-30</summary>
-
-From: awesome-robot-descriptions. Commit `211b0ea23e21`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 72 | `urdf/dexhand-left.urdf` | urdf | 7.5 · 5 · 20 · 15 · 10 · 5 · 9.4 |  |
-| 72 | `urdf/dexhand-left.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 9.4 |  |
-| 72 | `urdf/dexhand-right.urdf` | urdf | 7.5 · 5 · 20 · 15 · 10 · 5 · 9.1 |  |
-| 72 | `urdf/dexhand-right.xacro` | xacro | 7.5 · 5 · 20 · 15 · 10 · 5 · 9.1 |  |
-| 12 | `urdf/materials.xacro` | xacro | 7.5 · 5 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
-
-</details>
-
 <details><summary><b>mathieu-celerier/kinova_mj_description</b>: best 72, 6 robot(s), BSD-2-Clause, last commit 2026-02-05</summary>
 
 From: awesome-robot-descriptions, robot_descriptions.py. Commit `2877d305f7c5`.
@@ -2530,6 +2573,17 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `2877d305f7c5`.
 | 25 | `xml/kinova_bota.xml` | mjcf | 15 · 10 · 0 · 0 · 0 · 0 · 0 | 1 visual mesh file(s) missing |
 | 25 | `xml/kinova_bota_ds4.xml` | mjcf | 15 · 10 · 0 · 0 · 0 · 0 · 0 | 1 visual mesh file(s) missing |
 | 25 | `xml/kinova_callib.xml` | mjcf | 15 · 10 · 0 · 0 · 0 · 0 · 0 | 1 visual mesh file(s) missing |
+
+</details>
+
+<details><summary><b>poppy-project/poppy_ergo_jr_description</b>: best 72, 2 robot(s), no licence named, last commit 2020-08-13</summary>
+
+From: awesome-robot-descriptions, robot_descriptions.py. Commit `7eb32bd385af`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 72 | `urdf/poppy_ergo_jr.urdf` | urdf | 7.5 · 0 · 20 · 15 · 8.6 · 11.4 · 10 |  |
+| 70 | `urdf/poppy_ergo_jr.urdf.xacro` | xacro | 7.5 · 0 · 20 · 15 · 8.3 · 9.2 · 10 |  |
 
 </details>
 
@@ -2555,16 +2609,6 @@ From: awesome-robot-descriptions. Commit `9022468fb50c`.
 
 </details>
 
-<details><summary><b>rt-net/sciurus17_description</b>: best 72, 1 robot(s), NOASSERTION, last commit 2026-07-28</summary>
-
-From: awesome-robot-descriptions. Commit `607dea2f14e4`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 72 | `urdf/sciurus17.urdf.xacro` | xacro | 7.5 · 10 · 20 · 15 · 9.2 · 5 · 5 |  |
-
-</details>
-
 <details><summary><b>aubrune/reachy_description</b>: best 71, 2 robot(s), Apache-2.0, last commit 2020-11-10</summary>
 
 From: awesome-robot-descriptions, robot_descriptions.py. Commit `ce171a0aac7f`.
@@ -2573,6 +2617,16 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `ce171a0aac7f`.
 |--:|---|---|---|---|
 | 71 | `reachy.URDF` | urdf | 15 · 0 · 20 · 7.5 · 8.7 · 18.7 · 0.7 |  |
 | 71 | `reachy.URDF.xacro` | xacro | 15 · 0 · 20 · 7.5 · 8.7 · 18.7 · 0.7 |  |
+
+</details>
+
+<details><summary><b>HybridRobotics/berkeley_humanoid_description</b>: best 71, 1 robot(s), no licence named, last commit 2024-08-23</summary>
+
+From: awesome-robot-descriptions, robot_descriptions.py. Commit `d0d13d3f81d7`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 71 | `urdf/robot.urdf` | urdf | 7.5 · 5 · 20 · 15 · 10 · 5 · 8.1 |  |
 
 </details>
 
@@ -2597,6 +2651,16 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `81a2d8bbd772`. 
 
 </details>
 
+<details><summary><b>robot-descriptions/stretch_description</b>: best 71, 1 robot(s), NOASSERTION, last commit 2023-04-13 **archived**</summary>
+
+From: awesome-robot-descriptions, robot_descriptions.py. Commit `4b838429fe4c`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 71 | `urdf/stretch.urdf` | urdf | 15 · 0 · 20 · 15 · 9 · 5.2 · 7 |  |
+
+</details>
+
 <details><summary><b>boxer-cpr/boxer</b>: best 70, 4 robot(s), BSD-3-Clause, last commit 2022-09-23</summary>
 
 From: awesome-robot-descriptions. Commit `6998d896ba8b`.
@@ -2607,17 +2671,6 @@ From: awesome-robot-descriptions. Commit `6998d896ba8b`.
 | 15 | `boxer_description/urdf/boxer.urdf.xacro` | xacro | 15 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: &lt;class 'xacrodoc.packages.PackageNotFoundError'&gt;: Package not found: realsense2_description Package not found: realsense2_description |
 | 15 | `boxer_description/urdf/include/sensors.urdf.xacro` | xacro | 15 · 0 · 0 · 0 · 0 · 0 · 0 | XacroException: &lt;class 'xacrodoc.packages.PackageNotFoundError'&gt;: Package not found: realsense2_description Package not found: realsense2_description |
 | 15 | `boxer_description/urdf/materials.urdf.xacro` | xacro | 15 · 0 · 0 · 0 · 0 · 0 · 0 | renders no links with its default arguments |
-
-</details>
-
-<details><summary><b>Chestnut-Robotics/aero-hand-open</b>: best 70, 2 robot(s), NOASSERTION, last commit 2026-09-15</summary>
-
-From: awesome-robot-descriptions, robot_descriptions.py. Commit `7bb2f23485a7`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 70 | `ros2/src/aero_hand_open_description/urdf/aero_hand_open_left.urdf` | urdf | 7.5 · 10 · 20 · 7.5 · 10 · 5 · 10 |  |
-| 70 | `ros2/src/aero_hand_open_description/urdf/aero_hand_open_right.urdf` | urdf | 7.5 · 10 · 20 · 7.5 · 10 · 5 · 10 |  |
 
 </details>
 
@@ -2684,6 +2737,55 @@ From: awesome-robot-descriptions. Commit `fb7f57df0544`.
 
 </details>
 
+<details><summary><b>ros-industrial/fanuc</b>: best 70, 40 robot(s), NOASSERTION, last commit 2025-02-19</summary>
+
+From: awesome-robot-descriptions. Commit `d8f42bd73584`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 70 | `fanuc_cr35ia_support/urdf/cr35ia.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_cr7ia_support/urdf/cr7ia.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_cr7ia_support/urdf/cr7ial.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_crx10ia_support/urdf/crx10ial.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_lrmate200i_support/urdf/lrmate200i.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_lrmate200ib_support/urdf/lrmate200ib.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_lrmate200ib_support/urdf/lrmate200ib3l.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_lrmate200ic_support/urdf/lrmate200ic.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_lrmate200ic_support/urdf/lrmate200ic5f.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_lrmate200ic_support/urdf/lrmate200ic5h.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_lrmate200ic_support/urdf/lrmate200ic5hs.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_lrmate200ic_support/urdf/lrmate200ic5l.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_lrmate200id_support/urdf/lrmate200id.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_lrmate200id_support/urdf/lrmate200id4s.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_lrmate200id_support/urdf/lrmate200id4sc.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_lrmate200id_support/urdf/lrmate200id4sh.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_lrmate200id_support/urdf/lrmate200id7h.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_lrmate200id_support/urdf/lrmate200id7l.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_lrmate200id_support/urdf/lrmate200id7lc.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_m10ia_support/urdf/m10ia.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_m10ia_support/urdf/m10ia7l.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_m16ib_support/urdf/m16ib20.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_m20ia_support/urdf/m20ia.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_m20ia_support/urdf/m20ia10l.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_m20ib_support/urdf/m20ib25.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_m430ia_support/urdf/m430ia2f.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_m430ia_support/urdf/m430ia2p.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_m6ib_support/urdf/m6ib.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_m6ib_support/urdf/m6ib6s.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_m710ic_support/urdf/m710ic45m.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_m710ic_support/urdf/m710ic50.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_m900ia_support/urdf/m900ia260l.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_m900ib_support/urdf/m900ib700.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_r1000ia_support/urdf/r1000ia80f.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_r2000ib_support/urdf/r2000ib210f.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_r2000ic_support/urdf/r2000ic125l.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_r2000ic_support/urdf/r2000ic165f.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_r2000ic_support/urdf/r2000ic210f.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_r2000ic_support/urdf/r2000ic210l.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+| 70 | `fanuc_r2000ic_support/urdf/r2000ic270f.xacro` | xacro | 15 · 5 · 20 · 15 · 0 · 5 · 10 |  |
+
+</details>
+
 <details><summary><b>ros-naoqi/nao_robot</b>: best 70, 45 robot(s), BSD-3-Clause, last commit 2018-10-31</summary>
 
 From: awesome-robot-descriptions, robot_descriptions.py. Commit `67476469a137`.
@@ -2734,25 +2836,13 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `67476469a137`.
 
 </details>
 
-<details><summary><b>userguide-galaxea/robot_descriptions</b>: best 70, 13 robot(s), no licence named, last commit 2026-11-12</summary>
+<details><summary><b>a-price/robotiq_arg85_description</b>: best 68, 1 robot(s), no licence named, last commit 2020-05-19</summary>
 
-From: awesome-robot-descriptions. Commit `72008ea950a4`.
+From: awesome-robot-descriptions, robot_descriptions.py. Commit `a65190bdbb06`.
 
 | Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
 |--:|---|---|---|---|
-| 70 | `a1x_description/urdf/a1x.urdf` | urdf | 0 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 70 | `a1y_description/urdf/a1y.urdf` | urdf | 0 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 70 | `a1z_description/a1z_flange_description/urdf/A1Z_Flange.urdf` | urdf | 0 · 10 · 20 · 15 · 10 · 5 · 10 |  |
-| 70 | `a1z_description/a1z_g1z_description/urdf/A1Z_G1Z.urdf` | urdf | 0 · 10 · 20 · 15 · 10 · 5 · 9.8 |  |
-| 68 | `lemo_description/urdf/LEMO.urdf` | urdf | 0 · 10 · 20 · 15 · 10 · 5 · 8 |  |
-| 67 | `r1_description/urdf/r1_v2_1_0.urdf` | urdf | 0 · 10 · 20 · 15 · 10 · 5 · 7.4 |  |
-| 63 | `r1pro_description/r1pro_g1z_2026_description/urdf/r1pro_2026.urdf` | urdf | 0 · 10 · 20 · 12.7 · 10 · 5 · 5.6 |  |
-| 10 | `a1_description/urdf/A1_URDF_0607_0028.urdf` | urdf | 0 · 10 · 0 · 0 · 0 · 0 · 0 | 9 visual mesh file(s) missing |
-| 10 | `a1x_description/meshes/mmp_revB_invconfig_upright_a1x.urdf` | urdf | 0 · 10 · 0 · 0 · 0 · 0 · 0 | 30 visual mesh file(s) missing |
-| 10 | `r1lite_description/urdf_r1lite_2025.urdf` | urdf | 0 · 10 · 0 · 0 · 0 · 0 · 0 | 32 visual mesh file(s) missing |
-| 10 | `r1lite_description/urdf_r1lite_2026/urdf_r1lite_2026_a1x.urdf` | urdf | 0 · 10 · 0 · 0 · 0 · 0 · 0 | 32 visual mesh file(s) missing |
-| 10 | `r1lite_description/urdf_r1lite_2026/urdf_r1lite_2026_a1z.urdf` | urdf | 0 · 10 · 0 · 0 · 0 · 0 · 0 | 37 visual mesh file(s) missing |
-| 10 | `r1pro_description/urdf_r1pro_2025.urdf` | urdf | 0 · 10 · 0 · 0 · 0 · 0 · 0 | 46 visual mesh file(s) missing |
+| 68 | `robots/robotiq_arg85_description.URDF` | urdf | 7.5 · 0 · 20 · 15 · 10 · 5 · 10 |  |
 
 </details>
 
@@ -2766,6 +2856,16 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `f360a6b78667`.
 
 </details>
 
+<details><summary><b>poppy-project/poppy_torso_description</b>: best 68, 1 robot(s), no licence named, last commit 2017-02-16</summary>
+
+From: awesome-robot-descriptions, robot_descriptions.py. Commit `6beeec3d76fb`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 68 | `urdf/Poppy_Torso.URDF` | urdf | 7.5 · 0 · 20 · 15 · 10 · 5 · 10 |  |
+
+</details>
+
 <details><summary><b>Rhoban/sigmaban_urdf</b>: best 68, 1 robot(s), MIT, last commit 2022-10-14</summary>
 
 From: awesome-robot-descriptions, robot_descriptions.py. Commit `d5d023fd3580`.
@@ -2776,113 +2876,13 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `d5d023fd3580`.
 
 </details>
 
-<details><summary><b>poppy-project/poppy_ergo_jr_description</b>: best 65, 2 robot(s), no licence named, last commit 2020-08-13</summary>
-
-From: awesome-robot-descriptions, robot_descriptions.py. Commit `7eb32bd385af`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 65 | `urdf/poppy_ergo_jr.urdf` | urdf | 0 · 0 · 20 · 15 · 8.6 · 11.4 · 10 |  |
-| 62 | `urdf/poppy_ergo_jr.urdf.xacro` | xacro | 0 · 0 · 20 · 15 · 8.3 · 9.2 · 10 |  |
-
-</details>
-
-<details><summary><b>robot-descriptions/stretch_description</b>: best 64, 1 robot(s), NOASSERTION, last commit 2023-04-13 **archived**</summary>
-
-From: awesome-robot-descriptions, robot_descriptions.py. Commit `4b838429fe4c`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 64 | `urdf/stretch.urdf` | urdf | 7.5 · 0 · 20 · 15 · 9 · 5.2 · 7 |  |
-
-</details>
-
-<details><summary><b>HybridRobotics/berkeley_humanoid_description</b>: best 63, 1 robot(s), no licence named, last commit 2024-08-23</summary>
-
-From: awesome-robot-descriptions, robot_descriptions.py. Commit `d0d13d3f81d7`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 63 | `urdf/robot.urdf` | urdf | 0 · 5 · 20 · 15 · 10 · 5 · 8.1 |  |
-
-</details>
-
-<details><summary><b>ros-industrial/fanuc</b>: best 62, 40 robot(s), NOASSERTION, last commit 2025-02-19</summary>
-
-From: awesome-robot-descriptions. Commit `d8f42bd73584`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 62 | `fanuc_cr35ia_support/urdf/cr35ia.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_cr7ia_support/urdf/cr7ia.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_cr7ia_support/urdf/cr7ial.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_crx10ia_support/urdf/crx10ial.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_lrmate200i_support/urdf/lrmate200i.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_lrmate200ib_support/urdf/lrmate200ib.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_lrmate200ib_support/urdf/lrmate200ib3l.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_lrmate200ic_support/urdf/lrmate200ic.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_lrmate200ic_support/urdf/lrmate200ic5f.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_lrmate200ic_support/urdf/lrmate200ic5h.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_lrmate200ic_support/urdf/lrmate200ic5hs.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_lrmate200ic_support/urdf/lrmate200ic5l.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_lrmate200id_support/urdf/lrmate200id.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_lrmate200id_support/urdf/lrmate200id4s.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_lrmate200id_support/urdf/lrmate200id4sc.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_lrmate200id_support/urdf/lrmate200id4sh.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_lrmate200id_support/urdf/lrmate200id7h.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_lrmate200id_support/urdf/lrmate200id7l.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_lrmate200id_support/urdf/lrmate200id7lc.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_m10ia_support/urdf/m10ia.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_m10ia_support/urdf/m10ia7l.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_m16ib_support/urdf/m16ib20.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_m20ia_support/urdf/m20ia.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_m20ia_support/urdf/m20ia10l.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_m20ib_support/urdf/m20ib25.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_m430ia_support/urdf/m430ia2f.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_m430ia_support/urdf/m430ia2p.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_m6ib_support/urdf/m6ib.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_m6ib_support/urdf/m6ib6s.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_m710ic_support/urdf/m710ic45m.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_m710ic_support/urdf/m710ic50.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_m900ia_support/urdf/m900ia260l.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_m900ib_support/urdf/m900ib700.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_r1000ia_support/urdf/r1000ia80f.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_r2000ib_support/urdf/r2000ib210f.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_r2000ic_support/urdf/r2000ic125l.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_r2000ic_support/urdf/r2000ic165f.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_r2000ic_support/urdf/r2000ic210f.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_r2000ic_support/urdf/r2000ic210l.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-| 62 | `fanuc_r2000ic_support/urdf/r2000ic270f.xacro` | xacro | 7.5 · 5 · 20 · 15 · 0 · 5 · 10 |  |
-
-</details>
-
-<details><summary><b>a-price/robotiq_arg85_description</b>: best 60, 1 robot(s), no licence named, last commit 2020-05-19</summary>
-
-From: awesome-robot-descriptions, robot_descriptions.py. Commit `a65190bdbb06`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 60 | `robots/robotiq_arg85_description.URDF` | urdf | 0 · 0 · 20 · 15 · 10 · 5 · 10 |  |
-
-</details>
-
-<details><summary><b>poppy-project/poppy_torso_description</b>: best 60, 1 robot(s), no licence named, last commit 2017-02-16</summary>
-
-From: awesome-robot-descriptions, robot_descriptions.py. Commit `6beeec3d76fb`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 60 | `urdf/Poppy_Torso.URDF` | urdf | 0 · 0 · 20 · 15 · 10 · 5 · 10 |  |
-
-</details>
-
-<details><summary><b>Rayckey/GingerURDF</b>: best 59, 1 robot(s), no licence named, last commit 2019-02-13</summary>
+<details><summary><b>Rayckey/GingerURDF</b>: best 67, 1 robot(s), no licence named, last commit 2019-02-13</summary>
 
 From: awesome-robot-descriptions, robot_descriptions.py. Commit `6a1307cd0ee2`.
 
 | Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
 |--:|---|---|---|---|
-| 59 | `urdf/gingerurdf.urdf` | urdf | 0 · 0 · 20 · 15 · 10 · 5 · 9.1 |  |
+| 67 | `urdf/gingerurdf.urdf` | urdf | 7.5 · 0 · 20 · 15 · 10 · 5 · 9.1 |  |
 
 </details>
 
@@ -2926,6 +2926,16 @@ From: awesome-robot-descriptions, robot_descriptions.py. Commit `2fc4f62329fa`.
 | Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
 |--:|---|---|---|---|
 | 25 | `urdf/flexiv.urdf.xacro` | xacro | 15 · 10 · 0 · 0 · 0 · 0 · 0 | XacroException: can only concatenate str (not "bool") to str when evaluating expression ''$(arg kinematics_parameters_file)' if '$(arg kinematics_parameters_file)' != '' else cfg + '/' + robot_type_str + '/default_kinematics.yaml'' when evaluating expression 'single_kinematics' |
+
+</details>
+
+<details><summary><b>gbionics/gb-robot-models</b>: best 25, 1 robot(s), NOASSERTION, last commit 2026-07-28</summary>
+
+From: awesome-robot-descriptions, robot_descriptions.py. Commit `3377978fefa3`.
+
+| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
+|--:|---|---|---|---|
+| 25 | `share/gb_robot_models/robots/gene01_0/model.urdf` | urdf | 15 · 10 · 0 · 0 · 0 · 0 · 0 | 71 visual mesh file(s) missing |
 
 </details>
 
@@ -3043,16 +3053,6 @@ From: awesome-robot-descriptions. Commit `cc1a4eb9b279`.
 | Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
 |--:|---|---|---|---|
 | 20 | `simulation/follower.urdf` | urdf | 15 · 5 · 0 · 0 · 0 · 0 · 0 | 13 visual mesh file(s) missing |
-
-</details>
-
-<details><summary><b>gbionics/gb-robot-models</b>: best 18, 1 robot(s), NOASSERTION, last commit 2026-07-28</summary>
-
-From: awesome-robot-descriptions, robot_descriptions.py. Commit `3377978fefa3`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 18 | `share/gb_robot_models/robots/gene01_0/model.urdf` | urdf | 7.5 · 10 · 0 · 0 · 0 · 0 · 0 | 71 visual mesh file(s) missing |
 
 </details>
 
