@@ -62,7 +62,7 @@ local ROS install.
 | Package | Upstream | Branch | Robots |
 | --- | --- | --- | --- |
 | `franka_description` | [frankarobotics/franka_description](https://github.com/frankarobotics/franka_description) | `main` | FR3, Panda |
-| `Universal_Robots_ROS2_Description` | [UniversalRobots/…](https://github.com/UniversalRobots/Universal_Robots_ROS2_Description) | `rolling` | UR3/5/10/16/20/30 |
+| `Universal_Robots_ROS2_Description` | [UniversalRobots/…](https://github.com/UniversalRobots/Universal_Robots_ROS2_Description) | `rolling` | UR3/5/10 and e-Series, UR7e, UR12e, UR8LONG, UR15/18/20/30, UR10g/17g/18g |
 | `xarm_ros2` | [xArm-Developer/xarm_ros2](https://github.com/xArm-Developer/xarm_ros2) | `humble` | UFACTORY xArm 5/6/7, Lite 6 |
 | `open_manipulator` | [ROBOTIS-GIT/open_manipulator](https://github.com/ROBOTIS-GIT/open_manipulator) | `main` | OpenMANIPULATOR-X / -Y |
 | `ros2_kortex` | [Kinovarobotics/ros2_kortex](https://github.com/Kinovarobotics/ros2_kortex) | `main` | Kinova Gen3 / Gen3 lite |
@@ -70,6 +70,8 @@ local ROS install.
 | `lbr_iiwa14_r820_description` | [lbr-stack/…](https://github.com/lbr-stack/lbr_iiwa14_r820_description) | `main` | KUKA LBR iiwa 14 R820 |
 | `lbr_med7_r800_description` | [lbr-stack/…](https://github.com/lbr-stack/lbr_med7_r800_description) | `main` | KUKA LBR Med 7 R800 |
 | `lbr_med14_r820_description` | [lbr-stack/…](https://github.com/lbr-stack/lbr_med14_r820_description) | `main` | KUKA LBR Med 14 R820 |
+| `kuka_robot_descriptions` | [kuka-ros/…](https://github.com/kuka-ros/kuka_robot_descriptions) | `master` | KUKA KR AGILUS, CYBERTECH, FORTEC, IONTEC, QUANTEC; LBR iico, iisy |
+| `doosan-robot2` | [DoosanRobotics/doosan-robot2](https://github.com/DoosanRobotics/doosan-robot2) | `jazzy` | Doosan A, E, H, M and P series |
 | `abb_ros2` | [PickNikRobotics/abb_ros2](https://github.com/PickNikRobotics/abb_ros2) | `rolling` | ABB IRB series |
 | `interbotix_ros_manipulators` | [Interbotix/…](https://github.com/Interbotix/interbotix_ros_manipulators) | `main` | ViperX, WidowX, PincherX |
 | `SO-ARM100` | [TheRobotStudio/SO-ARM100](https://github.com/TheRobotStudio/SO-ARM100) | `main` | SO-ARM100 / SO-101 |
