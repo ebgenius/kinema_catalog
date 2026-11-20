@@ -1140,6 +1140,26 @@ def _run_worker(spec: dict, timeout: int) -> dict:
     return json.loads(done.stdout)
 
 
+def dependency_bases(everyone: list[Candidate], candidates: list[Candidate],
+                     places: dict[str, Path], root: Path, cache: Path) -> list[Path]:
+    """Where packages come from: what is measured, plus every other fork and
+    clone already on disk, read as it is (nothing is fetched or reset).
+
+    A GitHub error about one of the others does not leave it out: it stops
+    that repository being measured, not its clone being read. In a fixed
+    order, so a package found in two repositories comes from the same one
+    every run.
+    """
+    bases = set(places.values())
+    for other in everyone:
+        if other in candidates:
+            continue
+        where = root / "src" / other.fork if other.fork else cache_dir(cache, other.repo)
+        if (where / ".git").exists():
+            bases.add(where)
+    return sorted(bases, key=str)
+
+
 def run(root: Path, github, cache: Path, *, lists: bool = True, only: list[str] | None = None,
         repos: list[str] | None = None, update: bool = True, workers: int = 4,
         timeout: int = REPO_TIMEOUT, progress=print) -> Audit:
@@ -1210,16 +1230,7 @@ def run(root: Path, github, cache: Path, *, lists: bool = True, only: list[str] 
     # clone is indexed once, however many folders of it are candidates.
     # --only narrows what is measured, not what can be depended on: the other
     # forks, and the clones already in the cache, are indexed as they are.
-    bases = set(places.values())
-    for other in everyone:
-        if other in candidates or other.error:
-            continue
-        where = root / "src" / other.fork if other.fork else cache_dir(cache, other.repo)
-        if (where / ".git").exists():
-            bases.add(where)          # read only: nothing is fetched or reset
-    # In a fixed order: a package found in two repositories must come from the
-    # same one every run.
-    bases = sorted(bases, key=str)
+    bases = dependency_bases(everyone, candidates, places, root, cache)
     packages = index_packages({str(where): where for where in bases})
     progress(f"{len(bases)} repositories in place, {len(packages)} ROS packages found")
 

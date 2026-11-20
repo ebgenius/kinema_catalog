@@ -347,6 +347,21 @@ def test_a_named_audit_goes_on_without_a_list_it_cannot_read(tmp_path, monkeypat
         audit.gather(tmp_path, github)
 
 
+def test_a_cached_clone_supplies_packages_despite_a_github_error(tmp_path):
+    root, cache = tmp_path / "catalog", tmp_path / "cache"
+    measured = audit.Candidate("a/b", "a/b", sources=["--repo"])
+    flaky = audit.Candidate("c/d", "c/d", error="GitHub: 503")
+    absent = audit.Candidate("e/f", "e/f")
+    fork = audit.Candidate("fork:arm", "me/arm", fork="arm", error="GitHub: 503")
+    for where in (audit.cache_dir(cache, "c/d"), root / "src" / "arm"):
+        (where / ".git").mkdir(parents=True)
+    places = {"a/b": cache / "a__b"}
+    bases = audit.dependency_bases([fork, measured, flaky, absent], [measured], places,
+                                   root, cache)
+    assert set(bases) == {cache / "a__b", audit.cache_dir(cache, "c/d"), root / "src" / "arm"}
+    assert bases == sorted(bases, key=str)
+
+
 def test_a_report_names_the_lists_it_could_not_read():
     text = audit.render_markdown(audit.Audit("now", dict(audit.WEIGHTS), [], ["a/b"],
                                              ["fiveages robots (503)"]))
