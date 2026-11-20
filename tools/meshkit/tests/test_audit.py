@@ -455,8 +455,8 @@ def test_a_licence_file_is_looked_for_up_to_the_repository_and_no_further(tmp_pa
 @pytest.mark.parametrize("name, found", [
     ("LICENSE-APACHE", True), ("LICENCE_MIT.txt", True), ("license.md", True),
     ("LICENSES/Apache-2.0.txt", True),           # REUSE, as FANUC keeps it
-    ("LICENSES/.gitkeep", True), ("licenses_readme.txt", False),
-    ("LICENSEE.txt", False), ("unlicensed.txt", False)])
+    ("LICENSES/.gitkeep", False), ("LICENSES.backup/Apache-2.0.txt", False),
+    ("licenses_readme.txt", False), ("LICENSEE.txt", False), ("unlicensed.txt", False)])
 def test_a_licence_text_is_recognised_by_its_names(tmp_path, name, found):
     robot = write(tmp_path / "pkg" / "urdf" / "a.urdf", "<robot/>")
     write(tmp_path / name, "x")
@@ -478,7 +478,8 @@ def package_xml(*licences):
     (["BSD-3-Clause"], "BSD-3-Clause"),
     (["Apache-2.0", "BSD-3-Clause", "Apache-2.0"], "Apache-2.0 AND BSD-3-Clause"),
     (["TODO: License declaration"], None), (["TODO"], None), (["Various"], None), (["N/A"], None), ([], None),
-    (["  BSD\n   licence  "], "BSD licence"), (["x" * 300], "x" * 100)])
+    (["  BSD\n   licence  "], "BSD licence"), (["x" * 300], "x" * 100),
+    (["a" * 60, "b" * 60], ("a" * 60 + " AND " + "b" * 60)[:100])])   # the whole, not each
 def test_a_package_names_its_licence(tmp_path, licences, named):
     write(tmp_path / "pkg" / "package.xml", package_xml(*licences))
     robot = write(tmp_path / "pkg" / "urdf" / "a.urdf", "<robot/>")
@@ -488,13 +489,16 @@ def test_a_package_names_its_licence(tmp_path, licences, named):
 def test_a_licence_from_someone_elses_file_cannot_break_the_table():
     robot = {"path": "a.urdf", "kind": "urdf", "score": 50, "package": "a", "links": 1,
              "flattened": True, "parts": {k: 1.0 for k in audit.WEIGHTS}, "error": None,
-             "licence": "BSD | <b>[x](http://e)</b> @someone", "formats": {}, "triangles": 1}
+             "licence": "BSD | <b>[x](http://e)</b> @someone \\| y", "formats": {},
+             "triangles": 1}
     report = audit.RepoReport("x/y", "x/y", "", ["s"], None, None, False, robots=[robot])
     text = audit.render_markdown(audit.Audit("now", dict(audit.WEIGHTS), [report]))
     row = next(line for line in text.splitlines() if "`a.urdf`" in line)
-    assert "BSD \\| &lt;b&gt;&#91;x&#93;(http://e)&lt;/b&gt; &#64;someone" in row
-    # The top table's nine columns, the escaped bar inside one of them.
-    assert len(re.split(r"(?<!\\)\|", row.strip().strip("|"))) == 9
+    assert "BSD \\| &lt;b&gt;&#91;x&#93;(http://e)&lt;/b&gt; &#64;someone \\\\\\| y" in row
+    # The top table's nine columns, both bars inside one of them. GFM reads a
+    # backslash pair as one escaped backslash, then a bar that is escaped or not.
+    cells = re.findall(r"((?:\\.|[^|\\])*)\|", row.strip().removeprefix("|"))
+    assert len(cells) == 9
 
 
 def test_a_package_licence_counts_only_where_github_names_none():

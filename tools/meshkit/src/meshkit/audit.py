@@ -989,10 +989,12 @@ def score(row: dict, *, today: datetime | None = None) -> tuple[int, dict]:
 
 def _is_licence(path: Path) -> bool:
     """LICENSE, LICENCE.md, COPYING, LICENSE-APACHE, LICENSE_MIT.txt..., or a
-    REUSE-style LICENSES/ folder with a text in it (FANUC's)."""
-    stem = path.name.lower().split(".")[0]
+    REUSE-style LICENSES/ folder with a text in it (FANUC's). A dotfile such
+    as .gitkeep is no text."""
     if path.is_dir():
-        return stem in ("licenses", "licences") and any(p.is_file() for p in path.iterdir())
+        return path.name.lower() in ("licenses", "licences") and any(
+            p.is_file() and not p.name.startswith(".") for p in path.iterdir())
+    stem = path.name.lower().split(".")[0]
     return path.is_file() and any(stem == word or stem.startswith((word + "-", word + "_"))
                                   for word in LICENCE_FILES)
 
@@ -1057,7 +1059,7 @@ def package_licence(path: Path, up_to: Path) -> str | None:
     # Free text from someone else's file: one line, and not a page of it.
     named = [" ".join((tag.text or "").split())[:100] for tag in found[1].findall("license")]
     named = [n for n in named if n.upper() not in UNNAMED and n.lower() not in PLACEHOLDERS]
-    return " AND ".join(dict.fromkeys(named)) or None
+    return " AND ".join(dict.fromkeys(named))[:100] or None
 
 
 def audit_repo(spec: dict) -> dict:
@@ -1330,7 +1332,8 @@ def _cell(text: str) -> str:
     """Text from someone else's file (a package.xml licence), safe in a table cell."""
     from meshkit.upstream import _inert
 
-    return _inert(" ".join(text.split())).replace("|", "\\|")
+    # Backslashes first: in a GFM table, "\\|" is a literal backslash, then a column bar.
+    return _inert(" ".join(text.split())).replace("\\", "\\\\").replace("|", "\\|")
 
 
 def render_markdown(audit: Audit, *, listed: int = 40, top_rows: int = 100,
@@ -1380,8 +1383,9 @@ def render_markdown(audit: Audit, *, listed: int = 40, top_rows: int = 100,
         "| Part | Points | Full marks when |",
         "|---|--:|---|",
         f"| Licence | {WEIGHTS['licence']} | A licence is named (by GitHub, else by the "
-        "robot's package.xml) and there is a licence text: LICENSE, COPYING or a LICENSES/ "
-        "folder (present, not read; half for one of the two) |",
+        "robot's package.xml) and there is a licence text: a LICENSE, LICENCE or COPYING "
+        "file (LICENSE-MIT and the like too) or a LICENSES/ folder with a file in it "
+        "(present, not read; half for one of the two) |",
         f"| Alive | {WEIGHTS['alive']} | Upstream committed to in the last year (half: in "
         "three); not archived |",
         f"| Flattens | {WEIGHTS['flattens']} | xacro evaluates (or the MJCF parses) and every "
