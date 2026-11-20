@@ -94,10 +94,16 @@ class Candidate:
 REPO_SOURCE = "--repo"       # the source of a repository named on the command line
 
 
-def gather(root: Path, github, *, lists: bool = True, only: list[str] | None = None,
-           repos: list[str] | None = None) -> list[Candidate]:
+def gather(root: Path, github, *, lists: bool = True, repos: list[str] | None = None,
+           unavailable: list[str] | None = None) -> list[Candidate]:
     """The catalog's forks, then every candidate the lists name, once each, then
-    the repositories ``--repo`` names that neither has."""
+    the repositories ``--repo`` names that neither has: the whole inventory.
+
+    ``select`` chooses what is measured from it; the rest still supplies
+    packages. A list that cannot be read stops a full audit. With ``repos``,
+    it is noted in ``unavailable`` instead: a named repository does not
+    depend on the lists.
+    """
     from meshkit import upstream
 
     forks = upstream.read_forks(root)
@@ -126,7 +132,11 @@ def gather(root: Path, github, *, lists: bool = True, only: list[str] | None = N
             try:
                 found = upstream.extract(source, github.file(source.repo, source.path))
             except upstream.GitHubError as exc:
-                raise upstream.GitHubError(f"{source.name} cannot be read: {exc}") from None
+                if not repos:
+                    raise upstream.GitHubError(f"{source.name} cannot be read: {exc}") from None
+                if unavailable is not None:
+                    unavailable.append(f"{source.name} ({exc})")
+                continue
             for key in found:
                 repo, _, folder = key.partition(":")
                 candidate = by_key.setdefault(key, Candidate(key, repo, folder))
@@ -176,7 +186,7 @@ def gather(root: Path, github, *, lists: bool = True, only: list[str] | None = N
         if REPO_SOURCE not in same.sources:
             same.sources.append(REPO_SOURCE)
 
-    return select(candidates, only, named=bool(repos))
+    return candidates
 
 
 def repo_name(text: str) -> str:
@@ -1108,10 +1118,12 @@ class Audit:
     repos: list[RepoReport]
     # What --only and --repo named, when the audit is not of everything.
     selection: list[str] | None = None
+    # Candidate lists a named audit could not read (a full audit stops instead).
+    unavailable: list[str] | None = None
 
     def as_json(self) -> dict:
         return {"generated": self.generated, "weights": self.weights,
-                "selection": self.selection,
+                "selection": self.selection, "unavailable_lists": self.unavailable,
                 "thresholds": {"triangles": TRIANGLES, "megabytes": MEGABYTES},
                 "not_measured": ["imports in Kinema",
                                  "kinematics against the maker's own description"],
@@ -1136,7 +1148,10 @@ def run(root: Path, github, cache: Path, *, lists: bool = True, only: list[str] 
     # Absolute: xacro is evaluated from the robot's own folder, where a path
     # relative to here would point somewhere else.
     root, cache = root.absolute(), cache.absolute()
-    everyone = gather(root, github, lists=lists, repos=repos)
+    unavailable: list[str] = []
+    everyone = gather(root, github, lists=lists, repos=repos, unavailable=unavailable)
+    for note in unavailable:
+        progress(f"  not read, so its candidates supply no packages: {note}")
     candidates = select(everyone, only, named=bool(repos))
     entries: dict[str, list[dict]] = {}
     for entry in load_catalog(root):
@@ -1241,7 +1256,8 @@ def run(root: Path, github, cache: Path, *, lists: bool = True, only: list[str] 
 
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     selection = [*(only or []), *(repo_name(r) for r in repos or [])] or None
-    return Audit(generated, dict(WEIGHTS), [reports[c.key] for c in candidates], selection)
+    return Audit(generated, dict(WEIGHTS), [reports[c.key] for c in candidates], selection,
+                 unavailable or None)
 
 
 def _robot_licence(candidate: Candidate, robot: dict, entries: dict) -> str | None:
@@ -1294,6 +1310,8 @@ def render_markdown(audit: Audit, *, listed: int = 40, top_rows: int = 100,
         f"- **Candidates:** {len(robots)} robots in {len(measured)} of {len(candidates)} "
         "repositories or folders; "
         f"{sum(1 for r in candidates if r.error)} could not be audited (listed at the end).",
+        *([f"- **Lists not read:** {_inert('; '.join(audit.unavailable))}. Their candidates "
+           "were not available as dependencies."] if audit.unavailable else []),
         "",
         "## How a robot is scored",
         "",

@@ -140,10 +140,14 @@ uv run meshkit audit --repo kuka-ros/kuka_robot_descriptions --markdown k.md --j
 
 **`--repo`** scores a repository the lists don't name, before choosing it as a source:
 an `owner/name` or a GitHub URL, repeatable. It is measured like any candidate, its
-source shown as `--repo`. One already in the audit (a fork, by its own name or its
-upstream's, or a listed candidate) is marked, not added twice. `--repo` audits only what
-it and `--only` name, so it needs `--markdown` and `--json`: a run written over
-`audit/audit.md` would drop every other row. A name GitHub doesn't know is refused.
+source shown as `--repo`. One already in the audit as a whole repository (a fork, by its
+own name or its upstream's, or a candidate a list names) is marked, not added twice. A
+repository the lists name only by folder (fiveages' README rows) gets a whole-repository
+row beside those folder rows. `--repo` audits only what it and `--only` name, so it needs
+`--markdown` and `--json`: a run written over `audit/audit.md` would drop every other
+row. What it doesn't measure still supplies packages, as with `--only`. A name GitHub
+doesn't know is refused. A candidate list that can't be read stops a full audit, but
+not a `--repo` one: the report names the list, whose candidates then supply no packages.
 
 **What is audited.** Every entry in `catalog.json`, rendered with its own arguments,
 and every repository the upstream report's lists name that the catalog doesn't carry

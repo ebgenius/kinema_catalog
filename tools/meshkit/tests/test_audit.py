@@ -280,13 +280,20 @@ def _one_fork_one_listed(tmp_path, monkeypatch):
     return FakeGitHub(repos, files)
 
 
+def _named(found):
+    return audit.select(found, None, named=True)
+
+
 def test_repo_adds_an_unlisted_repository_and_audits_only_what_it_names(
         tmp_path, monkeypatch):
     github = _one_fork_one_listed(tmp_path, monkeypatch)
     found = audit.gather(tmp_path, github,
                          repos=["https://github.com/kuka-ros/kuka_robot_descriptions"])
-    assert [c.repo for c in found] == ["kuka-ros/kuka_robot_descriptions"]
-    kuka = found[0]
+    # The whole inventory stays: what is not measured still supplies packages.
+    assert [c.repo for c in found] == ["me/arm", "listed/one",
+                                       "kuka-ros/kuka_robot_descriptions"]
+    [kuka] = _named(found)
+    assert kuka.repo == "kuka-ros/kuka_robot_descriptions"
     assert kuka.sources == ["--repo"] and kuka.licence == "Apache-2.0"
     assert kuka.pushed == "2026-10-01T00:00:00Z" and kuka.fork is None
 
@@ -304,15 +311,46 @@ def test_repo_marks_a_fork_or_a_listed_candidate_instead_of_adding_it_twice(
 
 def test_repo_is_named_as_github_names_it(tmp_path, monkeypatch):
     github = _one_fork_one_listed(tmp_path, monkeypatch)
-    [found] = audit.gather(tmp_path, github, repos=["old/name"])
+    [found] = _named(audit.gather(tmp_path, github, repos=["old/name"]))
     assert found.repo == found.key == "new/name"
 
 
 def test_repo_and_only_together_audit_both(tmp_path, monkeypatch):
+    # As run() does it: the inventory first, the selection from it after. --only
+    # names a fork that --repo does not, and must still find it.
     github = _one_fork_one_listed(tmp_path, monkeypatch)
-    found = audit.gather(tmp_path, github, only=["arm"],
-                         repos=["kuka-ros/kuka_robot_descriptions"])
+    everyone = audit.gather(tmp_path, github, repos=["kuka-ros/kuka_robot_descriptions"])
+    found = audit.select(everyone, ["arm"], named=True)
     assert [c.repo for c in found] == ["me/arm", "kuka-ros/kuka_robot_descriptions"]
+
+
+def test_a_named_audit_goes_on_without_a_list_it_cannot_read(tmp_path, monkeypatch):
+    from meshkit import upstream
+
+    github = _one_fork_one_listed(tmp_path, monkeypatch)
+    broken = upstream.SOURCES[1]
+    read = github.file
+
+    def file(repo, path):
+        if (repo, path) == (broken.repo, broken.path):
+            raise upstream.NotFound(path)
+        return read(repo, path)
+    github.file = file
+    unavailable = []
+    found = audit.gather(tmp_path, github, repos=["kuka-ros/kuka_robot_descriptions"],
+                         unavailable=unavailable)
+    assert [c.repo for c in _named(found)] == ["kuka-ros/kuka_robot_descriptions"]
+    assert "listed/one" in [c.repo for c in found]       # the lists that were read
+    assert len(unavailable) == 1 and unavailable[0].startswith(broken.name)
+    # A full audit still stops: its candidates are the lists.
+    with pytest.raises(upstream.GitHubError, match="cannot be read"):
+        audit.gather(tmp_path, github)
+
+
+def test_a_report_names_the_lists_it_could_not_read():
+    text = audit.render_markdown(audit.Audit("now", dict(audit.WEIGHTS), [], ["a/b"],
+                                             ["fiveages robots (503)"]))
+    assert "- **Lists not read:** fiveages robots (503)." in text
 
 
 @pytest.mark.parametrize("text", ["kuka-ros", "a/b/c", "https://gitlab.com/a/b", "/b", "a/"])
@@ -331,7 +369,8 @@ def test_repo_without_both_outputs_is_refused_before_anything_runs(tmp_path, mon
     from meshkit import cli
 
     monkeypatch.setattr(audit, "run", lambda *a, **k: pytest.fail("the audit ran"))
-    for extra in ([], ["--markdown", str(tmp_path / "k.md")]):
+    for extra in ([], ["--markdown", str(tmp_path / "k.md")],
+                  ["--json", str(tmp_path / "k.json")]):
         with pytest.raises(SystemExit, match="--repo audits only"):
             cli.main(["--root", str(tmp_path), "audit", "--repo", "a/b", *extra])
 
@@ -352,10 +391,10 @@ def test_a_file_uri_keeps_its_drive_absolute(uri, path):
 def test_a_file_uri_with_a_bare_drive_resolves_to_the_file_not_beside_the_xacro(tmp_path):
     mesh = tmp_path / "pkg" / "m.dae"
     write(mesh, "x")
-    drive, rest = str(mesh).split(":", 1)
-    if not rest.startswith("\\"):
-        pytest.skip("a Windows path's form")
-    bare = f"file://{drive}:{rest[1:]}"              # file://C:Users\...\m.dae
+    if not mesh.drive or not str(mesh)[len(mesh.drive):].startswith("\\"):
+        pytest.skip("a Windows path's form: there is no drive to lose a separator after")
+    rest = str(mesh)[len(mesh.drive) + 1:]
+    bare = f"file://{mesh.drive}{rest}"              # file://C:Users\...\m.dae
     source = tmp_path / "pkg" / "xacro" / "robot.xacro"
     assert audit._resolve(bare, source, {}, None) == mesh
 
