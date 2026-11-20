@@ -63,7 +63,21 @@ _LONE_VAR = re.compile(r"^\$\{\s*([A-Za-z_][\w.]*)\s*\}$")
 _COMMENT = re.compile(r"<!--.*?-->", re.S)
 _UP_AXIS = re.compile(rb"<up_axis>\s*([A-Z_]+)\s*</up_axis>")
 _WIN_DRIVE = re.compile(r"^/?([A-Za-z]:[\\/].*)$")
+_BARE_DRIVE = re.compile(r"^/?([A-Za-z]):(?![\\/])")
 _UNDEFINED_ARG = re.compile(r"Undefined substitution argument (\w+)")
+
+
+def strip_file_uri(text: str) -> str:
+    """The path in a ``file://`` reference, or the text unchanged.
+
+    On Windows, xacrodoc renders ``file:///$(find pkg)/m.dae`` as
+    ``file://C:Users\\...``: the separator after the drive is lost, and
+    ``C:Users`` reads as relative to the current folder on C:, not as the
+    absolute path it was. A drive with no separator after it is given one back.
+    """
+    if not text.startswith("file://"):
+        return text
+    return _BARE_DRIVE.sub(r"\1:/", text[len("file://"):], count=1)
 
 
 class _TolerantLoader(yaml.SafeLoader):
@@ -309,8 +323,7 @@ class Scanner:
         bases: list[Path]
         relative: str
 
-        if text.startswith("file://"):
-            text = text[len("file://"):]
+        text = strip_file_uri(text)
 
         # The literal text after the last variable decides the format. A variable
         # stem with a literal extension -- ${name}.stl -- is plainly not a .dae;

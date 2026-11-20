@@ -263,6 +263,157 @@ def test_candidates_are_named_as_github_names_them_once_and_never_the_catalogs(
     assert gone.error.startswith("GitHub:")
 
 
+def _one_fork_one_listed(tmp_path, monkeypatch):
+    from meshkit import upstream
+
+    write(tmp_path / ".gitmodules", '[submodule "src/arm"]\n\tpath = src/arm\n'
+          "\turl = git@github.com:me/arm.git\n\tbranch = main\n")
+    monkeypatch.setattr(upstream, "_pin", lambda root, path: "a" * 40)
+    source = upstream.SOURCES[0]
+    files = {(source.repo, source.path): "github.com/listed/one"}
+    repos = {"me/arm": {"full_name": "me/arm", "parent": {"full_name": "maker/arm"}},
+             "listed/one": {"full_name": "listed/one"},
+             "kuka-ros/kuka_robot_descriptions": {
+                 "full_name": "kuka-ros/kuka_robot_descriptions",
+                 "license": {"spdx_id": "Apache-2.0"}, "pushed_at": "2026-10-01T00:00:00Z"},
+             "old/name": {"full_name": "new/name"}}
+    return FakeGitHub(repos, files)
+
+
+def _named(found):
+    return audit.select(found, None, named=True)
+
+
+def test_repo_adds_an_unlisted_repository_and_audits_only_what_it_names(
+        tmp_path, monkeypatch):
+    github = _one_fork_one_listed(tmp_path, monkeypatch)
+    found = audit.gather(tmp_path, github,
+                         repos=["https://github.com/kuka-ros/kuka_robot_descriptions"])
+    # The whole inventory stays: what is not measured still supplies packages.
+    assert [c.repo for c in found] == ["me/arm", "listed/one",
+                                       "kuka-ros/kuka_robot_descriptions"]
+    [kuka] = _named(found)
+    assert kuka.repo == "kuka-ros/kuka_robot_descriptions"
+    assert kuka.sources == ["--repo"] and kuka.licence == "Apache-2.0"
+    assert kuka.pushed == "2026-10-01T00:00:00Z" and kuka.fork is None
+
+
+def test_repo_marks_a_fork_or_a_listed_candidate_instead_of_adding_it_twice(
+        tmp_path, monkeypatch):
+    github = _one_fork_one_listed(tmp_path, monkeypatch)
+    # The fork by its upstream's name, the listed one twice, in two spellings.
+    found = audit.gather(tmp_path, github,
+                         repos=["maker/arm", "listed/one", "git@github.com:Listed/one.git"])
+    assert [(c.repo, c.sources) for c in found] == [
+        ("me/arm", ["catalog", "--repo"]),
+        ("listed/one", ["awesome-robot-descriptions", "--repo"])]
+
+
+def test_repo_is_named_as_github_names_it(tmp_path, monkeypatch):
+    github = _one_fork_one_listed(tmp_path, monkeypatch)
+    [found] = _named(audit.gather(tmp_path, github, repos=["old/name"]))
+    assert found.repo == found.key == "new/name"
+
+
+def test_repo_and_only_together_audit_both(tmp_path, monkeypatch):
+    # As run() does it: the inventory first, the selection from it after. --only
+    # names a fork that --repo does not, and must still find it.
+    github = _one_fork_one_listed(tmp_path, monkeypatch)
+    everyone = audit.gather(tmp_path, github, repos=["kuka-ros/kuka_robot_descriptions"])
+    found = audit.select(everyone, ["arm"], named=True)
+    assert [c.repo for c in found] == ["me/arm", "kuka-ros/kuka_robot_descriptions"]
+
+
+def test_a_named_audit_goes_on_without_a_list_it_cannot_read(tmp_path, monkeypatch):
+    from meshkit import upstream
+
+    github = _one_fork_one_listed(tmp_path, monkeypatch)
+    broken = upstream.SOURCES[1]
+    read = github.file
+
+    def file(repo, path):
+        if (repo, path) == (broken.repo, broken.path):
+            raise upstream.NotFound(path)
+        return read(repo, path)
+    github.file = file
+    unavailable = []
+    found = audit.gather(tmp_path, github, repos=["kuka-ros/kuka_robot_descriptions"],
+                         unavailable=unavailable)
+    assert [c.repo for c in _named(found)] == ["kuka-ros/kuka_robot_descriptions"]
+    assert "listed/one" in [c.repo for c in found]       # the lists that were read
+    assert len(unavailable) == 1 and unavailable[0].startswith(broken.name)
+    # A full audit still stops: its candidates are the lists.
+    with pytest.raises(upstream.GitHubError, match="cannot be read"):
+        audit.gather(tmp_path, github)
+
+
+def test_a_cached_clone_supplies_packages_despite_a_github_error(tmp_path):
+    root, cache = tmp_path / "catalog", tmp_path / "cache"
+    measured = audit.Candidate("a/b", "a/b", sources=["--repo"])
+    flaky = audit.Candidate("c/d", "c/d", error="GitHub: 503")
+    absent = audit.Candidate("e/f", "e/f")
+    fork = audit.Candidate("fork:arm", "me/arm", fork="arm", error="GitHub: 503")
+    for where in (audit.cache_dir(cache, "c/d"), root / "src" / "arm"):
+        (where / ".git").mkdir(parents=True)
+    places = {"a/b": cache / "a__b"}
+    bases = audit.dependency_bases([fork, measured, flaky, absent], [measured], places,
+                                   root, cache)
+    assert set(bases) == {cache / "a__b", audit.cache_dir(cache, "c/d"), root / "src" / "arm"}
+    assert bases == sorted(bases, key=str)
+
+
+def test_a_report_names_the_lists_it_could_not_read():
+    text = audit.render_markdown(audit.Audit("now", dict(audit.WEIGHTS), [], ["a/b"],
+                                             ["fiveages robots (503)"]))
+    assert "- **Lists not read:** fiveages robots (503)." in text
+
+
+@pytest.mark.parametrize("text", ["kuka-ros", "a/b/c", "https://gitlab.com/a/b", "/b", "a/"])
+def test_repo_refuses_what_is_not_a_github_repository(text):
+    with pytest.raises(audit.SelectionError, match="not a GitHub repository"):
+        audit.repo_name(text)
+
+
+def test_repo_refuses_a_repository_github_does_not_know(tmp_path, monkeypatch):
+    github = _one_fork_one_listed(tmp_path, monkeypatch)
+    with pytest.raises(audit.SelectionError, match="--repo no/such"):
+        audit.gather(tmp_path, github, repos=["no/such"])
+
+
+def test_repo_without_both_outputs_is_refused_before_anything_runs(tmp_path, monkeypatch):
+    from meshkit import cli
+
+    monkeypatch.setattr(audit, "run", lambda *a, **k: pytest.fail("the audit ran"))
+    for extra in ([], ["--markdown", str(tmp_path / "k.md")],
+                  ["--json", str(tmp_path / "k.json")]):
+        with pytest.raises(SystemExit, match="--repo audits only"):
+            cli.main(["--root", str(tmp_path), "audit", "--repo", "a/b", *extra])
+
+
+@pytest.mark.parametrize("uri, path", [
+    # What xacrodoc makes of file:///$(find pkg)/m.dae on Windows.
+    ("file://C:Users\\me\\pkg\\m.dae", "C:/Users\\me\\pkg\\m.dae"),
+    ("file:///C:/Users/me/pkg/m.dae", "/C:/Users/me/pkg/m.dae"),
+    ("file:///home/me/pkg/m.dae", "/home/me/pkg/m.dae"),
+    ("package://pkg/m.dae", "package://pkg/m.dae"),
+])
+def test_a_file_uri_keeps_its_drive_absolute(uri, path):
+    from meshkit.scan import strip_file_uri
+
+    assert strip_file_uri(uri) == path
+
+
+def test_a_file_uri_with_a_bare_drive_resolves_to_the_file_not_beside_the_xacro(tmp_path):
+    mesh = tmp_path / "pkg" / "m.dae"
+    write(mesh, "x")
+    if not mesh.drive or not str(mesh)[len(mesh.drive):].startswith("\\"):
+        pytest.skip("a Windows path's form: there is no drive to lose a separator after")
+    rest = str(mesh)[len(mesh.drive) + 1:]
+    bare = f"file://{mesh.drive}{rest}"              # file://C:Users\...\m.dae
+    source = tmp_path / "pkg" / "xacro" / "robot.xacro"
+    assert audit._resolve(bare, source, {}, None) == mesh
+
+
 def test_a_package_comes_from_the_robots_own_repository_first():
     packages = [("arm_description", "/a/arm_description", "/a"),
                 ("arm_description", "/b/arm_description", "/b"),
@@ -364,6 +515,16 @@ def test_the_top_table_has_one_row_per_package():
     assert "| 90 | arm | `arm/xacro/robot.xacro` | 0 | 2 |" in top
     assert "| 70 | hand | `hand/urdf/hand.urdf` | 0 | 1 |" in top
     assert "ros2_control" not in top
+
+
+def test_a_selection_says_what_it_named_and_shows_no_empty_catalog():
+    report = audit.RepoReport("a/b", "a/b", "", ["--repo"], None, "MIT", False, robots=[])
+    text = audit.render_markdown(audit.Audit("now", dict(audit.WEIGHTS), [report], ["a/b"]))
+    assert "Only what `--only` and `--repo` named (`a/b`)" in text
+    assert "The catalog" not in text and "## The catalog's entries" not in text
+    # The full audit keeps both, even with no fork in it.
+    whole = audit.render_markdown(audit.Audit("now", dict(audit.WEIGHTS), [report]))
+    assert "## The catalog's entries" in whole and "Only what" not in whole
 
 
 def test_a_package_row_is_its_complete_robot_not_a_component_that_ties():
