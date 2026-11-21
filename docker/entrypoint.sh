@@ -87,6 +87,9 @@ print(free[0] if free else (sorted(links)[0] if links else 'base_link'))
 PY
 }
 
+# Every step that can fail says so with `|| return 1`. check_all runs this as an
+# `if` condition, and bash ignores `set -e` there and in everything it calls: a
+# failing xacro used to fall through to the end, and the entry was reported ok.
 generate_urdf() {
   mkdir -p "$GEN_DIR"
   local out="$GEN_DIR/robot.urdf"
@@ -96,25 +99,28 @@ generate_urdf() {
   if [ "$R_TYPE" = xacro ]; then
     info "xacro $R_PATH ${R_ARGS/-/}"
     # shellcheck disable=SC2086
+    rm -f "$out"   # never let an earlier entry's URDF stand in for this one
     if [ "$R_ARGS" = "-" ]; then
-      xacro "$src" -o "$out"
+      xacro "$src" -o "$out" || return 1
     else
-      xacro "$src" $R_ARGS -o "$out"
+      xacro "$src" $R_ARGS -o "$out" || return 1
     fi
   else
     info "urdf $R_PATH"
-    cp "$src" "$out"
+    cp "$src" "$out" || return 1
   fi
+  [ -s "$out" ] || { printf 'error: %s produced no URDF\n' "$R_PATH" >&2; return 1; }
 
   # Some URDFs (SO-ARM100) reference meshes by relative path; rewrite those to
   # absolute file:// URIs. The [^":] class deliberately skips package:// etc.
   if [ "$R_MESH" != "-" ]; then
     info "rewriting relative mesh paths against $R_MESH"
     # restricted to <mesh> lines so plugin filenames ("libfoo.so") are never touched
-    sed -i "/<mesh/ s|filename=\"\\([^\":]*\\)\"|filename=\"file://$CATALOG/$R_MESH/\\1\"|g" "$out"
+    sed -i "/<mesh/ s|filename=\"\\([^\":]*\\)\"|filename=\"file://$CATALOG/$R_MESH/\\1\"|g" "$out" \
+      || return 1
   fi
 
-  ROOT_LINK=$(root_link "$out")
+  ROOT_LINK=$(root_link "$out") || return 1
   info "root link: $ROOT_LINK"
 
   if [ "${KINEMA_EXPORT:-0}" = "1" ]; then
