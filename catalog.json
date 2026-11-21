@@ -1595,7 +1595,9 @@
       "submodule": "unitree_ros",
       "entry": "src/unitree_ros/robots/aliengo_description/xacro/robot.xacro",
       "format": "xacro",
-      "args": {},
+      "args": {
+        "DEBUG": "false"
+      },
       "mesh_base": null
     },
     {
@@ -1610,7 +1612,9 @@
       "submodule": "unitree_ros",
       "entry": "src/unitree_ros/robots/b1_description/xacro/robot.xacro",
       "format": "xacro",
-      "args": {},
+      "args": {
+        "DEBUG": "false"
+      },
       "mesh_base": null
     },
     {
@@ -1625,7 +1629,9 @@
       "submodule": "unitree_ros",
       "entry": "src/unitree_ros/robots/b2_description/xacro/robot.xacro",
       "format": "xacro",
-      "args": {},
+      "args": {
+        "DEBUG": "false"
+      },
       "mesh_base": null
     },
     {
@@ -1640,7 +1646,9 @@
       "submodule": "unitree_ros",
       "entry": "src/unitree_ros/robots/b2w_description/xacro/robot.xacro",
       "format": "xacro",
-      "args": {},
+      "args": {
+        "DEBUG": "false"
+      },
       "mesh_base": null
     },
     {
@@ -1685,7 +1693,9 @@
       "submodule": "unitree_ros",
       "entry": "src/unitree_ros/robots/aliengoZ1_description/xacro/robot.xacro",
       "format": "xacro",
-      "args": {},
+      "args": {
+        "DEBUG": "false"
+      },
       "mesh_base": null
     },
     {

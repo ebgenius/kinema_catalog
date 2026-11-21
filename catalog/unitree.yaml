@@ -25,24 +25,32 @@ entries:
     category: legged
     submodule: unitree_ros
     entry: src/unitree_ros/robots/aliengo_description/xacro/robot.xacro
+    args:
+      DEBUG: "false"   # robot.xacro reads $(arg DEBUG) but declares no such arg
     licence: BSD-3-Clause
   - id: b1
     name: Unitree B1
     category: legged
     submodule: unitree_ros
     entry: src/unitree_ros/robots/b1_description/xacro/robot.xacro
+    args:
+      DEBUG: "false"   # robot.xacro reads $(arg DEBUG) but declares no such arg
     licence: BSD-3-Clause
   - id: b2
     name: Unitree B2
     category: legged
     submodule: unitree_ros
     entry: src/unitree_ros/robots/b2_description/xacro/robot.xacro
+    args:
+      DEBUG: "false"   # robot.xacro reads $(arg DEBUG) but declares no such arg
     licence: BSD-3-Clause
   - id: b2w
     name: Unitree B2-W
     category: legged
     submodule: unitree_ros
     entry: src/unitree_ros/robots/b2w_description/xacro/robot.xacro
+    args:
+      DEBUG: "false"   # robot.xacro reads $(arg DEBUG) but declares no such arg
     licence: BSD-3-Clause
   - id: laikago
     name: Unitree Laikago
@@ -61,4 +69,6 @@ entries:
     category: legged
     submodule: unitree_ros
     entry: src/unitree_ros/robots/aliengoZ1_description/xacro/robot.xacro
+    args:
+      DEBUG: "false"   # robot.xacro reads $(arg DEBUG) but declares no such arg
     licence: BSD-3-Clause
