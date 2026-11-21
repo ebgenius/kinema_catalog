@@ -1,0 +1,432 @@
+# FANUC. Hand-edited; `meshkit index` builds catalog.json from these files.
+# From FANUC's own repository, FANUC-CORPORATION/fanuc_description: every robot
+# file under */robot/. The licence is in its LICENSES/ folder and package.xml.
+family: fanuc
+maker: FANUC
+entries:
+  - id: cr_50f_16b
+    name: FANUC CR-35iB (CR/50F-16B)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_cr_description/robot/cr_50f_16b.urdf.xacro
+    licence: Apache-2.0
+  - id: crx10ia
+    name: FANUC CRX-10iA
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_crx_description/robot/crx10ia.urdf.xacro
+    licence: Apache-2.0
+  - id: crx10ia_l
+    name: FANUC CRX-10iA/L
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_crx_description/robot/crx10ia_l.urdf.xacro
+    licence: Apache-2.0
+  - id: crx10ia_lp
+    name: FANUC CRX-10iA/L Paint
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_crx_description/robot/crx10ia_lp.urdf.xacro
+    licence: Apache-2.0
+  - id: crx20ia_l
+    name: FANUC CRX-20iA/L
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_crx_description/robot/crx20ia_l.urdf.xacro
+    licence: Apache-2.0
+  - id: crx30ia
+    name: FANUC CRX-30iA
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_crx_description/robot/crx30ia.urdf.xacro
+    licence: Apache-2.0
+  - id: crx3ia
+    name: FANUC CRX-3iA
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_crx_description/robot/crx3ia.urdf.xacro
+    licence: Apache-2.0
+  - id: crx5ia
+    name: FANUC CRX-5iA
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_crx_description/robot/crx5ia.urdf.xacro
+    licence: Apache-2.0
+  - id: er4ia
+    name: FANUC ER-4iA (LR Mate/4-6D Entry)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_lrmate_description/robot/er4ia.urdf.xacro
+    licence: Apache-2.0
+  - id: lrmate10_11a
+    name: FANUC LR-10iA/10 (LR Mate/10-11A)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_lrmate_description/robot/lrmate10_11a.urdf.xacro
+    licence: Apache-2.0
+  - id: lrmate10_11afc
+    name: FANUC LR Mate/10-11A Food/Clean
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_lrmate_description/robot/lrmate10_11afc.urdf.xacro
+    licence: Apache-2.0
+  - id: lrmate200id
+    name: FANUC LR Mate 200iD (LR Mate/7-7D)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_lrmate_description/robot/lrmate200id.urdf.xacro
+    licence: Apache-2.0
+  - id: lrmate200id4s
+    name: FANUC LR Mate 200iD/4S (LR Mate/4-6D)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_lrmate_description/robot/lrmate200id4s.urdf.xacro
+    licence: Apache-2.0
+  - id: lrmate200id7c
+    name: FANUC LR Mate 200iD/7C (LR Mate/7-7D Food/Clean)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_lrmate_description/robot/lrmate200id7c.urdf.xacro
+    licence: Apache-2.0
+  - id: lrmate200id7l
+    name: FANUC LR Mate 200iD/7L (LR Mate/7-9D)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_lrmate_description/robot/lrmate200id7l.urdf.xacro
+    licence: Apache-2.0
+  - id: lrmate200id7lc
+    name: FANUC LR Mate 200iD/7LC (LR Mate/7-9D Food/Clean)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_lrmate_description/robot/lrmate200id7lc.urdf.xacro
+    licence: Apache-2.0
+  - id: lrmate200id7we
+    name: FANUC LR Mate 200iD/7WE (LR Mate/7-7D Wash)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_lrmate_description/robot/lrmate200id7we.urdf.xacro
+    licence: Apache-2.0
+  - id: lrmate25_19a
+    name: FANUC M-20iB/25 (LR Mate/25-19A)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_lrmate_description/robot/lrmate25_19a.urdf.xacro
+    licence: Apache-2.0
+  - id: lrmate25_19afc
+    name: FANUC M-20iB/25C (LR Mate/25-19A Food/Clean)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_lrmate_description/robot/lrmate25_19afc.urdf.xacro
+    licence: Apache-2.0
+  - id: lrmate35_14a
+    name: FANUC M-20iB/35S (LR Mate/35-14A)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_lrmate_description/robot/lrmate35_14a.urdf.xacro
+    licence: Apache-2.0
+  - id: m10_10_16d
+    name: FANUC M-10iD/10L (M-10/10-16D)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_m10_description/robot/m10_10_16d.urdf.xacro
+    licence: Apache-2.0
+  - id: m10_12_14d
+    name: FANUC M-10iD/12 (M-10/12-14D)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_m10_description/robot/m10_12_14d.urdf.xacro
+    licence: Apache-2.0
+  - id: m10_16_11d
+    name: FANUC M-10iD/16S (M-10/16-11D)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_m10_description/robot/m10_16_11d.urdf.xacro
+    licence: Apache-2.0
+  - id: m10_8_20d
+    name: FANUC M-10iD/8L (M-10/8-20D)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_m10_description/robot/m10_8_20d.urdf.xacro
+    licence: Apache-2.0
+  - id: m20_12_23d
+    name: FANUC M-20iD/12L (M-20/12-23D)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_m20_description/robot/m20_12_23d.urdf.xacro
+    licence: Apache-2.0
+  - id: m20_25_18d
+    name: FANUC M-20iD/25 (M-20/25-18D)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_m20_description/robot/m20_25_18d.urdf.xacro
+    licence: Apache-2.0
+  - id: m20_35_18d
+    name: FANUC M-20iD/35 (M-20/35-18D)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_m20_description/robot/m20_35_18d.urdf.xacro
+    licence: Apache-2.0
+  - id: m710ic_12l
+    name: FANUC M-710iC/12L (M-710/12-31C)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_m710_description/robot/m710ic_12l.urdf.xacro
+    licence: Apache-2.0
+  - id: m710ic_20l
+    name: FANUC M-710iC/20L (M-710/20-31C)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_m710_description/robot/m710ic_20l.urdf.xacro
+    licence: Apache-2.0
+  - id: m710ic_20m
+    name: FANUC M-710iC/20M (M-710/20-26C)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_m710_description/robot/m710ic_20m.urdf.xacro
+    licence: Apache-2.0
+  - id: m710ic_45m
+    name: FANUC M-710iC/45M
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_m710_description/robot/m710ic_45m.urdf.xacro
+    licence: Apache-2.0
+  - id: m710ic_50
+    name: FANUC M-710iC/50
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_m710_description/robot/m710ic_50.urdf.xacro
+    licence: Apache-2.0
+  - id: m710ic_50e
+    name: FANUC M-710iC/50E
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_m710_description/robot/m710ic_50e.urdf.xacro
+    licence: Apache-2.0
+  - id: m710ic_50s
+    name: FANUC M-710iC/50S
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_m710_description/robot/m710ic_50s.urdf.xacro
+    licence: Apache-2.0
+  - id: m710ic_70
+    name: FANUC M-710iC/70 (M-710/70-21C)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_m710_description/robot/m710ic_70.urdf.xacro
+    licence: Apache-2.0
+  - id: m710id_50m
+    name: FANUC M-710iD/50M (M-710/50-26D)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_m710_description/robot/m710id_50m.urdf.xacro
+    licence: Apache-2.0
+  - id: m710id_70
+    name: FANUC M-710iD/70 (M-710/70-21D)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_m710_description/robot/m710id_70.urdf.xacro
+    licence: Apache-2.0
+  - id: m800_60_20b
+    name: FANUC M-800iB/60 (M-800/60-20B)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_m800_description/robot/m800_60_20b.urdf.xacro
+    licence: Apache-2.0
+  - id: m810_190_20b
+    name: FANUC M-810/190-20B
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_m810_description/robot/m810_190_20b.urdf.xacro
+    licence: Apache-2.0
+  - id: m810_270_27b
+    name: FANUC M-810/270-27B
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_m810_description/robot/m810_270_27b.urdf.xacro
+    licence: Apache-2.0
+  - id: p350ia_45_lh
+    name: FANUC P-350iA/45 (left hand)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_paint_description/robot/p350ia_45_lh.urdf.xacro
+    licence: Apache-2.0
+  - id: p350ia_45_rh
+    name: FANUC P-350iA/45 (right hand)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_paint_description/robot/p350ia_45_rh.urdf.xacro
+    licence: Apache-2.0
+  - id: r1000ia_100f
+    name: FANUC R-1000iA/100F (R-1000/100F-22A)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r1000ia_description/robot/r1000ia_100f.urdf.xacro
+    licence: Apache-2.0
+  - id: r1000ia_130f
+    name: FANUC R-1000iA/130F (R-1000/130F-22A)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r1000ia_description/robot/r1000ia_130f.urdf.xacro
+    licence: Apache-2.0
+  - id: r1000ia_80f
+    name: FANUC R-1000iA/80F (R-1000/80-22A)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r1000ia_description/robot/r1000ia_80f.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000_120r_39e
+    name: FANUC R-2000/120R-39E
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000_120r_39e.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000_125f_31e
+    name: FANUC R-2000/125F-31E
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000_125f_31e.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000_180f_27e
+    name: FANUC R-2000/180F-27E
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000_180f_27e.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000_210f_31e
+    name: FANUC R-2000/210F-31E
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000_210f_31e.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000_210r_31e
+    name: FANUC R-2000/210R-31E
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000_210r_31e.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000_225f_27e
+    name: FANUC R-2000/225F-27E
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000_225f_27e.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000_270r_31e
+    name: FANUC R-2000/270R-31E
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000_270r_31e.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000_300f_27e
+    name: FANUC R-2000/300F-27E
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000_300f_27e.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000ic_100p
+    name: FANUC R-2000iC/100P
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000ic_100p.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000ic_100ph
+    name: FANUC R-2000iC/100PH (R-2000/100R-35C)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000ic_100ph.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000ic_125l
+    name: FANUC R-2000iC/125L (R-2000/125F-31C)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000ic_125l.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000ic_165f
+    name: FANUC R-2000iC/165F (R-2000/165F-27C)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000ic_165f.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000ic_165r
+    name: FANUC R-2000iC/165R (R-2000/165R-31C)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000ic_165r.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000ic_190s
+    name: FANUC R-2000iC/190S (R-2000/190-20C)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000ic_190s.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000ic_190u
+    name: FANUC R-2000iC/190U
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000ic_190u.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000ic_210f
+    name: FANUC R-2000iC/210F (R-2000/210F-27C)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000ic_210f.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000ic_210l
+    name: FANUC R-2000iC/210L (R-2000/210F-31C)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000ic_210l.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000ic_210r
+    name: FANUC R-2000iC/210R (R-2000/210R-31C)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000ic_210r.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000ic_210we
+    name: FANUC R-2000iC/210WE (R-2000/210F-25C Wash)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000ic_210we.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000ic_220u
+    name: FANUC R-2000iC/220U (R-2000/220U-25C)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000ic_220u.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000ic_240f
+    name: FANUC R-2000iC/240F (R-2000/240F-27C)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000ic_240f.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000ic_270f
+    name: FANUC R-2000iC/270F (R-2000/270F-27C)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000ic_270f.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000ic_270r
+    name: FANUC R-2000iC/270R (R-2000/270R-31C)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000ic_270r.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000id_100fh
+    name: FANUC R-2000iD/100FH (R-2000/100F-26D Hollow)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000id_100fh.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000id_165fh
+    name: FANUC R-2000iD/165FH (R-2000/165F-26D Hollow)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000id_165fh.urdf.xacro
+    licence: Apache-2.0
+  - id: r2000id_210fh
+    name: FANUC R-2000iD/210FH (R-2000/210F-26D Hollow)
+    category: arm
+    submodule: fanuc_description
+    entry: src/fanuc_description/fanuc_r2000_description/robot/r2000id_210fh.urdf.xacro
+    licence: Apache-2.0

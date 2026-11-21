@@ -90,3 +90,23 @@
 	path = src/doosan-robot2
 	url = git@github.com:ebgenius/doosan-robot2.git
 	branch = jazzy
+[submodule "src/fanuc_description"]
+	path = src/fanuc_description
+	url = git@github.com:ebgenius/fanuc_description.git
+	branch = main
+[submodule "src/motoman_ros2_support_packages"]
+	path = src/motoman_ros2_support_packages
+	url = git@github.com:ebgenius/motoman_ros2_support_packages.git
+	branch = main
+[submodule "src/COMAU-ROS2-DRIVER"]
+	path = src/COMAU-ROS2-DRIVER
+	url = git@github.com:ebgenius/COMAU-ROS2-DRIVER.git
+	branch = main
+[submodule "src/MyCo-ROS2"]
+	path = src/MyCo-ROS2
+	url = git@github.com:ebgenius/MyCo-ROS2.git
+	branch = main
+[submodule "src/anymal_d_simple_description"]
+	path = src/anymal_d_simple_description
+	url = git@github.com:ebgenius/anymal_d_simple_description.git
+	branch = master

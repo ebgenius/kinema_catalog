@@ -1,9 +1,9 @@
 # Robot description audit
 
-Written by `meshkit audit` on 2026-11-21 01:20 UTC. Every robot in the catalog's forks, and every robot in the repositories the upstream report's lists name, measured the same way and scored out of 100. [`audit.json`](audit.json) has every measurement.
+Written by `meshkit audit` on 2026-11-21 01:25 UTC. Every robot in the catalog's forks, and every robot in the repositories the upstream report's lists name, measured the same way and scored out of 100. [`audit.json`](audit.json) has every measurement.
 
-- **The catalog:** 128 entries in 23 forks.
-- **Candidates:** 3482 robots in 154 of 164 repositories or folders; 3 could not be audited (listed at the end).
+- **The catalog:** 267 entries in 28 forks.
+- **Candidates:** 3481 robots in 153 of 163 repositories or folders; 3 could not be audited (listed at the end).
 
 ## How a robot is scored
 
@@ -27,6 +27,7 @@ Not measured: whether Kinema imports the robot, and whether its kinematics match
 | irb4600 | abb_ros2 | 85 | Apache-2.0 | 100% | 0% | 100% | 50% | 38,491 | 2.65 |
 | anymal_b | anymal_b_simple_description | 86 | BSD-3-Clause | 100% | 76% | 100% | 100% | 481,370 | 21.24 |
 | anymal_c | anymal_c_simple_description | 90 | BSD-3-Clause | 100% | 98% | 100% | 98% | 58,320 | 5.07 |
+| anymal_d | anymal_d_simple_description | 95 | BSD-3-Clause | 100% | 97% | 100% | 100% | 19,584 | 1.79 |
 | dingo_o | clearpath_common | 99 | BSD-3-Clause | 100% | 100% | 100% | 100% | 322,314 | 20.63 |
 | dingo_o150 | clearpath_common | 99 | BSD-3-Clause | 100% | 100% | 100% | 100% | 322,314 | 20.63 |
 | husky | clearpath_common | 97 | BSD-3-Clause | 100% | 67% | 100% | 100% | 123,884 | 4.94 |
@@ -36,6 +37,20 @@ Not measured: whether Kinema imports the robot, and whether its kinematics match
 | warthog | clearpath_common | 81 | BSD-3-Clause | 100% | 58% | 0% | 50% | 58,712 | 0.91 |
 | husky_a300 | clearpath_common | 80 | BSD-3-Clause | 100% | 38% | 20% | 60% | 592,090 | 15.77 |
 | ridgeback | clearpath_common | 79 | BSD-3-Clause | 100% | 44% | 0% | 50% | 4,228 | 0.12 |
+| edo | COMAU-ROS2-DRIVER | 97 | MIT | 100% | 100% | 88% | 94% | 372,110 | 22.31 |
+| nj130_26 | COMAU-ROS2-DRIVER | 85 | MIT | 100% | 100% | 0% | 50% | 40,774 | 2.04 |
+| nj165_30 | COMAU-ROS2-DRIVER | 85 | MIT | 100% | 100% | 0% | 50% | 50,856 | 2.54 |
+| nj4_110 | COMAU-ROS2-DRIVER | 85 | MIT | 100% | 100% | 0% | 50% | 228,210 | 11.41 |
+| nj4_170_29 | COMAU-ROS2-DRIVER | 85 | MIT | 100% | 100% | 0% | 50% | 59,628 | 2.98 |
+| aura | COMAU-ROS2-DRIVER | 84 | MIT | 100% | 100% | 0% | 50% | 478,504 | 23.93 |
+| racer3_robolab | COMAU-ROS2-DRIVER | 84 | MIT | 100% | 100% | 0% | 39% | 126,542 | 6.33 |
+| nj220 | COMAU-ROS2-DRIVER | 83 | MIT | 100% | 88% | 0% | 44% | 53,590 | 2.68 |
+| nj60 | COMAU-ROS2-DRIVER | 83 | MIT | 100% | 88% | 0% | 44% | 71,080 | 3.55 |
+| racer3_063 | COMAU-ROS2-DRIVER | 83 | MIT | 100% | 88% | 0% | 44% | 69,842 | 3.49 |
+| racer5_080 | COMAU-ROS2-DRIVER | 83 | MIT | 100% | 88% | 0% | 44% | 201,169 | 10.06 |
+| racer7_14 | COMAU-ROS2-DRIVER | 83 | MIT | 100% | 88% | 0% | 44% | 56,882 | 2.84 |
+| racer5_cobot | COMAU-ROS2-DRIVER | 82 | MIT | 100% | 88% | 0% | 44% | 416,054 | 20.8 |
+| racer5_cobot_rail | COMAU-ROS2-DRIVER | 82 | MIT | 100% | 100% | 0% | 50% | 824,658 | 41.23 |
 | create3 | create3_sim | 90 | BSD-3-Clause | 100% | 100% | 100% | 70% | 11,828 | 1.58 |
 | a0509 | doosan-robot2 | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 89,962 | 6.38 |
 | a0912 | doosan-robot2 | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 92,121 | 7.43 |
@@ -47,6 +62,77 @@ Not measured: whether Kinema imports the robot, and whether its kinematics match
 | m1509 | doosan-robot2 | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 58,382 | 4.12 |
 | e0509 | doosan-robot2 | 95 | Apache-2.0 | 100% | 100% | 100% | 50% | 84,002 | 6.22 |
 | p3020 | doosan-robot2 | 85 | Apache-2.0 | 100% | 100% | 0% | 50% | 79,070 | 3.96 |
+| cr_50f_16b | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 173,334 | 14.45 |
+| crx10ia | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 82,294 | 5.98 |
+| crx10ia_l | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 91,550 | 6.62 |
+| crx10ia_lp | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 116,228 | 8.57 |
+| crx20ia_l | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 96,350 | 7.16 |
+| crx30ia | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 91,578 | 6.69 |
+| crx3ia | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 64,266 | 5.02 |
+| crx5ia | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 91,448 | 7.22 |
+| er4ia | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 88,432 | 7.59 |
+| lrmate10_11a | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 63,107 | 5.29 |
+| lrmate10_11afc | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 64,445 | 5.41 |
+| lrmate200id | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 82,234 | 7.03 |
+| lrmate200id4s | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 88,432 | 7.59 |
+| lrmate200id7c | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 81,848 | 7.0 |
+| lrmate200id7l | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 79,095 | 6.78 |
+| lrmate200id7lc | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 78,709 | 6.75 |
+| lrmate200id7we | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 83,678 | 7.15 |
+| lrmate25_19a | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 166,288 | 14.09 |
+| lrmate25_19afc | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 168,054 | 14.22 |
+| lrmate35_14a | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 148,424 | 12.5 |
+| m10_10_16d | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 77,418 | 6.07 |
+| m10_12_14d | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 72,478 | 5.7 |
+| m10_16_11d | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 106,272 | 8.67 |
+| m10_8_20d | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 83,518 | 6.59 |
+| m20_12_23d | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 118,019 | 9.73 |
+| m20_25_18d | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 122,323 | 10.17 |
+| m20_35_18d | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 125,363 | 10.23 |
+| m710ic_12l | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 35,260 | 2.89 |
+| m710ic_20l | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 29,190 | 2.36 |
+| m710ic_20m | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 31,242 | 2.53 |
+| m710ic_45m | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 41,984 | 3.48 |
+| m710ic_50 | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 37,202 | 3.11 |
+| m710ic_50e | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 54,720 | 4.58 |
+| m710ic_50s | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 33,100 | 2.58 |
+| m710ic_70 | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 36,954 | 3.09 |
+| m710id_50m | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 72,589 | 5.69 |
+| m710id_70 | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 101,786 | 7.75 |
+| m800_60_20b | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 68,988 | 5.56 |
+| m810_190_20b | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 127,390 | 9.89 |
+| m810_270_27b | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 129,084 | 10.01 |
+| p350ia_45_lh | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 31,626 | 2.39 |
+| p350ia_45_rh | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 31,626 | 2.39 |
+| r1000ia_100f | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 83,368 | 6.99 |
+| r1000ia_130f | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 76,706 | 6.45 |
+| r1000ia_80f | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 83,368 | 6.99 |
+| r2000_120r_39e | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 175,459 | 14.32 |
+| r2000_125f_31e | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 55,916 | 4.6 |
+| r2000_180f_27e | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 56,252 | 4.62 |
+| r2000_210f_31e | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 133,887 | 10.93 |
+| r2000_210r_31e | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 176,607 | 14.53 |
+| r2000_225f_27e | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 56,252 | 4.62 |
+| r2000_270r_31e | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 227,434 | 18.34 |
+| r2000_300f_27e | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 181,686 | 14.56 |
+| r2000ic_100p | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 75,870 | 6.04 |
+| r2000ic_100ph | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 76,214 | 6.07 |
+| r2000ic_125l | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 69,724 | 5.56 |
+| r2000ic_165f | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 69,594 | 5.54 |
+| r2000ic_165r | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 73,078 | 5.89 |
+| r2000ic_190s | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 96,018 | 7.45 |
+| r2000ic_190u | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 84,448 | 6.53 |
+| r2000ic_210f | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 69,594 | 5.54 |
+| r2000ic_210l | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 86,232 | 6.62 |
+| r2000ic_210r | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 73,078 | 5.89 |
+| r2000ic_210we | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 86,014 | 6.25 |
+| r2000ic_220u | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 63,508 | 5.08 |
+| r2000ic_240f | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 69,594 | 5.54 |
+| r2000ic_270f | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 86,576 | 6.64 |
+| r2000ic_270r | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 92,666 | 7.17 |
+| r2000id_100fh | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 80,497 | 6.41 |
+| r2000id_165fh | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 80,497 | 6.41 |
+| r2000id_210fh | fanuc_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 80,497 | 6.41 |
 | fer | franka_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 134,924 | 10.53 |
 | fp3 | franka_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 240,624 | 27.29 |
 | fr3 | franka_description | 100 | Apache-2.0 | 100% | 100% | 100% | 100% | 240,624 | 27.28 |
@@ -106,6 +192,59 @@ Not measured: whether Kinema imports the robot, and whether its kinematics match
 | lino_2wd | linorobot2 | 85 | Apache-2.0 | 100% | 100% | - | 50% | 0 | 0 |
 | lino_4wd | linorobot2 | 85 | Apache-2.0 | 100% | 100% | - | 50% | 0 | 0 |
 | lino_mecanum | linorobot2 | 85 | Apache-2.0 | 100% | 100% | - | 50% | 0 | 0 |
+| gp165r | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 27,198 | 2.54 |
+| gp20hl | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 34,043 | 3.18 |
+| gp215 | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 15,623 | 0.92 |
+| gp225 | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 42,482 | 2.61 |
+| gp25 | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 33,301 | 3.44 |
+| gp250 | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 20,526 | 1.2 |
+| gp25_12 | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 32,284 | 3.24 |
+| gp25_20 | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 26,555 | 2.84 |
+| gp35l | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 40,706 | 2.46 |
+| gp4 | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 38,130 | 2.7 |
+| gp70l | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 44,256 | 2.74 |
+| gp8l | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 34,138 | 3.17 |
+| hc10 | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 42,398 | 2.86 |
+| hc10dt | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 46,614 | 3.18 |
+| hc10dt_b10 | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 32,324 | 2.06 |
+| hc10dtp_b00 | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 32,460 | 2.04 |
+| hc20dt | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 35,460 | 2.86 |
+| hc20dtp | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 34,996 | 2.81 |
+| hc30pl | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 34,996 | 2.81 |
+| mpx1950 | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 42,442 | 2.58 |
+| up50n_35 | motoman_ros2_support_packages | 82 | BSD-3-Clause | 100% | 0% | 100% | 100% | 6,243 | 0.42 |
+| sia5d | motoman_ros2_support_packages | 72 | BSD-3-Clause | 100% | 0% | 100% | 0% | 10,420 | 0.71 |
+| ar2010 | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 34,163 | 1.71 |
+| gp110 | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 55,056 | 2.75 |
+| gp12 | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 80,002 | 4.0 |
+| gp180 | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 75,577 | 3.78 |
+| gp180_120 | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 84,671 | 4.23 |
+| gp200r | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 55,573 | 2.78 |
+| gp50 | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 69,864 | 3.49 |
+| gp7 | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 76,756 | 3.84 |
+| gp8 | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 72,498 | 3.63 |
+| gp88 | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 130,249 | 6.51 |
+| ma2010 | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 26,182 | 1.31 |
+| mh110 | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 55,056 | 2.75 |
+| mh12 | motoman_ros2_support_packages | 68 | Apache-2.0 | 100% | 0% | 0% | 50% | 84,200 | 4.21 |
+| mh5 | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 35,723 | 1.79 |
+| mh50 | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 56,801 | 2.84 |
+| mh5l | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 49,814 | 2.49 |
+| motomini | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 18,910 | 0.95 |
+| ms210 | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 52,600 | 2.63 |
+| sia10d | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 9,904 | 0.5 |
+| sia10f | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 9,904 | 0.5 |
+| sia20d | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 20,914 | 1.05 |
+| sia30d | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 74,662 | 3.73 |
+| sia50 | motoman_ros2_support_packages | 68 | BSD-3-Clause | 100% | 0% | 0% | 50% | 52,861 | 2.64 |
+| es165 | motoman_ros2_support_packages | 64 | Apache-2.0 | 100% | 0% | 0% | 14% | 47,745 | 2.39 |
+| es200_120 | motoman_ros2_support_packages | 64 | Apache-2.0 | 100% | 0% | 0% | 14% | 50,292 | 2.52 |
+| myco_10_100 | MyCo-ROS2 | 85 | MIT | 100% | 100% | 0% | 50% | 85,460 | 4.27 |
+| myco_15_130 | MyCo-ROS2 | 85 | MIT | 100% | 100% | 0% | 50% | 81,270 | 4.06 |
+| myco_3_059 | MyCo-ROS2 | 85 | MIT | 100% | 100% | 0% | 50% | 80,552 | 4.03 |
+| myco_3_5_095 | MyCo-ROS2 | 85 | MIT | 100% | 100% | 0% | 50% | 117,510 | 5.88 |
+| myco_5_080 | MyCo-ROS2 | 85 | MIT | 100% | 100% | 0% | 50% | 81,686 | 4.08 |
+| myco_8_130 | MyCo-ROS2 | 85 | MIT | 100% | 100% | 0% | 50% | 85,392 | 4.27 |
 | omx | open_manipulator | 84 | Apache-2.0 | 100% | 88% | 0% | 50% | 81,644 | 4.08 |
 | omy_3m | open_manipulator | 83 | Apache-2.0 | 100% | 88% | 0% | 50% | 367,696 | 18.39 |
 | gen3 | ros2_kortex | 100 | BSD-3-Clause | 100% | 100% | 100% | 100% | 75,529 | 5.09 |
@@ -154,7 +293,7 @@ Not measured: whether Kinema imports the robot, and whether its kinematics match
 
 ## The 100 best-scoring candidates
 
-One row per ROS package: 2531 packages (or files outside any) hold the 3482 candidate robots. Each row shows the package's most complete robot (the file with the most links among those that flatten) and how many robot files the package has; its components and other variants are in the repository's details below.
+One row per ROS package: 2530 packages (or files outside any) hold the 3481 candidate robots. Each row shows the package's most complete robot (the file with the most links among those that flatten) and how many robot files the package has; its components and other variants are in the repository's details below.
 
 | Score | Package | Robot | Links | Files | Repository | Licence | Formats | Triangles |
 |--:|---|---|--:|--:|---|---|---|--:|
@@ -196,7 +335,6 @@ One row per ROS package: 2531 packages (or files outside any) hold the 3482 cand
 | 96 | zsl1_description | `zsibot/zsl1_description/xacro/robot.xacro` | 17 | 1 | [fiveages-sim/robot-descriptions-quadruped](https://github.com/fiveages-sim/robot-descriptions-quadruped) | BSD3 | 5 OBJ | 837,007 |
 | 96 | zerith_h1_description | `humanoid/zerith/zerith_h1_description/xacro/robot.xacro` | 36 | 3 | [fiveages-sim/robot_descriptions/humanoid/zerith/zerith_h1_description](https://github.com/fiveages-sim/robot_descriptions/tree/HEAD/humanoid/zerith/zerith_h1_description) | Apache-2.0 | 19 GLB | 745,926 |
 | 96 | openarm_description | `manipulator/openarm/openarm_description/xacro/ros2_control/robot.xacro` | 26 | 5 | [fiveages-sim/robot_descriptions/manipulator/openarm/openarm_description](https://github.com/fiveages-sim/robot_descriptions/tree/HEAD/manipulator/openarm/openarm_description) | Apache-2.0 | 11 OBJ | 927,072 |
-| 95 | anymal_d_simple_description | `urdf/anymal.urdf` | 96 | 1 | [ANYbotics/anymal_d_simple_description](https://github.com/ANYbotics/anymal_d_simple_description) | BSD-3-Clause | 17 DAE | 19,584 |
 | 95 | - | `v2/cell/cell.xml` | 1 | 1 | [enactic/openarm_mujoco](https://github.com/enactic/openarm_mujoco) | Apache-2.0 | 22 OBJ, 8 STL | 56,457 |
 | 95 | unitree_go2_description | `unitree/unitree_go2_description/xacro/robot.xacro` | 21 | 5 | [fiveages-sim/robot-descriptions-quadruped](https://github.com/fiveages-sim/robot-descriptions-quadruped) | BSD | 5 DAE | 381,016 |
 | 95 | agibot_a2_description | `humanoid/agibot/agibot_a2_description/xacro/robot.xacro` | 57 | 2 | [fiveages-sim/robot_descriptions/humanoid/agibot/agibot_a2_description](https://github.com/fiveages-sim/robot_descriptions/tree/HEAD/humanoid/agibot/agibot_a2_description) | Apache-2.0 | 25 OBJ | 709,462 |
@@ -258,6 +396,7 @@ One row per ROS package: 2531 packages (or files outside any) hold the 3482 cand
 | 92 | - | `examples/pybullet/gym/pybullet_data/cube_small.urdf` | 1 | 1 | [bulletphysics/bullet3](https://github.com/bulletphysics/bullet3) | NOASSERTION | 1 OBJ | 12 |
 | 92 | - | `examples/pybullet/gym/pybullet_data/domino/domino.urdf` | 1 | 1 | [bulletphysics/bullet3](https://github.com/bulletphysics/bullet3) | NOASSERTION | 1 OBJ | 48 |
 | 92 | - | `examples/pybullet/gym/pybullet_data/jenga/jenga.urdf` | 1 | 1 | [bulletphysics/bullet3](https://github.com/bulletphysics/bullet3) | NOASSERTION | 1 OBJ | 12 |
+| 92 | - | `examples/pybullet/gym/pybullet_data/laikago/laikago.urdf` | 13 | 1 | [bulletphysics/bullet3](https://github.com/bulletphysics/bullet3) | NOASSERTION | 8 OBJ | 36,490 |
 
 ## Every candidate, by repository
 
@@ -864,16 +1003,6 @@ From: fiveages robots. Commit `bd491829961a`.
 | 96 | `humanoid/zerith/zerith_h1_description/xacro/components/body.xacro` | xacro | 15 · 10 · 20 · 13.5 · 8.3 · 20 · 9 |  |
 | 96 | `humanoid/zerith/zerith_h1_description/xacro/robot.xacro` | xacro | 15 · 10 · 20 · 14.3 · 9.7 · 20 · 7 |  |
 | 25 | `humanoid/zerith/zerith_h1_description/urdf/ZR_H1PRO-1.2.00.H.V4.3_URDF_2025.12.02.urdf` | urdf | 15 · 10 · 0 · 0 · 0 · 0 · 0 | 35 visual mesh file(s) missing |
-
-</details>
-
-<details><summary><b>ANYbotics/anymal_d_simple_description</b>: best 95, 1 robot(s), BSD-3-Clause, last commit 2025-02-15</summary>
-
-From: awesome-robot-descriptions, robot_descriptions.py. Commit `d5bf4dc3a81a`.
-
-| Score | Robot | Kind | Parts: licence · alive · flattens · limits · inertia · look · weight | Note |
-|--:|---|---|---|---|
-| 95 | `urdf/anymal.urdf` | urdf | 15 · 5 · 20 · 15 · 9.7 · 20 · 10 |  |
 
 </details>
 
