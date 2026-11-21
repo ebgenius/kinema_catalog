@@ -1,6 +1,6 @@
 # Robot description audit
 
-Written by `meshkit audit` on 2026-11-20 16:40 UTC. Every robot in the catalog's forks, and every robot in the repositories the upstream report's lists name, measured the same way and scored out of 100. [`audit.json`](audit.json) has every measurement.
+Written by `meshkit audit` on 2026-11-21 01:20 UTC. Every robot in the catalog's forks, and every robot in the repositories the upstream report's lists name, measured the same way and scored out of 100. [`audit.json`](audit.json) has every measurement.
 
 - **The catalog:** 128 entries in 23 forks.
 - **Candidates:** 3482 robots in 154 of 164 repositories or folders; 3 could not be audited (listed at the end).
@@ -109,7 +109,7 @@ Not measured: whether Kinema imports the robot, and whether its kinematics match
 | omx | open_manipulator | 84 | Apache-2.0 | 100% | 88% | 0% | 50% | 81,644 | 4.08 |
 | omy_3m | open_manipulator | 83 | Apache-2.0 | 100% | 88% | 0% | 50% | 367,696 | 18.39 |
 | gen3 | ros2_kortex | 100 | BSD-3-Clause | 100% | 100% | 100% | 100% | 75,529 | 5.09 |
-| gen3_lite | ros2_kortex | 25 | BSD-3-Clause | - | - | - | - | 0 | 0 |
+| gen3_lite | ros2_kortex | 85 | BSD-3-Clause | 100% | 100% | 0% | 50% | 187,176 | 9.36 |
 | so100 | SO-ARM100 | 85 | Apache-2.0 | 100% | 100% | 0% | 50% | 60,682 | 3.04 |
 | so101 | SO-ARM100 | 84 | Apache-2.0 | 100% | 100% | 0% | 50% | 398,884 | 16.13 |
 | spot | spot_description | 99 | MIT | 100% | 92% | 100% | 100% | 127,509 | 21.19 |
