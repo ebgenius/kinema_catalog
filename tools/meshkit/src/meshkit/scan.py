@@ -44,6 +44,9 @@ import yaml
 from meshkit.catalog import load as load_catalog
 
 MESH_SUFFIX = ".dae"
+# What `convert` takes: COLLADA, and since step 6 the formats with no shading of
+# their own (STL) or only what an exporter happened to write (OBJ).
+MESH_SUFFIXES = (".dae", ".stl", ".obj")
 XML_SUFFIXES = (".urdf", ".xacro")
 YAML_SUFFIXES = (".yaml", ".yml")
 SKIP_DIRS = {".git", "build", "install", "log", "__pycache__", "node_modules"}
@@ -247,8 +250,12 @@ def _to_regex(relative: str) -> re.Pattern[str]:
 # ---------------------------------------------------------------------- scanner
 
 class Scanner:
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, suffixes: tuple[str, ...] = (MESH_SUFFIX,)):
         self.root = root.resolve()
+        # The mesh formats this scan is about. References to any other format
+        # are not its concern, as a .stl reference was not when only .dae was.
+        self.suffixes = tuple(s.lower() for s in suffixes)
+        self.kind = self.suffixes[0] if len(self.suffixes) == 1 else "mesh"
         self.src = self.root / "src"
         self.packages: dict[str, list[Package]] = {}
         self.meshes: dict[Path, MeshFile] = {}
@@ -271,9 +278,10 @@ class Scanner:
                     if name:
                         self.packages.setdefault(name, []).append(
                             Package(name, path.parent.resolve(), fork_dir.name))
-                elif path.suffix.lower() == MESH_SUFFIX:
+                elif path.suffix.lower() in self.suffixes:
                     resolved = path.resolve()
-                    self.meshes[resolved] = MeshFile(resolved, fork_dir.name, _up_axis(path))
+                    up = _up_axis(path) if path.suffix.lower() == MESH_SUFFIX else None
+                    self.meshes[resolved] = MeshFile(resolved, fork_dir.name, up)
 
     @staticmethod
     def _package_name(path: Path) -> str | None:
@@ -331,10 +339,10 @@ class Scanner:
         # any package lookup: a missing package matters only for a .dae.
         last = _FIND.sub("", text).replace("\\", "/").rsplit("/", 1)[-1]
         tail = _VAR.split(last)[-1]
-        if "." in tail and not tail.lower().endswith(MESH_SUFFIX):
+        if "." in tail and not tail.lower().endswith(self.suffixes):
             return [], None
-        if not _VAR.search(last) and not last.lower().endswith(MESH_SUFFIX):
-            return [], None  # not a .dae reference -- not this tool's concern
+        if not _VAR.search(last) and not last.lower().endswith(self.suffixes):
+            return [], None  # not a format this scan covers -- not its concern
 
         if text.startswith("package://"):
             package_part, _, relative = text[len("package://"):].partition("/")
@@ -367,10 +375,10 @@ class Scanner:
             candidate = Path(drive.group(1) if drive else text).resolve()
             if candidate in self.meshes:
                 return [candidate], None
-            if candidate.suffix.lower() != MESH_SUFFIX:
+            if candidate.suffix.lower() not in self.suffixes:
                 return [], None
             if candidate.is_relative_to(self.root):
-                return [], "no such .dae file"
+                return [], f"no such {self.kind} file"
             return [], "absolute path outside the catalog"
         elif text.startswith("/") or _WIN_DRIVE.match(text):
             return [], "absolute path outside any package"
@@ -392,7 +400,7 @@ class Scanner:
                 if pattern.fullmatch(rel):
                     matches.add(mesh_path)
         if not matches:
-            return [], "no .dae file matches"
+            return [], f"no {self.kind} file matches"
         return sorted(matches), None
 
     def _record(self, source: Path, line: int, raw: str, role: str,
@@ -437,13 +445,13 @@ class Scanner:
 
     def scan_yaml(self, path: Path) -> None:
         text = _read_text(path)
-        if MESH_SUFFIX not in text.lower():
+        if not any(suffix in text.lower() for suffix in self.suffixes):
             return
         try:
             documents = list(yaml.load_all(text, Loader=_TolerantLoader))
         except yaml.YAMLError:
             self.refs.append(MeshRef(path, 1, "", "other", [],
-                                     "YAML mentions .dae but could not be parsed",
+                                     f"YAML mentions {self.kind} but could not be parsed",
                                      fork=fork_of(self.root, path)))
             return
 
@@ -454,7 +462,7 @@ class Scanner:
             elif isinstance(node, list):
                 for item in node:
                     walk(item, keys, parent)
-            elif isinstance(node, str) and node.strip().lower().endswith(MESH_SUFFIX):
+            elif isinstance(node, str) and node.strip().lower().endswith(self.suffixes):
                 lowered = [k.lower() for k in keys]
                 role = ("visual" if any("visual" in k for k in lowered)
                         else "collision" if any("collision" in k for k in lowered)
@@ -561,6 +569,11 @@ def render_xacro(path: Path, args: dict[str, str], mapping: dict[str, str]) -> s
     raise RuntimeError("too many undeclared xacro arguments")
 
 
-def scan(root: Path, *, render: bool = True) -> Inventory:
-    """Scan every submodule under ``root/src``; ``render`` adds the manifest robots."""
-    return Scanner(root).run(render=render)
+def scan(root: Path, *, render: bool = True,
+         suffixes: tuple[str, ...] = (MESH_SUFFIX,)) -> Inventory:
+    """Scan every submodule under ``root/src``; ``render`` adds the manifest robots.
+
+    ``suffixes`` are the mesh formats to inventory: .dae by default, as
+    ``scan`` has always reported; ``convert`` passes every format it takes.
+    """
+    return Scanner(root, suffixes).run(render=render)

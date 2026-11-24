@@ -59,3 +59,21 @@ def test_doctor_reports_drift_without_running_the_importer(tmp_path, monkeypatch
     out = capsys.readouterr().out
     assert "DIFFERS from the pinned copy" in out and "NOT ready" in out
     assert not marker.exists()
+
+
+@pytest.mark.parametrize("angle", ["0", "180", "-5", "flat"])
+def test_smooth_angle_must_be_a_real_angle(angle, capsys):
+    with pytest.raises(SystemExit) as exit_info:
+        main(["convert", "--file", "x.stl", "--smooth-angle", angle])
+    assert exit_info.value.code == 2
+    assert "--smooth-angle" in capsys.readouterr().err
+
+
+def test_convert_refuses_a_format_it_does_not_take(tmp_path):
+    root = tmp_path / "catalog"
+    (root / "src").mkdir(parents=True)
+    (root / "catalog").mkdir()
+    ply = root / "src" / "part.ply"
+    ply.write_text("", encoding="utf-8")
+    with pytest.raises(SystemExit, match="convert takes .dae, .stl, .obj files, not"):
+        main(["--root", str(root), "convert", "--file", str(ply)])

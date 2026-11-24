@@ -1,4 +1,8 @@
-"""``meshkit convert``: .dae visual meshes to .glb, gated.
+"""``meshkit convert``: .dae, .stl and .obj visual meshes to .glb, gated.
+
+For an .stl or .obj, checks 3 and 4 read the file with trimesh instead of
+pycollada, and the shading check bounds the new normals by the smoothing
+angle instead of holding them to the file's (``_judge_plain``).
 
 Every GLB is produced in a staging directory and only moved next to its source
 once it has passed all four checks:
@@ -32,8 +36,9 @@ import collada
 from meshkit import __version__
 from meshkit._vendor import VENDORED_FILE, importer_provenance
 from meshkit.blender import TIMED_OUT, Blender, run_script
-from meshkit.external import dae_stats, glb_stats
-from meshkit.gate import DEFAULT, Tolerance, compare, compare_normals
+from meshkit.external import dae_stats, glb_stats, plain_stats
+from meshkit.gate import (DEFAULT, SMOOTH_ANGLE, Tolerance, check_smoothed, compare,
+                          compare_normals)
 
 JOB_SCRIPT = Path(__file__).parent / "blender_side" / "job.py"
 
@@ -70,6 +75,10 @@ class Item:
     output_sha256: str | None = None
     up_axis: str | None = None
     unit_meter: float | None = None
+    # STL and OBJ only: what was done to the mesh on its way to the GLB.
+    smooth_angle: float | None = None
+    welded_vertices: int | None = None
+    neutral_material: bool | None = None
     importer_warnings: list[str] = field(default_factory=list)
     # glTF export options this Blender does not have, so the export ran without them.
     dropped_export_options: list[str] = field(default_factory=list)
@@ -127,6 +136,8 @@ def _judge(result: dict, tolerance: Tolerance) -> tuple[list[str], dict | None]:
     except Exception as exc:  # noqa: BLE001 - an unreadable GLB is a failure, not a crash
         problems.append(f"trimesh could not read the GLB: {type(exc).__name__}: {exc}")
         return problems, external
+    if Path(result["source"]).suffix.lower() != ".dae":
+        return problems + _judge_plain(result, external, tolerance), external
     try:
         source = dae_stats(Path(result["source"]))
         external["source_normal_deviation"] = source["normal_deviation"]
@@ -143,6 +154,31 @@ def _judge(result: dict, tolerance: Tolerance) -> tuple[list[str], dict | None]:
     return problems, external
 
 
+def _judge_plain(result: dict, external: dict, tolerance: Tolerance) -> list[str]:
+    """The STL and OBJ checks that start from the file rather than the import.
+
+    * **the file against the import:** trimesh reads the file raw, welds it as
+      the job does, and its triangles, area, centroid and bounds must match
+      what Blender imported -- positions included, since both read it in the
+      link's frame. Geometry unchanged means this.
+    * **the shading:** the normals are new on purpose, so they cannot be held
+      against the file's. Instead they must stay within the smoothing angle of
+      their faces (``gate.check_smoothed``).
+    """
+    problems: list[str] = []
+    try:
+        source = plain_stats(Path(result["source"]))
+    except Exception as exc:  # noqa: BLE001
+        return [f"trimesh could not read the source: {type(exc).__name__}: {exc}"]
+    external["source_triangles"] = source["triangles"]
+    external["source_file_triangles"] = source["file_triangles"]
+    problems += [f"import: {p}" for p in compare(source, result["source_stats"], tolerance)]
+    problems += [f"shading: {p}" for p in check_smoothed(
+        external.get("normal_deviation"), external.get("normal_deviation_max"),
+        result["smooth_angle"], tolerance)]
+    return problems
+
+
 def convert(
     targets: list[Target],
     blender: Blender,
@@ -152,6 +188,7 @@ def convert(
     force: bool = False,
     dry_run: bool = False,
     tolerance: Tolerance = DEFAULT,
+    smooth_angle: float = SMOOTH_ANGLE,
     progress=print,
 ) -> dict:
     provenance = importer_provenance()
@@ -188,7 +225,7 @@ def convert(
         for number, start in enumerate(range(0, len(pending), batch_size), start=1):
             batch = pending[start:start + batch_size]
             progress(f"batch {number}: {len(batch)} mesh(es)")
-            jobs = [{"id": t.id, "source": str(t.source),
+            jobs = [{"id": t.id, "source": str(t.source), "smooth_angle": smooth_angle,
                      "staged": str(staging / f"{t.id}.glb")} for t in batch]
             jobs_file = staging / f"jobs-{number}.json"
             results_file = staging / f"results-{number}.json"
@@ -220,6 +257,9 @@ def convert(
                     continue
                 item.up_axis = result.get("up_axis")
                 item.unit_meter = result.get("unit_meter")
+                item.smooth_angle = result.get("smooth_angle")
+                item.welded_vertices = result.get("welded_vertices")
+                item.neutral_material = result.get("neutral_material")
                 item.importer_warnings = result.get("importer_warnings", [])
                 item.dropped_export_options = result.get("dropped_export_options", [])
                 item.traceback = result.get("traceback")

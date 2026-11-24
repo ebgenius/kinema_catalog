@@ -1,11 +1,13 @@
 # meshkit
 
-Convert the catalog's COLLADA (`.dae`) visual meshes to glTF binary (`.glb`), through
-the Blender installed on your machine, and refuse to write any file that doesn't
+Convert the catalog's visual meshes (`.dae`, `.stl` and `.obj`) to glTF binary (`.glb`),
+through the Blender installed on your machine, and refuse to write any file that doesn't
 measure the same as its source.
 
-It converts through **kinema's own COLLADA importer**, so a GLB made here is the robot
-kinema shows. Every GLB is checked three ways before it leaves staging.
+A `.dae` converts through **kinema's own COLLADA importer**, so a GLB made here is the
+robot kinema shows, normals and colours as the file has them. An `.stl` or `.obj` is
+smoothed by angle on the way, the rule Kinema applies on import. Every GLB is checked
+several ways before it leaves staging.
 
 It also builds the catalog's index, `catalog.json`, from `catalog/*.yaml` (see
 [`catalog/README.md`](../../catalog/README.md)).
@@ -209,9 +211,10 @@ minutes), so one that hangs xacro or holds a pathological mesh costs only its ow
 uv run meshkit convert --fork franka_description            # next to each .dae
 uv run meshkit convert --fork franka_description --out ../../out/try   # a mirror, for review
 uv run meshkit convert --file path/to/one.dae --force
+uv run meshkit convert --file path/to/link.stl --smooth-angle 20
 ```
 
-Each `.glb` is written next to its `.dae` in the fork. The `.dae` is never modified or
+Each `.glb` is written next to its source mesh in the fork. The source is never modified or
 deleted, and existing `.glb` files are skipped unless you pass `--force`. Pointing the
 descriptions at the new files is a separate step, reviewed as its own PR in each fork.
 A JSON report (default `out/meshkit/convert-<time>.json`) records the Blender version,
@@ -236,6 +239,38 @@ averaging away every file's normals (see below). Tolerances are flags:
 
 **Axes:** glTF is Y-up by specification, so the GLB stores Y-up. Blender's glTF
 importer converts it back, and the GLB lands in kinema exactly where the `.dae` did.
+
+### STL and OBJ
+
+These carry no shading worth keeping: an STL has one normal per face and no material,
+and an OBJ has whatever its exporter wrote. So instead of being copied, they are
+smoothed on the way:
+
+1. **Imported as the numbers say**, in metres, axes untouched (Y forward, Z up), because
+   ROS reads both formats raw in the link's frame. The OBJ importer's default would
+   rotate every mesh from Y-up.
+2. **Welded:** corners at exactly the same position are joined, so faces share edges.
+   Not *nearly* the same: KUKA's KR 16 R2010-2 has 0.1 nm edges that a 1 nm weld
+   collapsed. (Blender 5.2's STL importer already shares identical corners.)
+3. **Smoothed by angle:** Blender's Shade Smooth by Angle at 30 degrees
+   (`--smooth-angle`), so faces meeting at less than that shade as one surface and
+   sharper edges stay sharp. Geometry is unchanged; only the normals are new.
+4. **A material:** an OBJ keeps its own. An STL, having none, gets one named
+   `meshkit_neutral` (mid-grey, roughness 0.5), so it can be found and replaced.
+
+The gate is the same except where the source's normals were the reference:
+
+| check | compares | catches |
+|---|---|---|
+| round trip, trimesh | as for `.dae` | as for `.dae` |
+| import | the raw file read by trimesh, welded the same way, against Blender's import: triangles (exact), area, centroid, bounds | a rotated or rescaled import, triangles lost in the weld |
+| shading | the `.glb`'s corner normals against their faces: the 99th percentile must be within the smoothing angle (plus `--tolerance-normals`) | normals averaged across sharp edges |
+
+The shading check bounds the 99th percentile, not every corner. A cone's tip is
+smoothed all the way round, and its normal points up the axis, tens of degrees from any
+one face: G1's knee reaches 76. Across G1's 49 links and the KR 16's 7, the 99th
+percentile is at most 22.5 degrees, and the report keeps each mesh's maximum
+(`normal_deviation_max`).
 
 ## The vendored importer
 

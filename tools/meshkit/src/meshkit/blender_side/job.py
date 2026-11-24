@@ -7,7 +7,9 @@
 For every job it:
 
 1. starts from an empty scene,
-2. imports the .dae with kinema's own COLLADA importer,
+2. imports the .dae with kinema's own COLLADA importer -- or an .stl or .obj
+   with Blender's own, raw, then welds it, smooths it by the job's angle and
+   gives a bare STL the neutral material --
 3. measures the imported geometry in world space,
 4. exports those objects to a glTF binary at the job's *staging* path,
 5. starts from an empty scene again and re-imports that GLB with Blender's glTF
@@ -207,6 +209,105 @@ def import_glb(path: Path) -> list[bpy.types.Object]:
     return mesh_objects()
 
 
+# ------------------------------------------------------------- stl and obj
+
+# The material an STL is given, having none: named so a person or a script can
+# find it and put a real one in its place.
+NEUTRAL = "meshkit_neutral"
+
+# Weld distance, in metres: zero, so only corners at exactly the same position
+# join. A CAD export writes a shared corner once per triangle, bit for bit the
+# same. Any distance above zero also joins corners that are merely close:
+# KUKA's KR 16 R2010-2 has edges of 0.1 nm near its origin, and a 1 nm weld
+# collapsed 13 of its triangles.
+WELD = 0.0
+
+
+def import_plain(source: Path) -> list[bpy.types.Object]:
+    """An STL or OBJ imported as its numbers say, in metres, axes untouched.
+
+    ROS reads both formats raw, in the link's frame: no unit, no up axis. So
+    the axes are Y forward and Z up -- the identity -- not the OBJ importer's
+    Y-up default, which would rotate every mesh. Validation is off: it removes
+    faces, and the triangle count is held against the file's own.
+    """
+    suffix = source.suffix.lower()
+    if suffix == ".stl":
+        operator, wanted = bpy.ops.wm.stl_import, {
+            "global_scale": 1.0, "use_scene_unit": False, "use_facet_normal": False,
+            "forward_axis": "Y", "up_axis": "Z", "use_mesh_validate": False}
+    elif suffix == ".obj":
+        operator, wanted = bpy.ops.wm.obj_import, {
+            "global_scale": 1.0, "clamp_size": 0.0, "forward_axis": "Y", "up_axis": "Z",
+            "use_split_objects": True, "use_split_groups": False, "validate_meshes": False}
+    else:
+        raise ValueError(f"not an STL or OBJ file: {source.name}")
+    operator(filepath=str(source), **_supported_kwargs(operator, wanted))
+    return mesh_objects()
+
+
+def weld(objects: list[bpy.types.Object]) -> int:
+    """Join vertices at the same position, so faces share edges; the count joined.
+
+    With no shared edges there is nothing to smooth across. An STL writes
+    each corner once per triangle; Blender 5.2's STL importer already shares
+    identical ones (on G1 and the KR 16 this joins nothing), so this is the
+    guarantee rather than the work, for an importer or an OBJ that does not.
+    A triangle left with two corners at one point collapses here, as Blender's
+    own validation would remove it; ``external.plain_stats`` counts those out
+    the same way.
+    """
+    import bmesh
+
+    joined = 0
+    for obj in objects:
+        bm = bmesh.new()
+        try:
+            bm.from_mesh(obj.data)
+            before = len(bm.verts)
+            bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=WELD)
+            joined += before - len(bm.verts)
+            bm.to_mesh(obj.data)
+        finally:
+            bm.free()
+        obj.data.update()
+    return joined
+
+
+def smooth_by_angle(objects: list[bpy.types.Object], degrees: float) -> None:
+    """Smooth where faces meet at under ``degrees``; sharper edges stay sharp.
+
+    Blender's own Shade Smooth by Angle, the rule Kinema's B8 applies on import,
+    so a converted mesh and an imported one look alike. The glTF exporter then
+    writes the resulting corner normals into the GLB.
+    """
+    import math
+
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in objects:
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = objects[0]
+    bpy.ops.object.shade_smooth_by_angle(angle=math.radians(degrees), keep_sharp_edges=True)
+
+
+def give_neutral_material(objects: list[bpy.types.Object]) -> bool:
+    """The neutral material on every object that has none; True if any had none."""
+    bare = [obj for obj in objects if not any(slot.material for slot in obj.material_slots)]
+    if not bare:
+        return False
+    material = bpy.data.materials.get(NEUTRAL) or bpy.data.materials.new(NEUTRAL)
+    material.use_nodes = True
+    principled = material.node_tree.nodes.get("Principled BSDF")
+    if principled is not None:
+        principled.inputs["Base Color"].default_value = (0.7, 0.7, 0.7, 1.0)
+        principled.inputs["Metallic"].default_value = 0.0
+        principled.inputs["Roughness"].default_value = 0.5
+    for obj in bare:
+        obj.data.materials.clear()
+        obj.data.materials.append(material)
+    return True
+
+
 # ------------------------------------------------------------------- the job
 
 def run_one(importer, job: dict) -> dict:
@@ -216,14 +317,27 @@ def run_one(importer, job: dict) -> dict:
     started = time.perf_counter()
     try:
         reset_scene()
-        imported = importer.import_dae(source)
-        result["importer_warnings"] = list(imported.warnings)
-        result["unit_meter"] = imported.unit_meter
-        result["up_axis"] = imported.up_axis
-        objects = list(imported.objects)
-        if not objects:
-            raise RuntimeError("the importer produced no geometry")
-        result["source_stats"] = world_stats(objects)
+        if source.suffix.lower() == ".dae":
+            imported = importer.import_dae(source)
+            result["importer_warnings"] = list(imported.warnings)
+            result["unit_meter"] = imported.unit_meter
+            result["up_axis"] = imported.up_axis
+            objects = list(imported.objects)
+            if not objects:
+                raise RuntimeError("the importer produced no geometry")
+            result["source_stats"] = world_stats(objects)
+        else:
+            objects = import_plain(source)
+            if not objects:
+                raise RuntimeError("the importer produced no geometry")
+            result["imported_stats"] = world_stats(objects)   # the file, as read
+            result["welded_vertices"] = weld(objects)
+            smooth_by_angle(objects, job["smooth_angle"])
+            result["smooth_angle"] = job["smooth_angle"]
+            result["neutral_material"] = give_neutral_material(objects)
+            # What the GLB must hold: the welded mesh, which only lost the
+            # degenerate triangles a Blender mesh cannot keep anyway.
+            result["source_stats"] = world_stats(objects)
 
         result["dropped_export_options"] = export_glb(objects, staged)
         if not staged.is_file():

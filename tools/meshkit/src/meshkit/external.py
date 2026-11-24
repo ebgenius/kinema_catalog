@@ -32,7 +32,8 @@ import trimesh
 QUANTILES = (50, 90, 99)
 
 
-def normal_deviation(triangles: np.ndarray, normals: np.ndarray) -> list[float]:
+def normal_deviation(triangles: np.ndarray, normals: np.ndarray,
+                     quantiles: tuple[int, ...] = QUANTILES) -> list[float]:
     """Percentiles of the angle, in degrees, between each corner normal and its face.
 
     ``triangles`` and ``normals`` are (n, 3, 3): three corners per triangle. The
@@ -48,14 +49,64 @@ def normal_deviation(triangles: np.ndarray, normals: np.ndarray) -> list[float]:
     length = np.linalg.norm(edge, axis=1)
     keep = length > 1e-12
     if not keep.any():
-        return [0.0] * len(QUANTILES)
+        return [0.0] * len(quantiles)
     face = edge[keep] / length[keep, None]
     corner = normals[keep]
     corner_length = np.linalg.norm(corner, axis=2)
     corner = corner / np.where(corner_length > 0, corner_length, 1.0)[..., None]
     cosine = np.clip((corner * face[:, None, :]).sum(axis=2), -1.0, 1.0)
     angles = np.degrees(np.arccos(cosine)).ravel()
-    return [float(v) for v in np.percentile(angles, QUANTILES)]
+    return [float(v) for v in np.percentile(angles, quantiles)]
+
+
+def plain_stats(path: Path) -> dict:
+    """An STL or OBJ as written, read by trimesh: the mesh a weld leaves of it.
+
+    The same quantities as Blender's ``world_stats`` -- triangle count, area,
+    area-weighted centroid and bounds -- so the import can be checked against
+    the file with no Blender in between. Both formats are read raw, in the
+    link's frame, as ROS reads them, so positions compare directly.
+
+    The count is of the triangles a weld keeps: corners at the same position
+    are joined (as ``job.weld`` joins them), and a triangle left with a
+    repeated corner, or the same three corners as another, is dropped, as a
+    Blender mesh drops it (``_kept_faces``). ``file_triangles`` is the count
+    before that.
+    """
+    scene = trimesh.load(str(path), force="scene", process=False)
+    pieces: list[np.ndarray] = []
+    for node_name in scene.graph.nodes_geometry:
+        transform, geometry_name = scene.graph[node_name]
+        geometry = scene.geometry[geometry_name]
+        faces = getattr(geometry, "faces", None)
+        if faces is None or len(faces) == 0:
+            continue
+        vertices = np.asarray(geometry.vertices, dtype=np.float64)
+        vertices = vertices @ transform[:3, :3].T + transform[:3, 3]
+        pieces.append(vertices[faces])
+    loader = f"trimesh {trimesh.__version__}"
+    if not pieces:
+        return {"triangles": 0, "file_triangles": 0, "area": 0.0, "centroid": None,
+                "aabb_min": None, "aabb_max": None, "loader": loader}
+    corners = np.concatenate(pieces)
+    _, index = np.unique(corners.reshape(-1, 3), axis=0, return_inverse=True)
+    kept = _kept_faces(index.reshape(-1, 3))
+    tri = corners[kept]
+    a, b, c = tri[:, 0], tri[:, 1], tri[:, 2]
+    each = 0.5 * np.linalg.norm(np.cross(b - a, c - a), axis=1)
+    area = float(each.sum())
+    points = tri.reshape(-1, 3)
+    centroid = ((each[:, None] * (a + b + c) / 3.0).sum(axis=0) / area if area > 0
+                else points.mean(axis=0))
+    return {
+        "triangles": int(len(tri)),
+        "file_triangles": int(len(corners)),
+        "area": area,
+        "centroid": [float(v) for v in centroid],
+        "aabb_min": [float(v) for v in points.min(axis=0)],
+        "aabb_max": [float(v) for v in points.max(axis=0)],
+        "loader": loader,
+    }
 
 
 def glb_stats(path: Path) -> dict:
@@ -83,10 +134,12 @@ def glb_stats(path: Path) -> dict:
     tri = np.concatenate(triangles)
     area = float(0.5 * np.linalg.norm(
         np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0]), axis=1).sum())
+    corner_normals = np.concatenate(normals)
     return {
         "triangles": int(len(tri)),
         "area": area,
-        "normal_deviation": normal_deviation(tri, np.concatenate(normals)),
+        "normal_deviation": normal_deviation(tri, corner_normals),
+        "normal_deviation_max": normal_deviation(tri, corner_normals, (100,))[0],
         "loader": f"trimesh {trimesh.__version__}",
     }
 

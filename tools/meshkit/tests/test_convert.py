@@ -121,3 +121,64 @@ def test_an_import_that_lost_triangles_fails_the_count(tmp_path, monkeypatch):
     problems, external = convert_module._judge(result, convert_module.DEFAULT)
     assert problems == ["import: the .dae holds 24 triangles, kinema's import 12"]
     assert external["source_triangles"] == 24
+
+
+def plain_result(tmp_path, stats, *, angle=30.0):
+    """A Blender result for an STL: a 1 x 1 x 1 cube at the origin, one triangle at a time."""
+    import numpy as np
+    import trimesh
+
+    cube = trimesh.creation.box(extents=(1, 1, 1))
+    triangles = cube.vertices[cube.faces]
+    stl = tmp_path / "src" / "fork" / "cube.stl"
+    stl.parent.mkdir(parents=True, exist_ok=True)
+    trimesh.Trimesh(triangles.reshape(-1, 3), np.arange(36).reshape(-1, 3),
+                    process=False).export(stl)
+    return {"ok": True, "source": str(stl), "staged": str(tmp_path / "x.glb"),
+            "smooth_angle": angle, "source_stats": stats, "roundtrip_stats": stats}
+
+
+CUBE = {"triangles": 12, "area": 6.0, "centroid": [0.0, 0.0, 0.0],
+        "aabb_min": [-0.5, -0.5, -0.5], "aabb_max": [0.5, 0.5, 0.5]}
+
+
+def glb_reading(monkeypatch, stats, deviation):
+    monkeypatch.setattr(convert_module, "glb_stats", lambda path: dict(
+        stats, normal_deviation=deviation, normal_deviation_max=max(deviation)))
+
+
+def test_an_stl_that_imported_as_it_is_passes(tmp_path, monkeypatch):
+    glb_reading(monkeypatch, CUBE, [0.0, 0.0, 0.0])
+    problems, external = convert_module._judge(plain_result(tmp_path, CUBE),
+                                               convert_module.DEFAULT)
+    assert problems == []
+    assert external["source_triangles"] == external["source_file_triangles"] == 12
+
+
+def test_an_stl_import_that_moved_fails_against_the_file(tmp_path, monkeypatch):
+    # Blender's round trip agrees with an import rotated from Y-up -- it
+    # starts from it. The file, read raw, is what shows it.
+    rotated = dict(CUBE, centroid=[0.0, 0.3, 0.0])
+    glb_reading(monkeypatch, rotated, [0.0, 0.0, 0.0])
+    problems, _ = convert_module._judge(plain_result(tmp_path, rotated), convert_module.DEFAULT)
+    assert problems and all(p.startswith("import: centroid moved") for p in problems)
+
+
+def test_an_stl_smoothed_past_its_angle_fails_the_shading(tmp_path, monkeypatch):
+    glb_reading(monkeypatch, CUBE, [30.0, 50.0, 54.7])
+    problems, _ = convert_module._judge(plain_result(tmp_path, CUBE, angle=30.0),
+                                        convert_module.DEFAULT)
+    assert problems == ["shading: normals: p99 deviation from the face is 54.7 deg, over "
+                        "the smoothing angle 30 deg (+2)"]
+
+
+def test_the_smoothing_angle_reaches_the_job(tmp_path, monkeypatch):
+    seen = []
+
+    def result(job):
+        seen.append(job["smooth_angle"])
+        return {"id": job["id"], "ok": False, "error": "stand-in"}
+    fake_job(monkeypatch, result)
+    convert(plan([source(tmp_path, "a.dae")], tmp_path, None), BLENDER,
+            report_path=tmp_path / "report.json", smooth_angle=12.5, progress=lambda _: None)
+    assert seen == [12.5]

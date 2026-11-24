@@ -7,7 +7,7 @@ import pytest
 
 import meshkit.external
 from meshkit._vendor import VENDORED_FILE
-from meshkit.external import _corners, _kept_faces, dae_stats, normal_deviation
+from meshkit.external import _corners, _kept_faces, dae_stats, normal_deviation, plain_stats
 from test_convert_blender import (flat_box_dae, with_broken_texture,
                                   with_degenerate_and_duplicate_faces, with_lines,
                                   with_prefixed_bindings, with_second_instance)
@@ -184,3 +184,40 @@ def test_lines_are_not_triangles(tmp_path):
     flat_box_dae(path)
     with_lines(path)
     assert dae_stats(path)["triangles"] == 12
+
+
+def stl_from(triangles: np.ndarray, path):
+    """An STL holding exactly these (n, 3, 3) triangles, each corner written out."""
+    import trimesh
+
+    trimesh.Trimesh(triangles.reshape(-1, 3), np.arange(len(triangles) * 3).reshape(-1, 3),
+                    process=False).export(path)
+    return path
+
+
+def test_plain_stats_measure_an_stl_where_it_is(tmp_path):
+    triangles, _ = cube_corners(flat=True)
+    triangles = triangles + [1.0, 2.0, 3.0]
+    stats = plain_stats(stl_from(triangles, tmp_path / "cube.stl"))
+    assert stats["triangles"] == stats["file_triangles"] == 12
+    assert stats["area"] == pytest.approx(6.0)
+    assert stats["centroid"] == pytest.approx([1.5, 2.5, 3.5])
+    assert stats["aabb_min"] == pytest.approx([1.0, 2.0, 3.0])
+    assert stats["aabb_max"] == pytest.approx([2.0, 3.0, 4.0])
+
+
+def test_plain_stats_count_what_a_weld_keeps(tmp_path):
+    triangles, _ = cube_corners(flat=True)
+    sliver = triangles[:1].copy()
+    sliver[0, 1] = sliver[0, 0]                    # a repeated corner
+    twin = triangles[1:2][:, [0, 2, 1]]            # the same corners, wound the other way
+    stats = plain_stats(stl_from(np.concatenate([triangles, sliver, twin]), tmp_path / "c.stl"))
+    assert stats["file_triangles"] == 14
+    assert stats["triangles"] == 12
+    assert stats["area"] == pytest.approx(6.0)
+
+
+def test_normal_deviation_takes_other_percentiles():
+    triangles, normals = cube_corners(flat=False)
+    (worst,) = normal_deviation(triangles, normals, (100,))
+    assert worst == pytest.approx(54.7356, abs=1e-3)   # a cube corner's diagonal

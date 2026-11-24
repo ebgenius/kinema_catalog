@@ -44,6 +44,37 @@ class Tolerance:
 
 DEFAULT = Tolerance()
 
+# Degrees. Faces meeting at less than this are smoothed across, sharper edges
+# stay sharp: the plan's rule (#24), and Kinema's B8.
+SMOOTH_ANGLE = 30.0
+
+
+def check_smoothed(deviation: list[float] | None, maximum: float | None, angle: float,
+                   tolerance: Tolerance = DEFAULT) -> list[str]:
+    """Reasons a smoothed mesh's normals are not what smoothing at ``angle`` makes.
+
+    An STL has no normals to keep, so its GLB's are new on purpose and cannot
+    be compared with the file's. What smoothing does instead is average each
+    corner over the faces joined to it by edges under ``angle``, so a corner
+    leans away from its own face by about that much at most -- across a
+    smooth surface, not across a sharp edge, which is what this catches.
+
+    "About", because the faces around one corner can each be under the angle
+    from their neighbours and still fan out much further: a cone's tip is
+    smoothed all the way round, its normal points up the axis, and G1's knee
+    has a corner 76 degrees from its face. So the bound is on the 99th
+    percentile, which is at most 22.5 degrees across G1's 49 links and KUKA's
+    KR 16; ``maximum`` must be measured, so the report keeps it.
+    """
+    if deviation is None or maximum is None:
+        return ["normal deviation missing"]
+    limit = angle + tolerance.normals
+    worst = deviation[-1]
+    if worst > limit:
+        return [f"normals: p99 deviation from the face is {worst:.1f} deg, over the "
+                f"smoothing angle {angle:g} deg (+{tolerance.normals:g})"]
+    return []
+
 
 def compare_normals(source: list[float] | None, candidate: list[float] | None,
                     tolerance: Tolerance = DEFAULT) -> list[str]:

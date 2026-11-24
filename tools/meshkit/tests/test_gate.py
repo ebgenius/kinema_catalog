@@ -1,4 +1,4 @@
-from meshkit.gate import Tolerance, compare, compare_normals
+from meshkit.gate import Tolerance, check_smoothed, compare, compare_normals
 
 SOURCE = {"triangles": 100, "area": 2.0, "centroid": [0.0, 0.0, 0.5],
           "aabb_min": [-0.5, -0.5, 0.0], "aabb_max": [0.5, 0.5, 1.0]}
@@ -53,3 +53,21 @@ def test_averaged_normals_fail():
 
 def test_missing_normals_fail():
     assert compare_normals(None, [0.0, 0.0, 0.0])
+
+
+def test_smoothed_normals_within_the_angle_pass():
+    assert check_smoothed([3.0, 12.0, 21.0], 76.0, 30.0) == []
+
+
+def test_smoothed_normals_beyond_the_angle_fail():
+    (problem,) = check_smoothed([20.0, 35.0, 45.0], 80.0, 30.0)
+    assert "p99 deviation from the face is 45.0 deg" in problem
+
+
+def test_smoothed_normals_get_the_same_slack_as_kept_ones():
+    assert check_smoothed([1.0, 2.0, 31.5], 40.0, 30.0) == []           # tolerance 2 deg
+    assert check_smoothed([1.0, 2.0, 32.5], 40.0, 30.0) != []
+
+
+def test_smoothed_normals_missing_fail():
+    assert check_smoothed(None, None, 30.0) == ["normal deviation missing"]

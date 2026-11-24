@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 import meshkit.catalog
-from meshkit.scan import scan
+from meshkit.scan import MESH_SUFFIXES, scan
 
 DAE = """<?xml version="1.0"?>
 <COLLADA><asset><unit meter="1"/><up_axis>{axis}</up_axis></asset></COLLADA>
@@ -201,3 +201,30 @@ def test_fork_with_only_unresolved_references_is_listed(catalog):
     assert "ghost_fork" in inventory.forks()
     assert [r.problem for r in inventory.unresolved("ghost_fork")] == [
         "package 'missing_description' is not in the catalog"]
+
+
+def test_by_default_only_dae_is_inventoried(catalog):
+    write(catalog, "src/arm_fork/arm_description/meshes/visual/link2.stl")
+    meshes = scan(catalog, render=False).in_fork("arm_fork")
+    assert all(m.path.suffix == ".dae" for m in meshes)
+
+
+def test_convert_finds_stl_and_obj_visuals_by_their_reference(catalog):
+    arm = "src/arm_fork/arm_description"
+    write(catalog, f"{arm}/meshes/visual/hand.STL")
+    write(catalog, f"{arm}/meshes/visual/finger.obj")
+    write(catalog, f"{arm}/urdf/hand.urdf", """<robot name="hand"><link name="hand">
+  <visual><geometry><mesh filename="package://arm_description/meshes/visual/hand.STL"/></geometry></visual>
+  <visual><geometry><mesh filename="package://arm_description/meshes/visual/finger.obj"/></geometry></visual>
+</link></robot>""")
+
+    inventory = scan(catalog, render=False, suffixes=MESH_SUFFIXES)
+
+    visual = {m.path.name for m in inventory.visual("arm_fork")}
+    assert {"hand.STL", "finger.obj", "link0.dae", "link1.dae"} <= visual
+    stl = next(m for m in inventory.in_fork("arm_fork") if m.path.name == "hand.STL")
+    assert stl.up_axis is None                     # only a .dae declares one
+    # The collision ${name}.stl, a bare variable with no folder, is now this
+    # scan's concern, and too broad to resolve; a .dae-only scan ignored it.
+    problems = {r.raw: r.problem for r in inventory.unresolved("arm_fork")}
+    assert problems == {"${name}.stl": "reference is all variables; it would match every mesh"}
