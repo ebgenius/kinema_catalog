@@ -217,6 +217,48 @@ def test_plain_stats_count_what_a_weld_keeps(tmp_path):
     assert stats["area"] == pytest.approx(6.0)
 
 
+def obj_from(objects: dict[str, tuple[np.ndarray, list[str]]], path):
+    """An OBJ of named objects: each its vertices and its ``f`` lines, indices local."""
+    lines, offset = [], 0
+    for name, (vertices, faces) in objects.items():
+        lines.append(f"o {name}")
+        lines += [f"v {x} {y} {z}" for x, y, z in vertices]
+        for face in faces:
+            lines.append("f " + " ".join(
+                t if t.startswith("-") else str(int(t) + offset) for t in face.split()))
+        offset += len(vertices)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return path
+
+
+def test_plain_stats_drop_doubled_faces_within_an_obj_object_not_across(tmp_path):
+    import trimesh
+
+    box = trimesh.creation.box(extents=(1.0, 1.0, 1.0))
+    faces = [f"{a + 1} {b + 1} {c + 1}" for a, b, c in box.faces]
+    first = box.faces[0]
+    stats = plain_stats(obj_from({
+        # The same face twice, on the same vertices, the second wound the other way.
+        "a": (box.vertices, faces + [f"{first[0] + 1} {first[2] + 1} {first[1] + 1}"]),
+        # A face of a's, again, in an object of its own: Blender keeps it there.
+        "b": (box.vertices[first], ["-3 -2 -1"]),
+    }, tmp_path / "part.obj"))
+    assert stats["file_triangles"] == 14
+    assert stats["triangles"] == 13
+    assert stats["area"] == pytest.approx(6.5)
+    assert stats["loader"] == "meshkit OBJ reader"
+
+
+def test_plain_stats_read_obj_polygons_and_continued_lines(tmp_path):
+    path = tmp_path / "quad.obj"
+    path.write_text("v 0 0 0\nv 2 0 0\nv 2 1 0\nv 0 1 0\nf 1/1/1 2/2/1 \\\n 3/3/1 4/4/1\n",
+                    encoding="utf-8")
+    stats = plain_stats(path)
+    assert stats["triangles"] == stats["file_triangles"] == 2
+    assert stats["area"] == pytest.approx(2.0)
+    assert stats["centroid"] == pytest.approx([1.0, 0.5, 0.0])
+
+
 def test_normal_deviation_takes_other_percentiles():
     triangles, normals = cube_corners(flat=False)
     (worst,) = normal_deviation(triangles, normals, (100,))

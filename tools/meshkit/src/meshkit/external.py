@@ -60,38 +60,46 @@ def normal_deviation(triangles: np.ndarray, normals: np.ndarray,
 
 
 def plain_stats(path: Path) -> dict:
-    """An STL or OBJ as written, read by trimesh: the mesh a weld leaves of it.
+    """An STL or OBJ as written, read without Blender: the mesh a weld leaves of it.
 
     The same quantities as Blender's ``world_stats`` -- triangle count, area,
     area-weighted centroid and bounds -- so the import can be checked against
     the file with no Blender in between. Both formats are read raw, in the
     link's frame, as ROS reads them, so positions compare directly.
 
-    The count is of the triangles a weld keeps: corners at the same position
-    are joined (as ``job.weld`` joins them), and a triangle left with a
-    repeated corner, or the same three corners as another, is dropped, as a
-    Blender mesh drops it (``_kept_faces``). ``file_triangles`` is the count
-    before that.
+    The count is of the triangles the job keeps (``job.weld``): in each object,
+    corners at the same position are joined, and a triangle left with a
+    repeated corner, or on the same three corners as an earlier one, is
+    dropped (``_kept_faces``). Per object, because Blender welds each object
+    on its own: two OBJ objects may each keep a face where they touch. An STL
+    is one object, read by trimesh; an OBJ's objects are read by
+    ``_obj_objects``. ``file_triangles`` is the count before any of that.
     """
-    scene = trimesh.load(str(path), force="scene", process=False)
-    pieces: list[np.ndarray] = []
-    for node_name in scene.graph.nodes_geometry:
-        transform, geometry_name = scene.graph[node_name]
-        geometry = scene.geometry[geometry_name]
-        faces = getattr(geometry, "faces", None)
-        if faces is None or len(faces) == 0:
-            continue
-        vertices = np.asarray(geometry.vertices, dtype=np.float64)
-        vertices = vertices @ transform[:3, :3].T + transform[:3, 3]
-        pieces.append(vertices[faces])
-    loader = f"trimesh {trimesh.__version__}"
-    if not pieces:
+    if path.suffix.lower() == ".obj":
+        objects = _obj_objects(path)
+        loader = "meshkit OBJ reader"
+    else:
+        scene = trimesh.load(str(path), force="scene", process=False)
+        pieces: list[np.ndarray] = []
+        for node_name in scene.graph.nodes_geometry:
+            transform, geometry_name = scene.graph[node_name]
+            geometry = scene.geometry[geometry_name]
+            faces = getattr(geometry, "faces", None)
+            if faces is None or len(faces) == 0:
+                continue
+            vertices = np.asarray(geometry.vertices, dtype=np.float64)
+            vertices = vertices @ transform[:3, :3].T + transform[:3, 3]
+            pieces.append(vertices[faces])
+        objects = [np.concatenate(pieces)] if pieces else []
+        loader = f"trimesh {trimesh.__version__}"
+    if not objects:
         return {"triangles": 0, "file_triangles": 0, "area": 0.0, "centroid": None,
                 "aabb_min": None, "aabb_max": None, "loader": loader}
-    corners = np.concatenate(pieces)
-    _, index = np.unique(corners.reshape(-1, 3), axis=0, return_inverse=True)
-    kept = _kept_faces(index.reshape(-1, 3))
-    tri = corners[kept]
+    kept = []
+    for corners in objects:
+        _, index = np.unique(corners.reshape(-1, 3), axis=0, return_inverse=True)
+        kept.append(corners[_kept_faces(index.reshape(-1, 3))])
+    tri = np.concatenate(kept)
     a, b, c = tri[:, 0], tri[:, 1], tri[:, 2]
     each = 0.5 * np.linalg.norm(np.cross(b - a, c - a), axis=1)
     area = float(each.sum())
@@ -100,13 +108,46 @@ def plain_stats(path: Path) -> dict:
                 else points.mean(axis=0))
     return {
         "triangles": int(len(tri)),
-        "file_triangles": int(len(corners)),
+        "file_triangles": int(sum(len(o) for o in objects)),
         "area": area,
         "centroid": [float(v) for v in centroid],
         "aabb_min": [float(v) for v in points.min(axis=0)],
         "aabb_max": [float(v) for v in points.max(axis=0)],
         "loader": loader,
     }
+
+
+def _obj_objects(path: Path) -> list[np.ndarray]:
+    """An OBJ's triangles as Blender's importer groups them: (n, 3, 3) per object.
+
+    trimesh regroups an OBJ's faces by material and does not keep its objects
+    apart, so the file is read here: ``v`` and ``f`` lines, negative indices
+    counted back from the latest vertex, and a new object at each ``o``, as
+    the job imports with ``use_split_objects`` (``g`` does not split, since
+    ``use_split_groups`` is off). A polygon is fanned from its first corner.
+    """
+    # A trailing backslash continues the line, as in Blender's reader.
+    text = path.read_text(encoding="utf-8", errors="replace").replace("\\\n", " ")
+    vertices: list[list[float]] = []
+    objects: list[list[tuple[int, int, int]]] = [[]]
+    for line in text.splitlines():
+        parts = line.split()
+        if not parts:
+            continue
+        if parts[0] == "v":
+            vertices.append([float(x) for x in parts[1:4]])
+        elif parts[0] == "o":
+            if objects[-1]:
+                objects.append([])
+        elif parts[0] == "f":
+            corners = []
+            for token in parts[1:]:
+                number = int(token.split("/")[0])
+                corners.append(number - 1 if number > 0 else len(vertices) + number)
+            objects[-1] += [(corners[0], corners[k], corners[k + 1])
+                            for k in range(1, len(corners) - 1)]
+    points = np.asarray(vertices, dtype=np.float64).reshape(-1, 3)
+    return [points[np.asarray(faces)] for faces in objects if faces]
 
 
 def glb_stats(path: Path) -> dict:

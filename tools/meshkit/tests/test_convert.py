@@ -37,6 +37,26 @@ def run(targets, tmp_path):
                    progress=lambda _: None)
 
 
+def test_two_sources_of_one_glb_are_both_refused(tmp_path, monkeypatch):
+    root = tmp_path / "catalog"
+    dae, stl, other = source(root, "part.dae"), source(root, "part.stl"), source(root, "arm.dae")
+    seen = []
+
+    def result(job):
+        seen.append(Path(job["source"]).name)
+        return {"id": job["id"], "ok": False, "error": "stand-in"}
+    fake_job(monkeypatch, result)
+
+    report = run(plan([dae, stl, other], root, None), tmp_path)
+
+    assert seen == ["arm.dae"], "neither part may reach Blender"
+    by_name = {Path(i["source"]).name: i for i in report["items"]}
+    assert by_name["part.dae"]["status"] == by_name["part.stl"]["status"] == "failed"
+    assert str(stl) in by_name["part.dae"]["reason"]
+    assert str(dae) in by_name["part.stl"]["reason"]
+    assert not (root / "src" / "fork" / "part.glb").exists()
+
+
 def test_dropped_export_options_and_traceback_reach_the_report(tmp_path, monkeypatch):
     # An export option this Blender does not have (renamed, say) moves every
     # mesh; the report has to say which option went, not only that it failed.

@@ -246,20 +246,29 @@ def import_plain(source: Path) -> list[bpy.types.Object]:
     return mesh_objects()
 
 
-def weld(objects: list[bpy.types.Object]) -> int:
-    """Join vertices at the same position, so faces share edges; the count joined.
+def weld(objects: list[bpy.types.Object]) -> tuple[int, int]:
+    """Join vertices at the same position, so faces share edges; drop doubled faces.
+
+    Returns how many vertices were joined and how many faces dropped.
 
     With no shared edges there is nothing to smooth across. An STL writes
     each corner once per triangle; Blender 5.2's STL importer already shares
     identical ones (on G1 and the KR 16 this joins nothing), so this is the
     guarantee rather than the work, for an importer or an OBJ that does not.
     A triangle left with two corners at one point collapses here, as Blender's
-    own validation would remove it; ``external.plain_stats`` counts those out
-    the same way.
+    own validation would remove it.
+
+    Then every face on the same vertices as an earlier one in its object, in
+    any winding, is dropped. Blender is not consistent about these on its own:
+    the STL importer drops them, the OBJ importer keeps them, and the weld
+    drops a pair only if it is the weld that joined their corners. Dropped
+    always, the rule is one, and the same one the .dae path applies
+    (``external._kept_faces``); ``external.plain_stats`` counts the file
+    the same way, per object.
     """
     import bmesh
 
-    joined = 0
+    joined = dropped = 0
     for obj in objects:
         bm = bmesh.new()
         try:
@@ -267,11 +276,24 @@ def weld(objects: list[bpy.types.Object]) -> int:
             before = len(bm.verts)
             bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=WELD)
             joined += before - len(bm.verts)
+            bm.verts.index_update()
+            seen: set[tuple[int, ...]] = set()
+            doubled = []
+            for face in bm.faces:       # in file order: the first of each set stays
+                key = tuple(sorted(v.index for v in face.verts))
+                if key in seen:
+                    doubled.append(face)
+                else:
+                    seen.add(key)
+            if doubled:
+                # FACES_ONLY: the twin's edges and corners are the kept face's.
+                bmesh.ops.delete(bm, geom=doubled, context="FACES_ONLY")
+                dropped += len(doubled)
             bm.to_mesh(obj.data)
         finally:
             bm.free()
         obj.data.update()
-    return joined
+    return joined, dropped
 
 
 def smooth_by_angle(objects: list[bpy.types.Object], degrees: float) -> None:
@@ -295,7 +317,9 @@ def give_neutral_material(objects: list[bpy.types.Object]) -> bool:
     bare = [obj for obj in objects if not any(slot.material for slot in obj.material_slots)]
     if not bare:
         return False
-    material = bpy.data.materials.get(NEUTRAL) or bpy.data.materials.new(NEUTRAL)
+    # Always a new one: an OBJ may already carry a material by this name, and
+    # it is the file's to keep. Blender then names this one meshkit_neutral.001.
+    material = bpy.data.materials.new(NEUTRAL)
     material.use_nodes = True
     principled = material.node_tree.nodes.get("Principled BSDF")
     if principled is not None:
@@ -331,12 +355,12 @@ def run_one(importer, job: dict) -> dict:
             if not objects:
                 raise RuntimeError("the importer produced no geometry")
             result["imported_stats"] = world_stats(objects)   # the file, as read
-            result["welded_vertices"] = weld(objects)
+            result["welded_vertices"], result["doubled_faces"] = weld(objects)
             smooth_by_angle(objects, job["smooth_angle"])
             result["smooth_angle"] = job["smooth_angle"]
             result["neutral_material"] = give_neutral_material(objects)
             # What the GLB must hold: the welded mesh, which only lost the
-            # degenerate triangles a Blender mesh cannot keep anyway.
+            # degenerate and doubled faces (``weld``).
             result["source_stats"] = world_stats(objects)
 
         result["dropped_export_options"] = export_glb(objects, staged)

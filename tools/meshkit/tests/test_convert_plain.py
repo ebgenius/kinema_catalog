@@ -137,6 +137,84 @@ def test_an_obj_keeps_its_material_and_its_axes(tmp_path, blender):
     assert max(glb_stats(glb)["normal_deviation"]) < 0.5
 
 
+def write_obj(path: Path, objects: dict[str, tuple[np.ndarray, list[tuple[int, ...]], str | None]],
+              colours: dict[str, tuple[float, float, float]] | None = None) -> Path:
+    """An OBJ of named objects, each its vertices, its faces (local, 0-based) and material."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = []
+    if colours:
+        path.with_suffix(".mtl").write_text("".join(
+            f"newmtl {name}\nKd {r} {g} {b}\nKa 0 0 0\nKs 0 0 0\nd 1.0\nillum 1\n"
+            for name, (r, g, b) in colours.items()), encoding="utf-8")
+        lines.append(f"mtllib {path.with_suffix('.mtl').name}")
+    offset = 0
+    for name, (vertices, faces, material) in objects.items():
+        lines.append(f"o {name}")
+        if material:
+            lines.append(f"usemtl {material}")
+        lines += [f"v {x:.6f} {y:.6f} {z:.6f}" for x, y, z in vertices]
+        lines += ["f " + " ".join(str(i + 1 + offset) for i in face) for face in faces]
+        offset += len(vertices)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return path
+
+
+def test_doubled_faces_go_within_an_object_and_stay_across(tmp_path, blender):
+    box = trimesh.creation.box(extents=(0.1, 0.2, 0.3))
+    box.apply_translation(OFFSET)
+    first = tuple(box.faces[0])
+    obj = write_obj(tmp_path / "catalog" / "src" / "fork" / "part.obj", {
+        # Blender's OBJ importer keeps a face repeated on the same vertices.
+        "a": (box.vertices, [tuple(f) for f in box.faces] + [first[::-1]], None),
+        "b": (box.vertices[list(first)], [(0, 1, 2)], None),
+    })
+
+    item, _ = convert_one(tmp_path, obj, blender)
+
+    assert item["status"] == "converted", item["problems"]
+    assert item["doubled_faces"] == 1
+    assert item["source_stats"]["triangles"] == 13
+    assert item["external_stats"]["source_file_triangles"] == 14
+
+
+def test_a_doubled_stl_triangle_is_counted_out_on_both_sides(tmp_path, blender):
+    stl = tmp_path / "catalog" / "src" / "fork" / "cylinder.stl"
+    mesh = cylinder_stl(stl)
+    corners = mesh.vertices[mesh.faces]
+    triangles = np.concatenate([corners, corners[:1], corners[1:2, ::-1]])
+    trimesh.Trimesh(triangles.reshape(-1, 3), np.arange(len(triangles) * 3).reshape(-1, 3),
+                    process=False).export(stl)
+
+    item, _ = convert_one(tmp_path, stl, blender)
+
+    assert item["status"] == "converted", item["problems"]
+    assert item["external_stats"]["source_file_triangles"] == len(mesh.faces) + 2
+    assert item["source_stats"]["triangles"] == len(mesh.faces)
+
+
+def test_the_neutral_material_never_takes_over_the_files_own(tmp_path, blender):
+    box = trimesh.creation.box(extents=(0.1, 0.2, 0.3))
+    faces = [tuple(f) for f in box.faces]
+    obj = write_obj(tmp_path / "catalog" / "src" / "fork" / "part.obj", {
+        # First: in an OBJ, a usemtl holds on into the objects after it.
+        "bare": (box.vertices - OFFSET, faces, None),
+        "painted": (box.vertices + OFFSET, faces, NEUTRAL),     # the file's, by that name
+    }, colours={NEUTRAL: (1.0, 0.3, 0.0)})
+
+    item, glb = convert_one(tmp_path, obj, blender)
+
+    assert item["status"] == "converted", item["problems"]
+    assert item["neutral_material"] is True
+    scene = trimesh.load(str(glb), force="scene", process=False)
+    colours = {g.visual.material.name: np.asarray(g.visual.material.baseColorFactor[:3]) / 255
+               for g in scene.geometry.values()}
+    assert len(colours) == 2
+    assert colours[NEUTRAL] == pytest.approx([1.0, 0.3, 0.0], abs=0.02)
+    (added,) = set(colours) - {NEUTRAL}
+    assert added.startswith(NEUTRAL)
+    assert colours[added] == pytest.approx([0.7, 0.7, 0.7], abs=0.02)
+
+
 def test_a_degenerate_stl_triangle_is_counted_out_on_both_sides(tmp_path, blender):
     stl = tmp_path / "catalog" / "src" / "fork" / "cylinder.stl"
     mesh = cylinder_stl(stl)

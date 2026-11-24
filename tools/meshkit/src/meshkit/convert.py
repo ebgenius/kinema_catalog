@@ -1,7 +1,7 @@
 """``meshkit convert``: .dae, .stl and .obj visual meshes to .glb, gated.
 
-For an .stl or .obj, checks 3 and 4 read the file with trimesh instead of
-pycollada, and the shading check bounds the new normals by the smoothing
+For an .stl or .obj, checks 3 and 4 read the file without pycollada
+(``external.plain_stats``), and the shading check bounds the new normals by the smoothing
 angle instead of holding them to the file's (``_judge_plain``).
 
 Every GLB is produced in a staging directory and only moved next to its source
@@ -14,7 +14,9 @@ once it has passed all four checks:
 4. the shading, raw .dae against GLB with no Blender in between
    (``gate.compare_normals``).
 
-A file that fails any of them stays out of the tree, and the report says why. Nothing
+A file that fails any of them stays out of the tree, and the report says why. So
+do two sources that would write the same GLB (``part.dae`` beside ``part.stl``):
+neither is converted, rather than one silently replacing the other. Nothing
 is ever deleted: the .dae stays where it is, because rewriting references to
 the new file is a separate, reviewable step.
 """
@@ -78,6 +80,7 @@ class Item:
     # STL and OBJ only: what was done to the mesh on its way to the GLB.
     smooth_angle: float | None = None
     welded_vertices: int | None = None
+    doubled_faces: int | None = None
     neutral_material: bool | None = None
     importer_warnings: list[str] = field(default_factory=list)
     # glTF export options this Blender does not have, so the export ran without them.
@@ -120,6 +123,11 @@ def _publish(staged: Path, output: Path) -> None:
     except BaseException:
         temporary.unlink(missing_ok=True)
         raise
+
+
+def _same_file(path: Path) -> str:
+    """One key for every spelling of a path: Windows ignores case."""
+    return os.path.normcase(os.path.abspath(path))
 
 
 def _judge(result: dict, tolerance: Tolerance) -> tuple[list[str], dict | None]:
@@ -204,9 +212,21 @@ def convert(
     }
     items: list[Item] = []
 
+    # Two sources, one GLB: part.dae and part.stl side by side. Both would pass
+    # and the second would replace the first, so neither goes.
+    claims: dict[str, list[Target]] = {}
+    for target in targets:
+        claims.setdefault(_same_file(target.output), []).append(target)
+
     pending: list[Target] = []
     for target in targets:
-        if target.output.exists() and not force:
+        rivals = [t for t in claims[_same_file(target.output)] if t is not target]
+        if rivals:
+            items.append(Item(target.id, str(target.source), str(target.output), "failed",
+                              reason="the same GLB is the output of "
+                                     + ", ".join(str(t.source) for t in rivals)
+                                     + "; neither is converted"))
+        elif target.output.exists() and not force:
             items.append(Item(target.id, str(target.source), str(target.output),
                               "skipped", reason="output exists (use --force to redo)"))
         else:
@@ -259,6 +279,7 @@ def convert(
                 item.unit_meter = result.get("unit_meter")
                 item.smooth_angle = result.get("smooth_angle")
                 item.welded_vertices = result.get("welded_vertices")
+                item.doubled_faces = result.get("doubled_faces")
                 item.neutral_material = result.get("neutral_material")
                 item.importer_warnings = result.get("importer_warnings", [])
                 item.dropped_export_options = result.get("dropped_export_options", [])

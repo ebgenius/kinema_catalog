@@ -251,19 +251,28 @@ smoothed on the way:
    rotate every mesh from Y-up.
 2. **Welded:** corners at exactly the same position are joined, so faces share edges.
    Not *nearly* the same: KUKA's KR 16 R2010-2 has 0.1 nm edges that a 1 nm weld
-   collapsed. (Blender 5.2's STL importer already shares identical corners.)
+   collapsed. (Blender 5.2's STL importer already shares identical corners.) Then a
+   face on the same corners as an earlier one in its object, in either winding, is
+   dropped, as the `.dae` path drops it; the report counts them (`doubled_faces`).
+   Blender alone is not consistent here: its STL importer drops them, its OBJ
+   importer keeps them.
 3. **Smoothed by angle:** Blender's Shade Smooth by Angle at 30 degrees
    (`--smooth-angle`), so faces meeting at less than that shade as one surface and
    sharper edges stay sharp. Geometry is unchanged; only the normals are new.
 4. **A material:** an OBJ keeps its own. An STL, having none, gets one named
-   `meshkit_neutral` (mid-grey, roughness 0.5), so it can be found and replaced.
+   `meshkit_neutral` (mid-grey, roughness 0.5), so it can be found and replaced. It is
+   always a new material: an OBJ's own material of that name stays as it is, and the
+   new one becomes `meshkit_neutral.001`.
+
+Two sources that would write the same GLB, a `part.dae` beside a `part.stl`, are both
+refused, and the report names the other. Otherwise the second would replace the first.
 
 The gate is the same except where the source's normals were the reference:
 
 | check | compares | catches |
 |---|---|---|
 | round trip, trimesh | as for `.dae` | as for `.dae` |
-| import | the raw file read by trimesh, welded the same way, against Blender's import: triangles (exact), area, centroid, bounds | a rotated or rescaled import, triangles lost in the weld |
+| import | the raw file, read without Blender (an STL by trimesh, an OBJ object by object by meshkit's own reader) and welded the same way, against Blender's import: triangles (exact), area, centroid, bounds | a rotated or rescaled import, triangles lost in the weld |
 | shading | the `.glb`'s corner normals against their faces: the 99th percentile must be within the smoothing angle (plus `--tolerance-normals`) | normals averaged across sharp edges |
 
 The shading check bounds the 99th percentile, not every corner. A cone's tip is
