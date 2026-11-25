@@ -296,12 +296,34 @@ def weld(objects: list[bpy.types.Object]) -> tuple[int, int]:
     return joined, dropped
 
 
+def drop_authored_normals(objects: list[bpy.types.Object]) -> bool:
+    """Clear the normals an OBJ brought (``vn``); True if any object had them.
+
+    The OBJ importer keeps them as custom normals, which outrank smoothing: the
+    mesh would leave exactly as the file shaded it, faceted or not, and an
+    STL-like OBJ often is. It also marks sharp every edge where they differ.
+    Smoothing replaces both (``smooth_by_angle``), so the result depends on
+    the geometry and the angle alone -- which is what the gate can check.
+    """
+    dropped = False
+    for obj in objects:
+        if obj.data.has_custom_normals:
+            with bpy.context.temp_override(object=obj, active_object=obj,
+                                           selected_objects=[obj]):
+                bpy.ops.mesh.customdata_custom_splitnormals_clear()
+            dropped = True
+    return dropped
+
+
 def smooth_by_angle(objects: list[bpy.types.Object], degrees: float) -> None:
     """Smooth where faces meet at under ``degrees``; sharper edges stay sharp.
 
     Blender's own Shade Smooth by Angle, the rule Kinema's B8 applies on import,
     so a converted mesh and an imported one look alike. The glTF exporter then
     writes the resulting corner normals into the GLB.
+
+    ``keep_sharp_edges=False``: the angle alone decides. An STL has no sharp
+    marks to keep; an OBJ's come from the normals just dropped.
     """
     import math
 
@@ -309,7 +331,7 @@ def smooth_by_angle(objects: list[bpy.types.Object], degrees: float) -> None:
     for obj in objects:
         obj.select_set(True)
     bpy.context.view_layer.objects.active = objects[0]
-    bpy.ops.object.shade_smooth_by_angle(angle=math.radians(degrees), keep_sharp_edges=True)
+    bpy.ops.object.shade_smooth_by_angle(angle=math.radians(degrees), keep_sharp_edges=False)
 
 
 def give_neutral_material(objects: list[bpy.types.Object]) -> bool:
@@ -356,6 +378,7 @@ def run_one(importer, job: dict) -> dict:
                 raise RuntimeError("the importer produced no geometry")
             result["imported_stats"] = world_stats(objects)   # the file, as read
             result["welded_vertices"], result["doubled_faces"] = weld(objects)
+            result["dropped_normals"] = drop_authored_normals(objects)
             smooth_by_angle(objects, job["smooth_angle"])
             result["smooth_angle"] = job["smooth_angle"]
             result["neutral_material"] = give_neutral_material(objects)

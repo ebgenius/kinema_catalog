@@ -49,31 +49,40 @@ DEFAULT = Tolerance()
 SMOOTH_ANGLE = 30.0
 
 
-def check_smoothed(deviation: list[float] | None, maximum: float | None, angle: float,
+# At least this share of a smoothed mesh's corners must be checkable
+# (external.smoothing_error leaves out those beside float32 slivers).
+CHECKED_SHARE = 0.5
+
+
+def check_smoothed(smoothing: dict | None, angle: float,
                    tolerance: Tolerance = DEFAULT) -> list[str]:
     """Reasons a smoothed mesh's normals are not what smoothing at ``angle`` makes.
 
     An STL has no normals to keep, so its GLB's are new on purpose and cannot
-    be compared with the file's. What smoothing does instead is average each
-    corner over the faces joined to it by edges under ``angle``, so a corner
-    leans away from its own face by about that much at most -- across a
-    smooth surface, not across a sharp edge, which is what this catches.
+    be compared with the file's. They are compared with the rule instead:
+    ``external.smoothing_error`` rebuilds what smoothing by angle gives each
+    corner, from the GLB's own triangles, and measures the distance. Both
+    failures show -- normals averaged across a sharp edge, and smoothing lost
+    (flat normals, an exporter that dropped them) -- and a cone's tip, whose
+    normal rightly points up the axis, is no exception.
 
-    "About", because the faces around one corner can each be under the angle
-    from their neighbours and still fan out much further: a cone's tip is
-    smoothed all the way round, its normal points up the axis, and G1's knee
-    has a corner 76 degrees from its face. So the bound is on the 99th
-    percentile, which is at most 22.5 degrees across G1's 49 links and KUKA's
-    KR 16; ``maximum`` must be measured, so the report keeps it.
+    The bound is on the 99.9th percentile, not every corner: Blender's own
+    choices next to near-degenerate triangles are float32 noise. On G1 and the
+    KR 16 it is at most 0.33 degrees, so ``tolerance.normals`` leaves a wide
+    margin; losing the smoothing puts it at several degrees on a 32-sided
+    cylinder, and tens on a coarse one.
     """
-    if deviation is None or maximum is None:
-        return ["normal deviation missing"]
-    limit = angle + tolerance.normals
-    worst = deviation[-1]
-    if worst > limit:
-        return [f"normals: p99 deviation from the face is {worst:.1f} deg, over the "
-                f"smoothing angle {angle:g} deg (+{tolerance.normals:g})"]
-    return []
+    if not smoothing or smoothing.get("p99_9") is None or not smoothing.get("corners"):
+        return ["normals: no corner could be checked against smoothing by angle"]
+    problems = []
+    share = smoothing["corners"] / (smoothing["corners"] + smoothing.get("unchecked", 0))
+    if share < CHECKED_SHARE:
+        problems.append(f"normals: only {share:.0%} of corners could be checked "
+                        f"(minimum {CHECKED_SHARE:.0%}); the mesh is mostly slivers")
+    if smoothing["p99_9"] > tolerance.normals:
+        problems.append(f"normals: p99.9 corner is {smoothing['p99_9']:.1f} deg from what "
+                        f"smoothing at {angle:g} deg makes (limit {tolerance.normals:g})")
+    return problems
 
 
 def compare_normals(source: list[float] | None, candidate: list[float] | None,

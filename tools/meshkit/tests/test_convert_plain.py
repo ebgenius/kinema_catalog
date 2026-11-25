@@ -230,3 +230,40 @@ def test_a_degenerate_stl_triangle_is_counted_out_on_both_sides(tmp_path, blende
     assert item["status"] == "converted", item["problems"]
     assert item["external_stats"]["source_file_triangles"] == len(mesh.faces) + 1
     assert item["source_stats"]["triangles"] == len(mesh.faces)
+
+
+def test_a_fine_cone_passes_though_its_tip_is_far_from_every_face(tmp_path, blender):
+    # 100 sections, 5.7 degrees from the axis: neighbouring sides meet at about
+    # 3.6 degrees, so the tip is smoothed all the way round and its normal
+    # points up the axis, 84 degrees from each face. A sixth of the corners
+    # are at the tip -- too many for any percentile of that angle to absorb.
+    cone = trimesh.creation.cone(radius=0.02, height=0.2, sections=100)
+    cone.apply_translation(OFFSET)
+    stl = tmp_path / "catalog" / "src" / "fork" / "tip.stl"
+    stl.parent.mkdir(parents=True)
+    cone.export(stl)
+
+    item, glb = convert_one(tmp_path, stl, blender)
+
+    assert item["status"] == "converted", item["problems"]
+    assert glb_stats(glb)["normal_deviation"][-1] > 80     # p99 from the face
+    assert item["external_stats"]["smoothing"]["p99_9"] < 0.5
+
+
+def test_an_objs_own_normals_give_way_to_the_smoothing(tmp_path, blender):
+    mesh = trimesh.creation.cylinder(radius=0.05, height=0.2, sections=32)
+    lines = [f"v {x:.6f} {y:.6f} {z:.6f}" for x, y, z in mesh.vertices]
+    lines += [f"vn {x:.6f} {y:.6f} {z:.6f}" for x, y, z in mesh.face_normals]   # faceted
+    lines += [f"f {a + 1}//{i + 1} {b + 1}//{i + 1} {c + 1}//{i + 1}"
+              for i, (a, b, c) in enumerate(mesh.faces)]
+    obj = tmp_path / "catalog" / "src" / "fork" / "flat.obj"
+    obj.parent.mkdir(parents=True)
+    obj.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    item, glb = convert_one(tmp_path, obj, blender)
+
+    assert item["status"] == "converted", item["problems"]
+    assert item["dropped_normals"] is True
+    deviation = corner_deviation(glb)
+    sides = deviation[deviation[:, 0] < 0.01]
+    assert sides[:, 1].min() > 4.0 and sides[:, 1].max() < 7.0      # round, not faceted

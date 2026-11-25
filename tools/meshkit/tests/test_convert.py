@@ -162,9 +162,11 @@ CUBE = {"triangles": 12, "area": 6.0, "centroid": [0.0, 0.0, 0.0],
         "aabb_min": [-0.5, -0.5, -0.5], "aabb_max": [0.5, 0.5, 0.5]}
 
 
-def glb_reading(monkeypatch, stats, deviation):
+def glb_reading(monkeypatch, stats, deviation, *, p99_9=0.0):
     monkeypatch.setattr(convert_module, "glb_stats", lambda path: dict(
         stats, normal_deviation=deviation, normal_deviation_max=max(deviation)))
+    monkeypatch.setattr(convert_module, "smoothing_error", lambda path, angle: {
+        "corners": 36, "unchecked": 0, "ambiguous_edges": 0, "p99_9": p99_9, "max": p99_9})
 
 
 def test_an_stl_that_imported_as_it_is_passes(tmp_path, monkeypatch):
@@ -184,12 +186,18 @@ def test_an_stl_import_that_moved_fails_against_the_file(tmp_path, monkeypatch):
     assert problems and all(p.startswith("import: centroid moved") for p in problems)
 
 
-def test_an_stl_smoothed_past_its_angle_fails_the_shading(tmp_path, monkeypatch):
-    glb_reading(monkeypatch, CUBE, [30.0, 50.0, 54.7])
-    problems, _ = convert_module._judge(plain_result(tmp_path, CUBE, angle=30.0),
-                                        convert_module.DEFAULT)
-    assert problems == ["shading: normals: p99 deviation from the face is 54.7 deg, over "
-                        "the smoothing angle 30 deg (+2)"]
+def test_an_stl_not_smoothed_as_the_angle_says_fails_the_shading(tmp_path, monkeypatch):
+    glb_reading(monkeypatch, CUBE, [30.0, 50.0, 54.7], p99_9=54.7)
+    problems, external = convert_module._judge(plain_result(tmp_path, CUBE, angle=30.0),
+                                               convert_module.DEFAULT)
+    assert problems == ["shading: normals: p99.9 corner is 54.7 deg from what smoothing "
+                        "at 30 deg makes (limit 2)"]
+    assert external["smoothing"]["p99_9"] == 54.7
+
+
+def test_case_is_one_file_everywhere():
+    same = convert_module._same_file
+    assert same(Path("fork/Part.glb")) == same(Path("fork/part.glb"))
 
 
 def test_the_smoothing_angle_reaches_the_job(tmp_path, monkeypatch):

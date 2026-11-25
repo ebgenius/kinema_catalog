@@ -124,14 +124,16 @@ def _obj_objects(path: Path) -> list[np.ndarray]:
     apart, so the file is read here: ``v`` and ``f`` lines, negative indices
     counted back from the latest vertex, and a new object at each ``o``, as
     the job imports with ``use_split_objects`` (``g`` does not split, since
-    ``use_split_groups`` is off). A polygon is fanned from its first corner.
+    ``use_split_groups`` is off). A ``#`` starts a comment anywhere on a line.
+    A polygon is split into triangles that cover it (``_triangulate``), as
+    Blender's own fill does, so a concave one keeps its area.
     """
     # A trailing backslash continues the line, as in Blender's reader.
     text = path.read_text(encoding="utf-8", errors="replace").replace("\\\n", " ")
     vertices: list[list[float]] = []
-    objects: list[list[tuple[int, int, int]]] = [[]]
+    objects: list[list[list[int]]] = [[]]
     for line in text.splitlines():
-        parts = line.split()
+        parts = line.split("#", 1)[0].split()
         if not parts:
             continue
         if parts[0] == "v":
@@ -144,10 +146,62 @@ def _obj_objects(path: Path) -> list[np.ndarray]:
             for token in parts[1:]:
                 number = int(token.split("/")[0])
                 corners.append(number - 1 if number > 0 else len(vertices) + number)
-            objects[-1] += [(corners[0], corners[k], corners[k + 1])
-                            for k in range(1, len(corners) - 1)]
+            if len(corners) >= 3:
+                objects[-1].append(corners)
     points = np.asarray(vertices, dtype=np.float64).reshape(-1, 3)
-    return [points[np.asarray(faces)] for faces in objects if faces]
+    result = []
+    for polygons in objects:
+        faces = [(polygon[a], polygon[b], polygon[c]) for polygon in polygons
+                 for a, b, c in _triangulate(points[polygon])]
+        if faces:
+            result.append(points[np.asarray(faces)])
+    return result
+
+
+def _triangulate(polygon: np.ndarray) -> list[tuple[int, int, int]]:
+    """Triangles covering one planar polygon, as indices into its corners.
+
+    A convex polygon is fanned from its first corner. A concave one is
+    ear-clipped in the plane it lies in (its Newell normal), since a fan would
+    cover area outside it: corners (0,0) (2,0) (2,2) (1,0.5) (0,2) enclose 2.5,
+    and their fan 3.5. Any covering split gives the same area and centroid,
+    so this need not match Blender's choice of triangles, only cover the same
+    polygon. One that is not simple has no such split; what is left of it is
+    fanned.
+    """
+    count = len(polygon)
+    if count == 3:
+        return [(0, 1, 2)]
+    normal = np.cross(polygon, np.roll(polygon, -1, axis=0)).sum(axis=0)
+    axis = int(np.argmax(np.abs(normal)))
+    flat = polygon[:, [i for i in range(3) if i != axis]]
+    if normal[axis] < 0:
+        flat = flat[:, ::-1]          # counter-clockwise, seen from the normal
+
+    def turn(o: int, a: int, b: int) -> float:
+        (ox, oy), (ax, ay), (bx, by) = flat[o], flat[a], flat[b]
+        return (ax - ox) * (by - oy) - (ay - oy) * (bx - ox)
+
+    fan = [(0, k, k + 1) for k in range(1, count - 1)]
+    if all(turn(k - 1, k, (k + 1) % count) >= 0 for k in range(count)):
+        return fan
+    left = list(range(count))
+    triangles: list[tuple[int, int, int]] = []
+    while len(left) > 3:
+        for k in range(len(left)):
+            a, b, c = left[k - 1], left[k], left[(k + 1) % len(left)]
+            if turn(a, b, c) <= 0:
+                continue                  # a reflex corner is no ear
+            if any(turn(a, b, p) > 0 and turn(b, c, p) > 0 and turn(c, a, p) > 0
+                   for p in left if p not in (a, b, c)):
+                continue                  # another corner inside: not an ear
+            triangles.append((a, b, c))
+            left.pop(k)
+            break
+        else:
+            return triangles + [(left[0], left[k], left[k + 1])
+                                for k in range(1, len(left) - 1)]
+    return triangles + [tuple(left)]
 
 
 def glb_stats(path: Path) -> dict:
@@ -183,6 +237,151 @@ def glb_stats(path: Path) -> dict:
         "normal_deviation_max": normal_deviation(tri, corner_normals, (100,))[0],
         "loader": f"trimesh {trimesh.__version__}",
     }
+
+
+# Degrees. A face whose normal float32 arithmetic can leave this uncertain
+# (``_fan_error``) says nothing reliable about the normals next to it.
+UNCERTAIN_FACE = 5.0
+# Degrees either side of the smoothing angle: an edge this close to it could
+# go either way, so both are allowed.
+ANGLE_BAND = 0.01
+
+
+def smoothing_error(path: Path, angle: float) -> dict:
+    """How far each corner normal of a GLB lies from what smoothing at ``angle`` makes.
+
+    Smoothing by angle is a rule that can be reproduced: an edge is sharp
+    where its two faces meet at more than ``angle`` (or where it is not shared
+    by exactly two consistently wound faces); at each vertex, faces joined by
+    edges that are not sharp form a fan; and each corner's normal is the fan's
+    face normals, weighted by each face's angle at the vertex -- Blender's rule.
+    This rebuilds that from the GLB's own triangles, read by trimesh, and
+    measures every corner against it. Normals left flat and normals averaged
+    across sharp edges both show, and a cone's tip is no exception: there the
+    rule itself points the normal up the axis.
+
+    Each glTF mesh is rebuilt whole, its primitives (one per material) joined,
+    since Blender smoothed it as one object.
+
+    Corners at a vertex of a face whose float32 normal is uncertain by more
+    than ``UNCERTAIN_FACE`` degrees are left out (``unchecked``): Blender's
+    sharp-edge choices next to such slivers are rounding noise. On G1 and the
+    KR 16 that is 2% of corners, most of them on the KR 16's sub-micrometre
+    triangles.
+    """
+    scene = trimesh.load(str(path), force="scene", process=False)
+    parents = scene.graph.transforms.parents
+    meshes: dict[str, list[tuple[np.ndarray, np.ndarray]]] = {}
+    for node_name in scene.graph.nodes_geometry:
+        transform, geometry_name = scene.graph[node_name]
+        geometry = scene.geometry[geometry_name]
+        faces = getattr(geometry, "faces", None)
+        if faces is None or len(faces) == 0:
+            continue
+        # trimesh hangs a glTF mesh's primitives under the mesh's node.
+        key = (parents.get(node_name, node_name)
+               if geometry.metadata.get("from_gltf_primitive") else node_name)
+        linear = transform[:3, :3]
+        vertices = np.asarray(geometry.vertices, dtype=np.float64) @ linear.T + transform[:3, 3]
+        normals = np.asarray(geometry.vertex_normals, dtype=np.float64) @ np.linalg.inv(linear)
+        meshes.setdefault(key, []).append((vertices[faces], normals[faces]))
+    errors, unchecked, ambiguous = [], 0, 0
+    for parts in meshes.values():
+        error, skipped, unsure = _fan_error(np.concatenate([t for t, _ in parts]),
+                                            np.concatenate([n for _, n in parts]), angle)
+        errors.append(error)
+        unchecked += skipped
+        ambiguous += unsure
+    error = np.concatenate(errors) if errors else np.zeros(0)
+    return {
+        "corners": int(len(error)),
+        "unchecked": unchecked,
+        "ambiguous_edges": ambiguous,
+        "p99_9": float(np.percentile(error, 99.9)) if len(error) else None,
+        "max": float(error.max()) if len(error) else None,
+    }
+
+
+def _fan_error(tri: np.ndarray, normals: np.ndarray, angle: float
+               ) -> tuple[np.ndarray, int, int]:
+    """Per checked corner, degrees from the smoothed normal; corners left out; edges unsure.
+
+    ``tri`` and ``normals`` are (n, 3, 3), one mesh. See ``smoothing_error``.
+    """
+    count = len(tri)
+    _, vertex = np.unique(tri.reshape(-1, 3), axis=0, return_inverse=True)
+    vertex = vertex.reshape(count, 3)
+    cross = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
+    length = np.linalg.norm(cross, axis=1)
+    valid = length > 0
+    face = np.where(valid[:, None], cross / np.where(valid, length, 1.0)[:, None], 0.0)
+
+    # How far float32 rounding can turn each face's normal: the cross product's
+    # error, from its edges and from where they lie, over its length.
+    sides = np.sort(np.stack([np.linalg.norm(tri[:, (i + 1) % 3] - tri[:, i], axis=1)
+                              for i in range(3)], axis=1), axis=1)
+    reach = np.abs(tri).max(axis=(1, 2))
+    eps = float(np.finfo(np.float32).eps)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        doubt = np.degrees(eps * sides[:, 2] * (sides[:, 1] + 4 * reach) / length)
+    unsure_face = ~valid | (doubt > UNCERTAIN_FACE)
+
+    weight = np.empty((count, 3))
+    for i in range(3):
+        a, b = tri[:, (i + 1) % 3] - tri[:, i], tri[:, (i + 2) % 3] - tri[:, i]
+        weight[:, i] = np.arctan2(np.linalg.norm(np.cross(a, b), axis=1), (a * b).sum(axis=1))
+
+    # Directed edge e = face * 3 + i runs from corner e to corner next(e).
+    start, end = vertex.ravel(), vertex[:, [1, 2, 0]].ravel()
+    low, high = np.minimum(start, end), np.maximum(start, end)
+    order = np.lexsort((high, low))
+    new = np.r_[True, (low[order][1:] != low[order][:-1]) | (high[order][1:] != high[order][:-1])]
+    group = np.cumsum(new) - 1
+    first = np.flatnonzero(new)
+    twin = np.bincount(group)[group[first]] == 2
+    e1, e2 = order[first[twin]], order[first[twin] + 1]
+    wound = start[e1] == end[e2]                 # the two faces agree on orientation
+    e1, e2 = e1[wound], e2[wound]
+    f1, f2 = e1 // 3, e2 // 3
+    dihedral = np.degrees(np.arccos(np.clip((face[f1] * face[f2]).sum(axis=1), -1.0, 1.0)))
+    dihedral = np.where(valid[f1] & valid[f2], dihedral, 180.0)
+    unsure_edges = int((np.abs(dihedral - angle) <= ANGLE_BAND).sum())
+
+    def following(e: np.ndarray) -> np.ndarray:
+        return e - e % 3 + (e % 3 + 1) % 3
+
+    corners = count * 3
+    pull = (weight[..., None] * face[:, None, :]).reshape(corners, 3)
+    stored = normals.reshape(corners, 3)
+    stored = stored / np.maximum(np.linalg.norm(stored, axis=1), 1e-300)[:, None]
+    best = None
+    for smooth in (dihedral < angle - ANGLE_BAND, dihedral <= angle + ANGLE_BAND):
+        a, b = e1[smooth], e2[smooth]
+        # Across a smooth edge, the corners at each end join one fan.
+        fan = _components(corners, np.r_[a, following(a)], np.r_[following(b), b])
+        total = np.zeros((corners, 3))
+        np.add.at(total, fan, pull)
+        expected = total[fan]
+        expected /= np.maximum(np.linalg.norm(expected, axis=1), 1e-300)[:, None]
+        error = np.degrees(np.arccos(np.clip((expected * stored).sum(axis=1), -1.0, 1.0)))
+        best = error if best is None else np.minimum(best, error)
+    doubtful = np.zeros(int(vertex.max()) + 1, dtype=bool)
+    doubtful[vertex[unsure_face].ravel()] = True
+    checked = ~doubtful[vertex].ravel()
+    return best[checked], int((~checked).sum()), unsure_edges
+
+
+def _components(size: int, u: np.ndarray, v: np.ndarray) -> np.ndarray:
+    """Connected components of ``size`` nodes joined by edges u-v: the lowest node of each."""
+    label = np.arange(size)
+    while True:
+        before = label
+        label = label.copy()
+        np.minimum.at(label, u, label[v])
+        np.minimum.at(label, v, label[u])
+        label = label[label]
+        if np.array_equal(label, before):
+            return label
 
 
 def _triangle_sets(primitives):

@@ -1,8 +1,8 @@
 """``meshkit convert``: .dae, .stl and .obj visual meshes to .glb, gated.
 
 For an .stl or .obj, checks 3 and 4 read the file without pycollada
-(``external.plain_stats``), and the shading check bounds the new normals by the smoothing
-angle instead of holding them to the file's (``_judge_plain``).
+(``external.plain_stats``), and the shading check holds the new normals to what
+smoothing by angle makes instead of to the file's (``_judge_plain``).
 
 Every GLB is produced in a staging directory and only moved next to its source
 once it has passed all four checks:
@@ -38,7 +38,7 @@ import collada
 from meshkit import __version__
 from meshkit._vendor import VENDORED_FILE, importer_provenance
 from meshkit.blender import TIMED_OUT, Blender, run_script
-from meshkit.external import dae_stats, glb_stats, plain_stats
+from meshkit.external import dae_stats, glb_stats, plain_stats, smoothing_error
 from meshkit.gate import (DEFAULT, SMOOTH_ANGLE, Tolerance, check_smoothed, compare,
                           compare_normals)
 
@@ -81,6 +81,7 @@ class Item:
     smooth_angle: float | None = None
     welded_vertices: int | None = None
     doubled_faces: int | None = None
+    dropped_normals: bool | None = None     # an OBJ's own, replaced by the smoothing
     neutral_material: bool | None = None
     importer_warnings: list[str] = field(default_factory=list)
     # glTF export options this Blender does not have, so the export ran without them.
@@ -126,8 +127,14 @@ def _publish(staged: Path, output: Path) -> None:
 
 
 def _same_file(path: Path) -> str:
-    """One key for every spelling of a path: Windows ignores case."""
-    return os.path.normcase(os.path.abspath(path))
+    """One key for every spelling of a path, case included.
+
+    Case-folded everywhere, not only where the filesystem ignores case
+    (Windows, and macOS by default): ``Part.glb`` and ``part.glb`` are two
+    files on Linux but one in a clone on either of the others, and a fork is
+    cloned on all three.
+    """
+    return os.path.normcase(os.path.abspath(path)).casefold()
 
 
 def _judge(result: dict, tolerance: Tolerance) -> tuple[list[str], dict | None]:
@@ -165,13 +172,14 @@ def _judge(result: dict, tolerance: Tolerance) -> tuple[list[str], dict | None]:
 def _judge_plain(result: dict, external: dict, tolerance: Tolerance) -> list[str]:
     """The STL and OBJ checks that start from the file rather than the import.
 
-    * **the file against the import:** trimesh reads the file raw, welds it as
-      the job does, and its triangles, area, centroid and bounds must match
+    * **the file against the import:** ``plain_stats`` reads the file raw,
+      welds it as the job does, and its triangles, area, centroid and bounds must match
       what Blender imported -- positions included, since both read it in the
       link's frame. Geometry unchanged means this.
     * **the shading:** the normals are new on purpose, so they cannot be held
-      against the file's. Instead they must stay within the smoothing angle of
-      their faces (``gate.check_smoothed``).
+      against the file's. Instead they must be what smoothing by angle makes
+      of the GLB's own triangles (``external.smoothing_error``,
+      ``gate.check_smoothed``).
     """
     problems: list[str] = []
     try:
@@ -181,9 +189,13 @@ def _judge_plain(result: dict, external: dict, tolerance: Tolerance) -> list[str
     external["source_triangles"] = source["triangles"]
     external["source_file_triangles"] = source["file_triangles"]
     problems += [f"import: {p}" for p in compare(source, result["source_stats"], tolerance)]
+    try:
+        external["smoothing"] = smoothing_error(Path(result["staged"]), result["smooth_angle"])
+    except Exception as exc:  # noqa: BLE001
+        return problems + [f"shading: could not measure the smoothing: "
+                           f"{type(exc).__name__}: {exc}"]
     problems += [f"shading: {p}" for p in check_smoothed(
-        external.get("normal_deviation"), external.get("normal_deviation_max"),
-        result["smooth_angle"], tolerance)]
+        external["smoothing"], result["smooth_angle"], tolerance)]
     return problems
 
 
@@ -280,6 +292,7 @@ def convert(
                 item.smooth_angle = result.get("smooth_angle")
                 item.welded_vertices = result.get("welded_vertices")
                 item.doubled_faces = result.get("doubled_faces")
+                item.dropped_normals = result.get("dropped_normals")
                 item.neutral_material = result.get("neutral_material")
                 item.importer_warnings = result.get("importer_warnings", [])
                 item.dropped_export_options = result.get("dropped_export_options", [])

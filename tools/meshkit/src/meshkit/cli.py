@@ -450,7 +450,8 @@ def build_parser() -> argparse.ArgumentParser:
     conv.add_argument("--tolerance-position", type=float, default=Tolerance().position)
     conv.add_argument("--tolerance-area", type=float, default=Tolerance().area)
     conv.add_argument("--tolerance-normals", type=float, default=Tolerance().normals,
-                      help="degrees, per percentile of normal deviation")
+                      help="degrees: a .dae's normals from the file's, per percentile; an "
+                           "STL's or OBJ's (p99.9) from what smoothing by angle makes")
     conv.add_argument("--smooth-angle", type=_smooth_angle, default=SMOOTH_ANGLE,
                       help="degrees: an STL or OBJ is smoothed where faces meet at under "
                            f"this (default {SMOOTH_ANGLE:g})")

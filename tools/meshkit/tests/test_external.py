@@ -7,7 +7,8 @@ import pytest
 
 import meshkit.external
 from meshkit._vendor import VENDORED_FILE
-from meshkit.external import _corners, _kept_faces, dae_stats, normal_deviation, plain_stats
+from meshkit.external import (_corners, _kept_faces, dae_stats, normal_deviation, plain_stats,
+                              smoothing_error)
 from test_convert_blender import (flat_box_dae, with_broken_texture,
                                   with_degenerate_and_duplicate_faces, with_lines,
                                   with_prefixed_bindings, with_second_instance)
@@ -257,6 +258,84 @@ def test_plain_stats_read_obj_polygons_and_continued_lines(tmp_path):
     assert stats["triangles"] == stats["file_triangles"] == 2
     assert stats["area"] == pytest.approx(2.0)
     assert stats["centroid"] == pytest.approx([1.0, 0.5, 0.0])
+
+
+def test_plain_stats_read_past_an_inline_comment(tmp_path):
+    path = tmp_path / "tri.obj"
+    path.write_text("v 0 0 0 # origin\nv 1 0 0\nv 0 1 0\nf 1 2 3 # the only face\n",
+                    encoding="utf-8")
+    assert plain_stats(path)["triangles"] == 1
+
+
+def test_plain_stats_cover_a_concave_polygon(tmp_path):
+    # A fan from the first corner would cover 3.5, outside the polygon too.
+    path = tmp_path / "arrow.obj"
+    path.write_text("v 0 0 0\nv 2 0 0\nv 2 2 0\nv 1 0.5 0\nv 0 2 0\nf 1 2 3 4 5\n",
+                    encoding="utf-8")
+    stats = plain_stats(path)
+    assert stats["triangles"] == 3
+    assert stats["area"] == pytest.approx(2.5)
+    # Two triangles of the notched square's area, centred by hand: the square
+    # (centroid 1, 1; area 4) less the notch (corners 0,2 1,0.5 2,2; area 1.5).
+    notch = np.array([[0, 2], [1, 0.5], [2, 2]]).mean(axis=0)
+    assert stats["centroid"][:2] == pytest.approx(list((4 * np.array([1, 1]) - 1.5 * notch) / 2.5))
+
+
+def corner_glb(triangles: np.ndarray, normals: np.ndarray, path):
+    """A GLB of these (n, 3, 3) triangles with these corner normals, as stored."""
+    import trimesh
+
+    mesh = trimesh.Trimesh(triangles.reshape(-1, 3), np.arange(len(triangles) * 3).reshape(-1, 3),
+                           process=False)
+    mesh.vertex_normals = normals.reshape(-1, 3)
+    mesh.export(path)
+    return path
+
+
+def cylinder_corners(sections: int = 32):
+    """A cylinder's triangles, and the normals smoothing at 30 deg gives them.
+
+    The sides meet at 360/sections, under 30, the caps at 90: side corners
+    point straight out, cap corners straight up or down.
+    """
+    import trimesh
+
+    mesh = trimesh.creation.cylinder(radius=0.05, height=0.2, sections=sections)
+    tri = mesh.vertices[mesh.faces]
+    up = np.abs(mesh.face_normals[:, 2]) > 0.99
+    radial = tri.copy()
+    radial[..., 2] = 0
+    radial /= np.linalg.norm(radial, axis=2)[..., None]
+    normals = np.where(up[:, None, None], mesh.face_normals[:, None, :], radial)
+    return mesh, tri, normals
+
+
+def test_smoothing_by_angle_is_reproduced(tmp_path):
+    _, tri, normals = cylinder_corners()
+    measured = smoothing_error(corner_glb(tri, normals, tmp_path / "c.glb"), 30.0)
+    assert measured["p99_9"] < 0.01
+    assert measured["corners"] == len(tri) * 3 and measured["unchecked"] == 0
+
+
+def test_smoothing_lost_shows(tmp_path):
+    mesh, tri, _ = cylinder_corners()
+    flat = np.repeat(mesh.face_normals[:, None, :], 3, axis=1)
+    measured = smoothing_error(corner_glb(tri, flat, tmp_path / "c.glb"), 30.0)
+    assert measured["p99_9"] == pytest.approx(360 / 32 / 2, abs=0.1)   # half a section
+
+
+def test_smoothing_across_sharp_edges_shows(tmp_path):
+    mesh, tri, _ = cylinder_corners()
+    averaged = np.asarray(mesh.vertex_normals)[mesh.faces]     # every face at a vertex
+    measured = smoothing_error(corner_glb(tri, averaged, tmp_path / "c.glb"), 30.0)
+    assert measured["p99_9"] > 30
+
+
+def test_a_smaller_angle_makes_the_cylinder_flat(tmp_path):
+    mesh, tri, normals = cylinder_corners()
+    flat = np.repeat(mesh.face_normals[:, None, :], 3, axis=1)
+    assert smoothing_error(corner_glb(tri, flat, tmp_path / "f.glb"), 10.0)["p99_9"] < 0.01
+    assert smoothing_error(corner_glb(tri, normals, tmp_path / "s.glb"), 10.0)["p99_9"] > 5
 
 
 def test_normal_deviation_takes_other_percentiles():

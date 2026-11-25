@@ -5,7 +5,8 @@ through the Blender installed on your machine, and refuse to write any file that
 measure the same as its source.
 
 A `.dae` converts through **kinema's own COLLADA importer**, so a GLB made here is the
-robot kinema shows, normals and colours as the file has them. An `.stl` or `.obj` is
+robot kinema shows, normals and colours as the file has them (an instance whose
+material fails to bind comes in without it; see *Lost placement* below). An `.stl` or `.obj` is
 smoothed by angle on the way, the rule Kinema applies on import. Every GLB is checked
 several ways before it leaves staging.
 
@@ -214,7 +215,8 @@ uv run meshkit convert --file path/to/one.dae --force
 uv run meshkit convert --file path/to/link.stl --smooth-angle 20
 ```
 
-Each `.glb` is written next to its source mesh in the fork. The source is never modified or
+Each `.glb` is written next to its source mesh in the fork, or with `--out`, at the same
+place under that mirror. The source is never modified or
 deleted, and existing `.glb` files are skipped unless you pass `--force`. Pointing the
 descriptions at the new files is a separate step, reviewed as its own PR in each fork.
 A JSON report (default `out/meshkit/convert-<time>.json`) records the Blender version,
@@ -258,11 +260,14 @@ smoothed on the way:
    importer keeps them.
 3. **Smoothed by angle:** Blender's Shade Smooth by Angle at 30 degrees
    (`--smooth-angle`), so faces meeting at less than that shade as one surface and
-   sharper edges stay sharp. Geometry is unchanged; only the normals are new.
+   sharper edges stay sharp. Geometry is unchanged; only the normals are new. An OBJ's
+   own normals (`vn`) are cleared first, with the sharp edges its importer marks from
+   them, and the report says so (`dropped_normals`): otherwise they outrank the
+   smoothing, and a faceted OBJ leaves faceted. The angle alone decides.
 4. **A material:** an OBJ keeps its own. An STL, having none, gets one named
    `meshkit_neutral` (mid-grey, roughness 0.5), so it can be found and replaced. It is
    always a new material: an OBJ's own material of that name stays as it is, and the
-   new one becomes `meshkit_neutral.001`.
+   new one takes Blender's next free suffix (`meshkit_neutral.001`, say).
 
 Two sources that would write the same GLB, a `part.dae` beside a `part.stl`, are both
 refused, and the report names the other. Otherwise the second would replace the first.
@@ -273,13 +278,24 @@ The gate is the same except where the source's normals were the reference:
 |---|---|---|
 | round trip, trimesh | as for `.dae` | as for `.dae` |
 | import | the raw file, read without Blender (an STL by trimesh, an OBJ object by object by meshkit's own reader) and welded the same way, against Blender's import: triangles (exact), area, centroid, bounds | a rotated or rescaled import, triangles lost in the weld |
-| shading | the `.glb`'s corner normals against their faces: the 99th percentile must be within the smoothing angle (plus `--tolerance-normals`) | normals averaged across sharp edges |
+| shading | the `.glb`'s corner normals against what smoothing by angle makes of its own triangles, rebuilt without Blender: the 99.9th percentile must be within `--tolerance-normals` | normals averaged across sharp edges, and smoothing lost |
 
-The shading check bounds the 99th percentile, not every corner. A cone's tip is
-smoothed all the way round, and its normal points up the axis, tens of degrees from any
-one face: G1's knee reaches 76. Across G1's 49 links and the KR 16's 7, the 99th
-percentile is at most 22.5 degrees, and the report keeps each mesh's maximum
-(`normal_deviation_max`).
+Smoothing by angle is a rule, so the shading check runs it again, from the GLB read by
+trimesh. An edge is sharp where its faces meet at more than the angle, or where it is
+not shared by exactly two faces wound alike. At each vertex the faces joined by the
+other edges form a fan, and each corner's normal is the fan's face normals weighted by
+their angles at the vertex, which is Blender's rule. Each corner is measured against
+that. Flat normals fail, and so do normals averaged across a sharp edge. A cone's tip
+passes: its normal points up the axis, 84 degrees from every face, which is what the
+rule gives it.
+
+Two allowances, both for float32. An edge within 0.01 degrees of the angle may go
+either way. And corners beside a face whose normal float32 rounding leaves uncertain by
+more than 5 degrees are not checked: next to such slivers, Blender's own choice of
+sharp edges is noise, down to marking sharp an edge between coplanar faces. The report
+counts them (`smoothing.unchecked`). It is 1.9% of corners across G1's 49 links and the
+KR 16's 7, mostly the KR 16's sub-micrometre triangles; under half checked fails the
+mesh. On those 56 meshes the 99.9th percentile is at most 0.33 degrees.
 
 ## The vendored importer
 
