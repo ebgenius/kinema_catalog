@@ -254,11 +254,14 @@ smoothed on the way:
 2. **Welded:** corners at exactly the same position are joined, so faces share edges.
    Not *nearly* the same: KUKA's KR 16 R2010-2 has 0.1 nm edges that a 1 nm weld
    collapsed. (Blender 5.2's STL importer already shares identical corners.) Then a
-   face on the same corners as an earlier one in its object, in either winding, is
-   dropped, as the `.dae` path drops it; the report counts them (`doubled_faces`).
-   Blender alone is not consistent here: its STL importer drops them, its OBJ
-   importer keeps them. An OBJ's quads and larger polygons are split into
-   triangles at this point too, so the smoothing works on the faces the GLB holds.
+   face on the same corners as an earlier one in its object, in any winding or
+   starting corner, is dropped whole, as the `.dae` path drops it. Blender alone
+   is not consistent here: its STL importer drops them, its OBJ importer keeps
+   them. An OBJ's quads and larger polygons are then split into triangles, so the
+   smoothing works on the faces the GLB holds, and a triangle on the same corners
+   as an earlier one is dropped too, such as one the file also writes on its own.
+   Always the first in the file stays, with its material. The report counts what
+   went in triangles (`doubled_faces`): a doubled quad is two.
 3. **Smoothed by angle:** Blender's Shade Smooth by Angle at 30 degrees
    (`--smooth-angle`), so faces meeting at less than that shade as one surface and
    sharper edges stay sharp. Geometry is unchanged; only the normals are new. An OBJ's

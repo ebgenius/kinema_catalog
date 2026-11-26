@@ -287,3 +287,61 @@ def test_a_warped_quad_obj_is_smoothed_as_its_triangles(tmp_path, blender):
 
     assert item["status"] == "converted", item["problems"]
     assert item["source_stats"]["triangles"] == 2 * (size - 1) ** 2
+
+
+def square_obj(path: Path, body: str, colours: dict[str, tuple[float, float, float]] | None = None
+               ) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    head = ""
+    if colours:
+        path.with_suffix(".mtl").write_text("".join(
+            f"newmtl {name}\nKd {r} {g} {b}\nKa 0 0 0\nKs 0 0 0\nd 1.0\nillum 1\n"
+            for name, (r, g, b) in colours.items()), encoding="utf-8")
+        head = f"mtllib {path.with_suffix('.mtl').name}\n"
+    path.write_text(head + "v 0 0 0\nv 0.1 0 0\nv 0.1 0.1 0\nv 0 0.1 0\n" + body,
+                    encoding="utf-8")
+    return path
+
+
+def test_a_quad_written_twice_leaves_one_square(tmp_path, blender):
+    # Shifted and reversed: each split alone takes another diagonal, and
+    # four triangles of one square would pass a check of triangles.
+    obj = square_obj(tmp_path / "catalog" / "src" / "fork" / "twice.obj",
+                     "f 1 2 3 4\nf 2 3 4 1\nf 4 3 2 1\n")
+
+    item, _ = convert_one(tmp_path, obj, blender)
+
+    assert item["status"] == "converted", item["problems"]
+    assert item["source_stats"]["triangles"] == 2
+    assert item["source_stats"]["area"] == pytest.approx(0.01)
+    assert item["doubled_faces"] == 4         # in triangles: two quads' worth
+    assert item["external_stats"]["source_file_triangles"] == 6
+
+
+@pytest.mark.parametrize("first, kept", [
+    ("usemtl quad\nf 1 2 3 4\nusemtl tri\nf 1 2 3\n", {"quad": 2}),
+    ("usemtl tri\nf 1 2 3\nusemtl quad\nf 1 2 3 4\n", {"tri": 1, "quad": 1}),
+])
+def test_the_first_face_in_the_file_keeps_its_material(tmp_path, blender, first, kept):
+    obj = square_obj(tmp_path / "catalog" / "src" / "fork" / "part.obj", first,
+                     colours={"quad": (1.0, 0.0, 0.0), "tri": (0.0, 0.0, 1.0)})
+
+    item, glb = convert_one(tmp_path, obj, blender)
+
+    assert item["status"] == "converted", item["problems"]
+    assert item["doubled_faces"] == 1
+    scene = trimesh.load(str(glb), force="scene", process=False)
+    assert {g.visual.material.name: len(g.faces) for g in scene.geometry.values()} == kept
+
+
+def test_a_polygon_that_repeats_a_corner_counts_alike_on_both_sides(tmp_path, blender):
+    obj = tmp_path / "catalog" / "src" / "fork" / "bowtie.obj"
+    obj.parent.mkdir(parents=True)
+    obj.write_text("v 0 0 0\nv 0.1 0 0\nv 0.1 0.1 0\nv 0 0 0\nv -0.1 0 0\nv -0.1 -0.1 0\n"
+                   "f 1 2 3 4 5 6\n", encoding="utf-8")
+
+    item, _ = convert_one(tmp_path, obj, blender)
+
+    assert item["status"] == "converted", item["problems"]
+    assert item["source_stats"]["triangles"] == 2
+    assert item["external_stats"]["source_triangles"] == 2

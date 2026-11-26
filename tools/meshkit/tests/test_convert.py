@@ -223,3 +223,21 @@ def test_a_symlinked_folder_is_its_target(tmp_path):
         pytest.skip("this system does not allow symlinks here")
     same = convert_module._same_file
     assert same(link / "part.glb") == same(real / "part.glb")
+
+
+def test_a_measurement_that_is_not_a_number_leaves_the_report_readable(tmp_path, monkeypatch):
+    # Python's json writes NaN and Infinity; a strict reader refuses the file.
+    fake_job(monkeypatch, lambda job: dict(job, ok=True))
+    monkeypatch.setattr(convert_module, "_judge", lambda result, tolerance: (
+        ["shading: normals: the measurement is not a number"],
+        {"smoothing": {"p99_9": float("nan"), "max": float("inf")}}))
+    (item,) = run(plan([source(tmp_path, "a.dae")], tmp_path, None), tmp_path)["items"]
+    assert item["status"] == "failed" and "not a number" in item["problems"][0]
+
+    def refuse(constant):
+        raise ValueError(f"not JSON: {constant}")
+    saved = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"),
+                       parse_constant=refuse)
+    (written,) = saved["items"]
+    assert written["external_stats"]["smoothing"] == {"p99_9": None, "max": None}
+    assert "not a number" in written["problems"][0]

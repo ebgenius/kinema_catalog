@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import shutil
 import tempfile
@@ -80,7 +81,7 @@ class Item:
     # STL and OBJ only: what was done to the mesh on its way to the GLB.
     smooth_angle: float | None = None
     welded_vertices: int | None = None
-    doubled_faces: int | None = None
+    doubled_faces: int | None = None        # triangles, dropped as repeats of earlier ones
     dropped_normals: bool | None = None     # an OBJ's own, replaced by the smoothing
     neutral_material: bool | None = None
     importer_warnings: list[str] = field(default_factory=list)
@@ -341,5 +342,22 @@ def _finish(report: dict, report_path: Path) -> dict:
     report["summary"] = counts
     report["finished"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    report_path.write_text(json.dumps(_json_safe(report), indent=2, allow_nan=False),
+                           encoding="utf-8")
     return report
+
+
+def _json_safe(value):
+    """``value`` with every NaN or infinity as None: JSON has no word for them.
+
+    Python's ``json`` would write ``NaN`` and ``Infinity``, which a strict
+    reader refuses, so one bad measurement would make the whole report
+    unreadable. The item's problems already say what was not a number.
+    """
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, dict):
+        return {key: _json_safe(v) for key, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    return value

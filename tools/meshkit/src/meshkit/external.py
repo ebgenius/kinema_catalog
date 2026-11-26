@@ -70,13 +70,15 @@ def plain_stats(path: Path) -> dict:
     link's frame, as ROS reads them, so positions compare directly.
 
     The count is of the triangles the job keeps (``job.weld``): in each object,
-    corners at the same position are joined, and a triangle left with a
-    repeated corner, or on the same three corners as an earlier one, is
-    dropped (``_kept_faces``). Per object, because Blender welds each object
-    on its own: two OBJ objects may each keep a face where they touch. An STL
-    is one object, read by trimesh; an OBJ's objects are read by
-    ``_obj_objects``. ``file_triangles`` is the count before any of that.
+    corners at the same position are joined, a face left with a repeated
+    corner is split there, and a polygon or triangle on the same corners as an
+    earlier one is dropped (``_kept_triangles``). Per object, because Blender
+    welds each object on its own: two OBJ objects may each keep a face where
+    they touch. An STL is one object, read by trimesh; an OBJ's objects are
+    read by ``_obj_objects``. ``file_triangles`` is the count before any of
+    that: each polygon as the triangles it splits into.
     """
+    objects: list[tuple[np.ndarray, list[list[int]] | np.ndarray]]
     if path.suffix.lower() == ".obj":
         objects = _obj_objects(path)
         loader = "meshkit OBJ reader"
@@ -92,15 +94,18 @@ def plain_stats(path: Path) -> dict:
             vertices = np.asarray(geometry.vertices, dtype=np.float64)
             vertices = vertices @ transform[:3, :3].T + transform[:3, 3]
             pieces.append(vertices[faces])
-        objects = [np.concatenate(pieces)] if pieces else []
+        if pieces:
+            corners = np.concatenate(pieces).reshape(-1, 3)
+            objects = [(corners, np.arange(len(corners)).reshape(-1, 3))]
+        else:
+            objects = []
         loader = f"trimesh {trimesh.__version__}"
-    if not objects:
-        return {"triangles": 0, "file_triangles": 0, "area": 0.0, "centroid": None,
-                "aabb_min": None, "aabb_max": None, "loader": loader}
-    kept = []
-    for corners in objects:
-        _, index = np.unique(corners.reshape(-1, 3), axis=0, return_inverse=True)
-        kept.append(corners[_kept_faces(index.reshape(-1, 3))])
+    file_triangles = sum(len(polygons) if isinstance(polygons, np.ndarray)
+                         else sum(len(p) - 2 for p in polygons) for _, polygons in objects)
+    kept = [_kept_triangles(points, polygons) for points, polygons in objects]
+    if not objects or not sum(len(k) for k in kept):
+        return {"triangles": 0, "file_triangles": int(file_triangles), "area": 0.0,
+                "centroid": None, "aabb_min": None, "aabb_max": None, "loader": loader}
     tri = np.concatenate(kept)
     a, b, c = tri[:, 0], tri[:, 1], tri[:, 2]
     each = 0.5 * np.linalg.norm(np.cross(b - a, c - a), axis=1)
@@ -110,7 +115,7 @@ def plain_stats(path: Path) -> dict:
                 else points.mean(axis=0))
     return {
         "triangles": int(len(tri)),
-        "file_triangles": int(sum(len(o) for o in objects)),
+        "file_triangles": int(file_triangles),
         "area": area,
         "centroid": [float(v) for v in centroid],
         "aabb_min": [float(v) for v in points.min(axis=0)],
@@ -119,16 +124,77 @@ def plain_stats(path: Path) -> dict:
     }
 
 
-def _obj_objects(path: Path) -> list[np.ndarray]:
-    """An OBJ's triangles as Blender's importer groups them: (n, 3, 3) per object.
+def _kept_triangles(points: np.ndarray, polygons: list[list[int]] | np.ndarray) -> np.ndarray:
+    """(n, 3, 3): the triangles ``job.weld`` leaves of one object's polygons.
+
+    ``polygons`` index ``points``, in file order; an (n, 3) array is all
+    triangles. In the job's order:
+
+    1. corners at the same position are joined, and a polygon that then
+       repeats a corner is split there into loops (``_simple_loops``), as
+       ``remove_doubles`` splits it; a loop of under three corners goes;
+    2. a polygon on the same corners as an earlier one goes whole;
+    3. the rest are split by ``polygon.triangulate``, and a triangle on the
+       same corners as an earlier one goes.
+
+    Triangles alone make steps 2 and 3 one (``_kept_faces``), done at once.
+    """
+    unique, welded = np.unique(points, axis=0, return_inverse=True)
+    welded = welded.ravel()
+    if isinstance(polygons, np.ndarray):
+        index = welded[polygons]
+        return unique[index[_kept_faces(index)]]
+    seen_polygons: set[tuple[int, ...]] = set()
+    seen_triangles: set[tuple[int, ...]] = set()
+    kept: list[tuple[int, int, int]] = []
+    for polygon in polygons:
+        for loop in _simple_loops([int(welded[i]) for i in polygon]):
+            key = tuple(sorted(loop))
+            if key in seen_polygons:
+                continue
+            seen_polygons.add(key)
+            for a, b, c in triangulate(unique[loop]):
+                triangle = (loop[a], loop[b], loop[c])
+                corner_key = tuple(sorted(triangle))
+                if corner_key not in seen_triangles:
+                    seen_triangles.add(corner_key)
+                    kept.append(triangle)
+    return unique[np.asarray(kept, dtype=np.int64).reshape(-1, 3)]
+
+
+def _simple_loops(corners: list[int]) -> list[list[int]]:
+    """A polygon's corners split at each repeated one, as Blender's weld splits it.
+
+    ``remove_doubles`` with corners 0 1 2 0' 3 4, 0' welded onto 0, leaves two
+    faces, 0 1 2 and 0 3 4; with 0 1 1' 2 it leaves 0 1 2; a loop of under
+    three corners is no face and goes.
+    """
+    loops: list[list[int]] = []
+    open_loop: list[int] = []
+    for corner in corners:
+        if corner in open_loop:
+            start = open_loop.index(corner)
+            if len(open_loop) - start >= 3:
+                loops.append(open_loop[start:])
+            del open_loop[start + 1:]
+        else:
+            open_loop.append(corner)
+    if len(open_loop) >= 3:
+        loops.append(open_loop)
+    return loops
+
+
+def _obj_objects(path: Path) -> list[tuple[np.ndarray, list[list[int]]]]:
+    """An OBJ's objects as Blender's importer groups them: its vertices, and each one's polygons.
 
     trimesh regroups an OBJ's faces by material and does not keep its objects
     apart, so the file is read here: ``v`` and ``f`` lines, negative indices
     counted back from the latest vertex, and a new object at each ``o``, as
     the job imports with ``use_split_objects`` (``g`` does not split, since
     ``use_split_groups`` is off). A ``#`` starts a comment anywhere on a line.
-    A polygon is split into triangles by ``polygon.triangulate``, the function
-    the job splits it with, so a concave one keeps its area and a warped one
+    The polygons are left whole, indexing the file's vertices: they are split
+    by ``polygon.triangulate`` (``_kept_triangles``), the function the job
+    splits them with, so a concave one keeps its area and a warped one
     becomes the same triangles on both sides.
     """
     # A trailing backslash continues the line, as in Blender's reader.
@@ -154,10 +220,12 @@ def _obj_objects(path: Path) -> list[np.ndarray]:
     points = np.asarray(vertices, dtype=np.float64).reshape(-1, 3)
     result = []
     for polygons in objects:
-        faces = [(polygon[a], polygon[b], polygon[c]) for polygon in polygons
-                 for a, b, c in triangulate(points[polygon])]
-        if faces:
-            result.append(points[np.asarray(faces)])
+        if not polygons:
+            continue
+        # Each object's own vertices, so welding one is not the whole file's work.
+        used = sorted({i for polygon in polygons for i in polygon})
+        local = {i: k for k, i in enumerate(used)}
+        result.append((points[used], [[local[i] for i in polygon] for polygon in polygons]))
     return result
 
 

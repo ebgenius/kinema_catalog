@@ -258,37 +258,82 @@ def import_plain(source: Path) -> list[bpy.types.Object]:
     return mesh_objects()
 
 
-def split_polygons(bm) -> None:
-    """Every face of more than three corners, as triangles: ``polygon.triangulate``'s.
+def to_triangles(bm) -> int:
+    """Every face as triangles, each set of corners once; returns how many triangles went.
+
+    In file order, so the first face of each set stays, with its material:
+
+    - a face on the same vertices as an earlier face goes whole, in any
+      winding or starting corner. Split first, ``f 1 2 3 4`` and ``f 2 3 4 1``
+      would take different diagonals and leave four distinct triangles of one
+      square;
+    - then each face is split by ``polygon.triangulate``, and a triangle on
+      the same vertices as an earlier one goes -- a triangle the file also
+      writes on its own, before or after the polygon.
+
+    What went is counted in triangles, the ones each face would have made,
+    so the count closes the gap between the file's triangles and the GLB's.
 
     Not ``bmesh.ops.triangulate``: its choice of diagonal for a warped quad is
     its own, and a warped quad's area depends on the diagonal. The import
     check reads the file with the same function, so both hold the same
-    triangles. Each new corner takes the old one's data (UVs, colours), and
-    each face the old face's material and flags.
+    triangles. Each new corner takes its old corner's data (UVs, colours), and
+    each face the old face's material and flags. After ``remove_doubles`` no
+    face repeats a vertex: the weld splits such a face at the repeat.
     """
+    import bmesh
+
     triangulate = load_polygon().triangulate
-    for face in [f for f in bm.faces if len(f.verts) > 3]:
+    bm.verts.index_update()
+    seen_faces: set[tuple[int, ...]] = set()
+    seen_triangles: set[tuple[int, ...]] = set()
+    gone: list = []                    # faces dropped whole
+    splits: list = []                  # (polygon, the triangles of it kept)
+    dropped = 0
+    for face in list(bm.faces):        # in file order: the first of each set stays
         loops = list(face.loops)
+        key = tuple(sorted(loop.vert.index for loop in loops))
+        if key in seen_faces:
+            gone.append(face)
+            dropped += len(loops) - 2
+            continue
+        seen_faces.add(key)
         corners = np.array([loop.vert.co for loop in loops], dtype=np.float64)
+        kept = []
         for triangle in triangulate(corners):
-            verts = [loops[i].vert for i in triangle]
-            try:
-                made = bm.faces.new(verts, face)
-            except ValueError:
-                continue        # already a face: a doubled one, dropped anyway
-            for loop in made.loops:
-                loop.copy_from(loops[triangle[verts.index(loop.vert)]])
+            corner_key = tuple(sorted(loops[i].vert.index for i in triangle))
+            if corner_key in seen_triangles:
+                dropped += 1
+            else:
+                seen_triangles.add(corner_key)
+                kept.append(triangle)
+        if len(loops) > 3:
+            splits.append((face, kept))
+        elif not kept:
+            gone.append(face)
+    if gone:
+        # FACES: an edge only a dropped face used goes with it; the corners
+        # are all a kept face's.
+        bmesh.ops.delete(bm, geom=gone, context="FACES")
+    for face, kept in splits:
+        loops = list(face.loops)
+        for triangle in kept:
+            made = bm.faces.new([loops[i].vert for i in triangle], face)
+            # ``faces.new`` keeps the corners in the order given.
+            for loop, i in zip(made.loops, triangle):
+                loop.copy_from(loops[i])
         bm.faces.remove(face)
+    return dropped
 
 
 def weld(objects: list[bpy.types.Object]) -> tuple[int, int]:
     """Join vertices at the same position, so faces share edges; drop doubled faces.
 
-    Returns how many vertices were joined and how many faces dropped.
+    Returns how many vertices were joined and how many triangles dropped.
 
     Polygons (an OBJ's quads) are split into triangles here too, before
-    anything is smoothed, so the smoothing works on the faces the GLB holds.
+    anything is smoothed, so the smoothing works on the faces the GLB holds
+    (``to_triangles``).
 
     With no shared edges there is nothing to smooth across. An STL writes
     each corner once per triangle; Blender 5.2's STL importer already shares
@@ -298,7 +343,8 @@ def weld(objects: list[bpy.types.Object]) -> tuple[int, int]:
     own validation would remove it.
 
     Then every face on the same vertices as an earlier one in its object, in
-    any winding, is dropped. Blender is not consistent about these on its own:
+    any winding, is dropped, and so is every triangle that repeats an earlier
+    one once polygons are split. Blender is not consistent about these on its own:
     the STL importer drops them, the OBJ importer keeps them, and the weld
     drops a pair only if it is the weld that joined their corners. Dropped
     always, the rule is one, and the same one the .dae path applies
@@ -318,20 +364,7 @@ def weld(objects: list[bpy.types.Object]) -> tuple[int, int]:
             # Triangles before smoothing: the GLB holds triangles, and the
             # gate rebuilds the smoothing from those. A warped quad smoothed
             # whole has one normal the two triangles it is exported as do not.
-            split_polygons(bm)
-            bm.verts.index_update()
-            seen: set[tuple[int, ...]] = set()
-            doubled = []
-            for face in bm.faces:       # in file order: the first of each set stays
-                key = tuple(sorted(v.index for v in face.verts))
-                if key in seen:
-                    doubled.append(face)
-                else:
-                    seen.add(key)
-            if doubled:
-                # FACES_ONLY: the twin's edges and corners are the kept face's.
-                bmesh.ops.delete(bm, geom=doubled, context="FACES_ONLY")
-                dropped += len(doubled)
+            dropped += to_triangles(bm)
             bm.to_mesh(obj.data)
         finally:
             bm.free()

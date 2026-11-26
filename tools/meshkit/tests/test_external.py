@@ -408,3 +408,53 @@ def test_edges_either_side_of_the_angle_at_one_corner_are_not_failed(tmp_path):
     # The joined pair's corners at the origin. The third's is its own face
     # normal, which the all-sharp pass gives, so it is checked.
     assert measured["unchecked"] == 2
+
+
+SQUARE = "v 0 0 0\nv 1 0 0\nv 1 1 0\nv 0 1 0\n"
+
+
+@pytest.mark.parametrize("again", ["2 3 4 1", "4 3 2 1", "3 2 1 4"])
+def test_a_quad_written_twice_is_one_square(tmp_path, again):
+    # Split first, a quad and its shifted or reversed copy take different
+    # diagonals: four distinct triangles, a doubled surface no triangle check sees.
+    path = tmp_path / "twice.obj"
+    path.write_text(SQUARE + f"f 1 2 3 4\nf {again}\n", encoding="utf-8")
+    stats = plain_stats(path)
+    assert stats["file_triangles"] == 4
+    assert stats["triangles"] == 2
+    assert stats["area"] == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize("faces", ["f 1 2 3 4\nf 1 2 3\n", "f 1 2 3\nf 1 2 3 4\n"])
+def test_a_triangle_of_a_quad_written_again_is_counted_once(tmp_path, faces):
+    path = tmp_path / "part.obj"
+    path.write_text(SQUARE + faces, encoding="utf-8")
+    stats = plain_stats(path)
+    assert stats["file_triangles"] == 3
+    assert stats["triangles"] == 2
+    assert stats["area"] == pytest.approx(1.0)
+
+
+def test_a_polygon_that_repeats_a_corner_is_split_there(tmp_path):
+    # Corners 1 2 3 at the square's, then 1 again, then two more: welded, the
+    # face is two loops, as Blender's weld splits it -- a triangle each.
+    path = tmp_path / "bowtie.obj"
+    path.write_text("v 0 0 0\nv 1 0 0\nv 1 1 0\nv 0 0 0\nv -1 0 0\nv -1 -1 0\n"
+                    "f 1 2 3 4 5 6\n", encoding="utf-8")
+    stats = plain_stats(path)
+    assert stats["file_triangles"] == 4
+    assert stats["triangles"] == 2
+    assert stats["area"] == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize("corners, loops", [
+    ([0, 1, 2, 0, 3, 4], [[0, 1, 2], [0, 3, 4]]),
+    ([0, 1, 1, 2], [[0, 1, 2]]),          # neighbours welded: one corner fewer
+    ([0, 1, 2, 0], [[0, 1, 2]]),          # around the end
+    ([0, 1, 0, 3], []),                   # two loops of two: no face at all
+    ([0, 1, 2, 0, 4], [[0, 1, 2]]),
+])
+def test_simple_loops_split_as_blenders_weld_does(corners, loops):
+    # Blender 5.2's remove_doubles on each, probed: the same faces, by vertex.
+    from meshkit.external import _simple_loops
+    assert sorted(map(sorted, _simple_loops(corners))) == sorted(map(sorted, loops))
