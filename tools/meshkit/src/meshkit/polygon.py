@@ -11,6 +11,19 @@ from __future__ import annotations
 import numpy as np
 
 
+def project(polygon: np.ndarray) -> np.ndarray:
+    """(n, 2): the corners in the plane a polygon lies in, counter-clockwise from its normal.
+
+    The plane is the one across the largest component of its Newell normal;
+    the two other axes go in cyclic order -- (y, z), (z, x), (x, y) -- so the
+    projection turns the way the normal's own component says.
+    """
+    normal = np.cross(polygon, np.roll(polygon, -1, axis=0)).sum(axis=0)
+    axis = int(np.argmax(np.abs(normal)))
+    flat = polygon[:, [(axis + 1) % 3, (axis + 2) % 3]]
+    return flat[:, ::-1] if normal[axis] < 0 else flat
+
+
 def triangulate(polygon: np.ndarray) -> list[tuple[int, int, int]]:
     """Triangles covering one polygon, as indices into its corners.
 
@@ -29,13 +42,7 @@ def triangulate(polygon: np.ndarray) -> list[tuple[int, int, int]]:
     count = len(polygon)
     if count == 3:
         return [(0, 1, 2)]
-    normal = np.cross(polygon, np.roll(polygon, -1, axis=0)).sum(axis=0)
-    axis = int(np.argmax(np.abs(normal)))
-    # The two other axes in cyclic order -- (y, z), (z, x), (x, y) -- so the
-    # projection turns the way the normal's own component says.
-    flat = polygon[:, [(axis + 1) % 3, (axis + 2) % 3]]
-    if normal[axis] < 0:
-        flat = flat[:, ::-1]          # counter-clockwise, seen from the normal
+    flat = project(polygon)
 
     def turn(o: int, a: int, b: int) -> float:
         (ox, oy), (ax, ay), (bx, by) = flat[o], flat[a], flat[b]

@@ -39,7 +39,7 @@ import collada
 from meshkit import __version__
 from meshkit._vendor import VENDORED_FILE, importer_provenance
 from meshkit.blender import TIMED_OUT, Blender, run_script
-from meshkit.external import dae_stats, glb_stats, plain_stats, smoothing_error
+from meshkit.external import dae_stats, glb_stats, plain_loader, plain_stats, smoothing_error
 from meshkit.gate import (DEFAULT, SMOOTH_ANGLE, Tolerance, check_smoothed, compare,
                           compare_normals)
 
@@ -186,10 +186,13 @@ def _judge_plain(result: dict, external: dict, tolerance: Tolerance) -> list[str
       ``gate.check_smoothed``).
     """
     problems: list[str] = []
+    path = Path(result["source"])
     try:
-        source = plain_stats(Path(result["source"]))
+        source = plain_stats(path)
     except Exception as exc:  # noqa: BLE001
-        return [f"trimesh could not read the source: {type(exc).__name__}: {exc}"]
+        # Named, since an OBJ is read by meshkit's own reader, not trimesh.
+        return [f"import: {plain_loader(path)} could not read the source: "
+                f"{type(exc).__name__}: {exc}"]
     external["source_triangles"] = source["triangles"]
     external["source_file_triangles"] = source["file_triangles"]
     problems += [f"import: {p}" for p in compare(source, result["source_stats"], tolerance)]
@@ -341,9 +344,11 @@ def _finish(report: dict, report_path: Path) -> dict:
         counts[item["status"]] = counts.get(item["status"], 0) + 1
     report["summary"] = counts
     report["finished"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    # The report returned is the one written, so a caller sees what a reader
+    # of the file sees.
+    report = _json_safe(report)
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(json.dumps(_json_safe(report), indent=2, allow_nan=False),
-                           encoding="utf-8")
+    report_path.write_text(json.dumps(report, indent=2, allow_nan=False), encoding="utf-8")
     return report
 
 

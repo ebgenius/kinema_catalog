@@ -28,7 +28,7 @@ from pathlib import Path
 import numpy as np
 import trimesh
 
-from meshkit.polygon import triangulate
+from meshkit.polygon import project, triangulate
 
 # Percentiles of the normal-deviation distribution the gate compares.
 QUANTILES = (50, 90, 99)
@@ -61,6 +61,13 @@ def normal_deviation(triangles: np.ndarray, normals: np.ndarray,
     return [float(v) for v in np.percentile(angles, quantiles)]
 
 
+def plain_loader(path: Path) -> str:
+    """What ``plain_stats`` reads this file with: an OBJ by meshkit's own reader, an STL by trimesh."""
+    if path.suffix.lower() == ".obj":
+        return "meshkit OBJ reader"
+    return f"trimesh {trimesh.__version__}"
+
+
 def plain_stats(path: Path) -> dict:
     """An STL or OBJ as written, read without Blender: the mesh a weld leaves of it.
 
@@ -81,7 +88,7 @@ def plain_stats(path: Path) -> dict:
     objects: list[tuple[np.ndarray, list[list[int]] | np.ndarray]]
     if path.suffix.lower() == ".obj":
         objects = _obj_objects(path)
-        loader = "meshkit OBJ reader"
+        loader = plain_loader(path)
     else:
         scene = trimesh.load(str(path), force="scene", process=False)
         pieces: list[np.ndarray] = []
@@ -99,7 +106,7 @@ def plain_stats(path: Path) -> dict:
             objects = [(corners, np.arange(len(corners)).reshape(-1, 3))]
         else:
             objects = []
-        loader = f"trimesh {trimesh.__version__}"
+        loader = plain_loader(path)
     file_triangles = sum(len(polygons) if isinstance(polygons, np.ndarray)
                          else sum(len(p) - 2 for p in polygons) for _, polygons in objects)
     kept = [_kept_triangles(points, polygons) for points, polygons in objects]
@@ -184,6 +191,40 @@ def _simple_loops(corners: list[int]) -> list[list[int]]:
     return loops
 
 
+def _loops_overlap(points: np.ndarray, corners: list[int], loops: list[list[int]]) -> bool:
+    """True if any of one face's loops reaches into another: a corner inside, or edges crossing.
+
+    In the plane of the whole face (``polygon.project``). Loops that only
+    touch, at the corner they share, do not overlap.
+    """
+    flat = dict(zip(corners, project(points[corners])))
+
+    def turn(o, a, b) -> float:
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    def inside(p, ring) -> bool:
+        crossings = False
+        for a, b in zip(ring, np.roll(ring, -1, axis=0)):
+            if (a[1] > p[1]) != (b[1] > p[1]) and \
+                    p[0] < a[0] + (p[1] - a[1]) * (b[0] - a[0]) / (b[1] - a[1]):
+                crossings = not crossings
+        return crossings
+
+    rings = [np.array([flat[i] for i in loop]) for loop in loops]
+    for k, first in enumerate(loops):
+        for m in range(k + 1, len(loops)):
+            second = loops[m]
+            a_ring, b_ring = rings[k], rings[m]
+            if any(inside(flat[i], a_ring) for i in second if i not in first) or \
+                    any(inside(flat[i], b_ring) for i in first if i not in second):
+                return True
+            for p, q in zip(a_ring, np.roll(a_ring, -1, axis=0)):
+                for r, s in zip(b_ring, np.roll(b_ring, -1, axis=0)):
+                    if turn(p, q, r) * turn(p, q, s) < 0 and turn(r, s, p) * turn(r, s, q) < 0:
+                        return True
+    return False
+
+
 def _obj_objects(path: Path) -> list[tuple[np.ndarray, list[list[int]]]]:
     """An OBJ's objects as Blender's importer groups them: its vertices, and each one's polygons.
 
@@ -200,7 +241,8 @@ def _obj_objects(path: Path) -> list[tuple[np.ndarray, list[list[int]]]]:
     # A trailing backslash continues the line, as in Blender's reader.
     text = path.read_text(encoding="utf-8", errors="replace").replace("\\\n", " ")
     vertices: list[list[float]] = []
-    objects: list[list[list[int]]] = [[]]
+    read: list[list[tuple[int, list[int]]]] = [[]]      # (face number, corners)
+    faces = 0
     for line in text.splitlines():
         parts = line.split("#", 1)[0].split()
         if not parts:
@@ -208,16 +250,46 @@ def _obj_objects(path: Path) -> list[tuple[np.ndarray, list[list[int]]]]:
         if parts[0] == "v":
             vertices.append([float(x) for x in parts[1:4]])
         elif parts[0] == "o":
-            if objects[-1]:
-                objects.append([])
+            if read[-1]:
+                read.append([])
         elif parts[0] == "f":
+            faces += 1
             corners = []
             for token in parts[1:]:
                 number = int(token.split("/")[0])
+                if number == 0:
+                    raise ValueError(f"face {faces} has vertex index 0; OBJ counts from 1")
+                if number < -len(vertices):
+                    raise ValueError(f"face {faces} names vertex {number}; "
+                                     f"only {len(vertices)} come before it")
                 corners.append(number - 1 if number > 0 else len(vertices) + number)
             if len(corners) >= 3:
-                objects[-1].append(corners)
+                read[-1].append((faces, corners))
     points = np.asarray(vertices, dtype=np.float64).reshape(-1, 3)
+    objects: list[list[list[int]]] = []
+    for faces_read in read:
+        polygons = []
+        for number, corners in faces_read:
+            for i in corners:
+                if not 0 <= i < len(points):
+                    raise ValueError(f"face {number} names vertex {i + 1}; "
+                                     f"the file has {len(points)}")
+            if len(set(corners)) == len(corners):
+                polygons.append(corners)
+                continue
+            # A face that names a vertex twice. Blender's importer repairs it
+            # by a constrained Delaunay triangulation of its own edges, holes
+            # and crossings included. Loops that only touch come out filled
+            # each, as ``_simple_loops`` has them (probed); anything else is
+            # Blender's own triangulation, which is not reproduced here.
+            loops = _simple_loops(corners)
+            if _loops_overlap(points, corners, loops):
+                raise ValueError(
+                    f"face {number} names a vertex twice, and its loops overlap (a hole, "
+                    f"or edges that cross): Blender rebuilds such a face by its own "
+                    f"triangulation, which this reader does not reproduce")
+            polygons += loops
+        objects.append(polygons)
     result = []
     for polygons in objects:
         if not polygons:

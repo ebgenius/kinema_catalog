@@ -233,6 +233,8 @@ def test_a_measurement_that_is_not_a_number_leaves_the_report_readable(tmp_path,
         {"smoothing": {"p99_9": float("nan"), "max": float("inf")}}))
     (item,) = run(plan([source(tmp_path, "a.dae")], tmp_path, None), tmp_path)["items"]
     assert item["status"] == "failed" and "not a number" in item["problems"][0]
+    # What convert returns is what it wrote.
+    assert item["external_stats"]["smoothing"] == {"p99_9": None, "max": None}
 
     def refuse(constant):
         raise ValueError(f"not JSON: {constant}")

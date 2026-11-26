@@ -253,11 +253,12 @@ smoothed on the way:
    rotate every mesh from Y-up.
 2. **Welded:** corners at exactly the same position are joined, so faces share edges.
    Not *nearly* the same: KUKA's KR 16 R2010-2 has 0.1 nm edges that a 1 nm weld
-   collapsed. (Blender 5.2's STL importer already shares identical corners.) Then a
+   collapsed. (Blender 5.2's STL importer already shares identical corners.) A
    face on the same corners as an earlier one in its object, in any winding or
-   starting corner, is dropped whole, as the `.dae` path drops it. Blender alone
-   is not consistent here: its STL importer drops them, its OBJ importer keeps
-   them. An OBJ's quads and larger polygons are then split into triangles, so the
+   starting corner, is dropped whole, as the `.dae` path drops it; this is done
+   before the weld, which would otherwise settle such a pair itself and keep the
+   later face. Blender alone is not consistent here: its STL importer drops them,
+   its OBJ importer keeps them. An OBJ's quads and larger polygons are then split into triangles, so the
    smoothing works on the faces the GLB holds, and a triangle on the same corners
    as an earlier one is dropped too, such as one the file also writes on its own.
    Always the first in the file stays, with its material. The report counts what
@@ -275,6 +276,15 @@ smoothed on the way:
 
 Two sources that would write the same GLB, a `part.dae` beside a `part.stl`, are both
 refused, and the report names the other. Otherwise the second would replace the first.
+
+An OBJ face that names one vertex twice is repaired by Blender's importer before
+anything else. Where its loops only touch (`f 1 2 3 1 4 5`, two triangles), the
+import check reads it the same way. Where one loop lies inside another or their edges
+cross, such as a square with a hole bridged by a repeated corner, Blender rebuilds
+the face with its own constrained triangulation. meshkit's reader does not reproduce
+that, so the mesh fails and the report says why, rather than being checked against a
+guess. So does a face naming a vertex the file does not have. The report names the
+reader that failed: meshkit's own for an OBJ, trimesh for an STL.
 
 The gate is the same except where the source's normals were the reference:
 

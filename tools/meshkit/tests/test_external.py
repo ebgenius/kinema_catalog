@@ -458,3 +458,40 @@ def test_simple_loops_split_as_blenders_weld_does(corners, loops):
     # Blender 5.2's remove_doubles on each, probed: the same faces, by vertex.
     from meshkit.external import _simple_loops
     assert sorted(map(sorted, _simple_loops(corners))) == sorted(map(sorted, loops))
+
+
+def test_a_face_naming_a_vertex_twice_around_a_hole_is_refused(tmp_path):
+    # Blender's importer rebuilds it by its own triangulation, hole kept:
+    # area 12 (probed). Read as two filled loops it would be 20.
+    path = tmp_path / "hole.obj"
+    path.write_text("v 0 0 0\nv 4 0 0\nv 4 4 0\nv 0 4 0\nv 1 1 0\nv 1 3 0\nv 3 3 0\nv 3 1 0\n"
+                    "f 1 2 3 4 1 5 6 7 8 5\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="face 1 names a vertex twice, and its loops overlap"):
+        plain_stats(path)
+
+
+@pytest.mark.parametrize("face, triangles", [
+    ("1 2 3 1 4 5", 2),       # two loops touching at vertex 1: a triangle each
+    ("1 2 2 3 6", 2),         # a neighbour named twice: a quad
+    ("1 2 3 6 1", 2),         # the first again at the end: a quad
+])
+def test_a_face_naming_a_vertex_twice_reads_as_blender_repairs_it(tmp_path, face, triangles):
+    # Blender 5.2's importer on each, probed: the same faces, area 1.
+    path = tmp_path / "part.obj"
+    path.write_text("v 0 0 0\nv 1 0 0\nv 1 1 0\nv -1 0 0\nv -1 -1 0\nv 0 1 0\n"
+                    f"f {face}\n", encoding="utf-8")
+    stats = plain_stats(path)
+    assert stats["triangles"] == triangles
+    assert stats["area"] == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize("face, message", [
+    ("1 2 0", "face 2 has vertex index 0"),
+    ("1 2 9", "face 2 names vertex 9; the file has 3"),
+    ("1 2 -4", "face 2 names vertex -4; only 3 come before it"),
+])
+def test_an_obj_face_naming_no_vertex_says_which(tmp_path, face, message):
+    path = tmp_path / "bad.obj"
+    path.write_text(f"v 0 0 0\nv 1 0 0\nv 1 1 0\nf 1 2 3\nf {face}\n", encoding="utf-8")
+    with pytest.raises(ValueError, match=message):
+        plain_stats(path)

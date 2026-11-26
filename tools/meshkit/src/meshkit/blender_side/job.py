@@ -326,6 +326,36 @@ def to_triangles(bm) -> int:
     return dropped
 
 
+def drop_coincident_faces(bm) -> int:
+    """Drop each face on the same positions as an earlier one; returns the triangles that went.
+
+    Run before the weld, because the weld settles such pairs itself and not
+    by file order: a red ``f 4 5 6`` and then a blue ``f 1 2 3``, vertices
+    4-6 copies of 1-3, leave only the blue one (Blender 5.2, probed) -- the
+    weld keeps the lower-numbered corners and drops the face it made a twin.
+    Keyed by position, any winding or starting corner, which is what makes
+    corners one vertex at a weld distance of zero. A face that repeats a
+    position is left to the weld, which splits it, and to ``to_triangles``.
+    """
+    import bmesh
+
+    seen: set[tuple] = set()
+    gone = []
+    dropped = 0
+    for face in bm.faces:            # in file order: the first of each set stays
+        key = tuple(sorted(tuple(v.co) for v in face.verts))
+        if len(set(key)) < len(key):
+            continue
+        if key in seen:
+            gone.append(face)
+            dropped += len(key) - 2
+        else:
+            seen.add(key)
+    if gone:
+        bmesh.ops.delete(bm, geom=gone, context="FACES")
+    return dropped
+
+
 def weld(objects: list[bpy.types.Object]) -> tuple[int, int]:
     """Join vertices at the same position, so faces share edges; drop doubled faces.
 
@@ -346,8 +376,9 @@ def weld(objects: list[bpy.types.Object]) -> tuple[int, int]:
     any winding, is dropped, and so is every triangle that repeats an earlier
     one once polygons are split. Blender is not consistent about these on its own:
     the STL importer drops them, the OBJ importer keeps them, and the weld
-    drops a pair only if it is the weld that joined their corners. Dropped
-    always, the rule is one, and the same one the .dae path applies
+    drops one of a pair only if it is the weld that joined their corners --
+    and then whichever it likes (``drop_coincident_faces``). Dropped
+    always, first in the file kept, the rule is one, and the same one the .dae path applies
     (``external._kept_faces``); ``external.plain_stats`` counts the file
     the same way, per object.
     """
@@ -358,6 +389,10 @@ def weld(objects: list[bpy.types.Object]) -> tuple[int, int]:
         bm = bmesh.new()
         try:
             bm.from_mesh(obj.data)
+            # Before the weld, which drops a face it makes a twin of and
+            # keeps the twin -- the later face, when the earlier one's
+            # corners are the copies.
+            dropped += drop_coincident_faces(bm)
             before = len(bm.verts)
             bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=WELD)
             joined += before - len(bm.verts)

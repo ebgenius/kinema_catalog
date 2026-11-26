@@ -345,3 +345,37 @@ def test_a_polygon_that_repeats_a_corner_counts_alike_on_both_sides(tmp_path, bl
     assert item["status"] == "converted", item["problems"]
     assert item["source_stats"]["triangles"] == 2
     assert item["external_stats"]["source_triangles"] == 2
+
+
+def test_the_first_of_two_coincident_faces_stays_through_the_weld(tmp_path, blender):
+    # On their own vertices, the red face's corners copies of the blue's:
+    # Blender's weld alone keeps the blue one, the later.
+    obj = tmp_path / "catalog" / "src" / "fork" / "part.obj"
+    obj.parent.mkdir(parents=True)
+    obj.with_suffix(".mtl").write_text(
+        "newmtl red\nKd 1 0 0\nnewmtl blue\nKd 0 0 1\n", encoding="utf-8")
+    obj.write_text("mtllib part.mtl\nv 0 0 0\nv 0.1 0 0\nv 0.1 0.1 0\n"
+                   "v 0 0 0\nv 0.1 0 0\nv 0.1 0.1 0\n"
+                   "usemtl red\nf 4 5 6\nusemtl blue\nf 1 2 3\n", encoding="utf-8")
+
+    item, glb = convert_one(tmp_path, obj, blender)
+
+    assert item["status"] == "converted", item["problems"]
+    assert item["doubled_faces"] == 1
+    scene = trimesh.load(str(glb), force="scene", process=False)
+    assert {g.visual.material.name: len(g.faces) for g in scene.geometry.values()} == {"red": 1}
+
+
+def test_an_obj_the_reader_refuses_fails_naming_the_reader(tmp_path, blender):
+    obj = tmp_path / "catalog" / "src" / "fork" / "hole.obj"
+    obj.parent.mkdir(parents=True)
+    obj.write_text("v 0 0 0\nv 0.4 0 0\nv 0.4 0.4 0\nv 0 0.4 0\n"
+                   "v 0.1 0.1 0\nv 0.1 0.3 0\nv 0.3 0.3 0\nv 0.3 0.1 0\n"
+                   "f 1 2 3 4 1 5 6 7 8 5\n", encoding="utf-8")
+
+    item, _ = convert_one(tmp_path, obj, blender)
+
+    assert item["status"] == "failed"
+    (problem,) = item["problems"]
+    assert problem.startswith("import: meshkit OBJ reader could not read the source")
+    assert "loops overlap" in problem
