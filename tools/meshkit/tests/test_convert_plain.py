@@ -267,3 +267,23 @@ def test_an_objs_own_normals_give_way_to_the_smoothing(tmp_path, blender):
     deviation = corner_deviation(glb)
     sides = deviation[deviation[:, 0] < 0.01]
     assert sides[:, 1].min() > 4.0 and sides[:, 1].max() < 7.0      # round, not faceted
+
+
+def test_a_warped_quad_obj_is_smoothed_as_its_triangles(tmp_path, blender):
+    # A saddle of quads, each warped: smoothed whole, a quad has one normal
+    # that the two triangles it is exported as do not share.
+    size = 6
+    xs = np.linspace(-0.1, 0.1, size)
+    lines = [f"v {x:.6f} {y:.6f} {30 * x * y:.6f}" for y in xs for x in xs]
+    for j in range(size - 1):
+        for i in range(size - 1):
+            a = j * size + i + 1
+            lines.append(f"f {a} {a + 1} {a + size + 1} {a + size}")
+    obj = tmp_path / "catalog" / "src" / "fork" / "saddle.obj"
+    obj.parent.mkdir(parents=True)
+    obj.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    item, _ = convert_one(tmp_path, obj, blender, smooth_angle=10.0)
+
+    assert item["status"] == "converted", item["problems"]
+    assert item["source_stats"]["triangles"] == 2 * (size - 1) ** 2

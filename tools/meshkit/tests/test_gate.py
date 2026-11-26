@@ -58,7 +58,8 @@ def test_missing_normals_fail():
 
 
 def smoothing(p99_9=0.3, corners=1000, unchecked=20):
-    return {"p99_9": p99_9, "max": p99_9, "corners": corners, "unchecked": unchecked,
+    # max well over the limit throughout: the gate is on the percentile.
+    return {"p99_9": p99_9, "max": 90.0, "corners": corners, "unchecked": unchecked,
             "ambiguous_edges": 0}
 
 
@@ -89,3 +90,9 @@ def test_a_mesh_mostly_unchecked_fails():
 def test_smoothing_unmeasured_fails(measured):
     assert check_smoothed(measured, 30.0) == [
         "normals: no corner could be checked against smoothing by angle"]
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf")])
+def test_a_measurement_that_is_not_a_number_fails(value):
+    (problem,) = check_smoothed(smoothing(p99_9=value), 30.0)
+    assert "not a number of degrees" in problem

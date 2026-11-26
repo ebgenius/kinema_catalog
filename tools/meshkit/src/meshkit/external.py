@@ -28,6 +28,8 @@ from pathlib import Path
 import numpy as np
 import trimesh
 
+from meshkit.polygon import triangulate
+
 # Percentiles of the normal-deviation distribution the gate compares.
 QUANTILES = (50, 90, 99)
 
@@ -125,8 +127,9 @@ def _obj_objects(path: Path) -> list[np.ndarray]:
     counted back from the latest vertex, and a new object at each ``o``, as
     the job imports with ``use_split_objects`` (``g`` does not split, since
     ``use_split_groups`` is off). A ``#`` starts a comment anywhere on a line.
-    A polygon is split into triangles that cover it (``_triangulate``), as
-    Blender's own fill does, so a concave one keeps its area.
+    A polygon is split into triangles by ``polygon.triangulate``, the function
+    the job splits it with, so a concave one keeps its area and a warped one
+    becomes the same triangles on both sides.
     """
     # A trailing backslash continues the line, as in Blender's reader.
     text = path.read_text(encoding="utf-8", errors="replace").replace("\\\n", " ")
@@ -152,56 +155,10 @@ def _obj_objects(path: Path) -> list[np.ndarray]:
     result = []
     for polygons in objects:
         faces = [(polygon[a], polygon[b], polygon[c]) for polygon in polygons
-                 for a, b, c in _triangulate(points[polygon])]
+                 for a, b, c in triangulate(points[polygon])]
         if faces:
             result.append(points[np.asarray(faces)])
     return result
-
-
-def _triangulate(polygon: np.ndarray) -> list[tuple[int, int, int]]:
-    """Triangles covering one planar polygon, as indices into its corners.
-
-    A convex polygon is fanned from its first corner. A concave one is
-    ear-clipped in the plane it lies in (its Newell normal), since a fan would
-    cover area outside it: corners (0,0) (2,0) (2,2) (1,0.5) (0,2) enclose 2.5,
-    and their fan 3.5. Any covering split gives the same area and centroid,
-    so this need not match Blender's choice of triangles, only cover the same
-    polygon. One that is not simple has no such split; what is left of it is
-    fanned.
-    """
-    count = len(polygon)
-    if count == 3:
-        return [(0, 1, 2)]
-    normal = np.cross(polygon, np.roll(polygon, -1, axis=0)).sum(axis=0)
-    axis = int(np.argmax(np.abs(normal)))
-    flat = polygon[:, [i for i in range(3) if i != axis]]
-    if normal[axis] < 0:
-        flat = flat[:, ::-1]          # counter-clockwise, seen from the normal
-
-    def turn(o: int, a: int, b: int) -> float:
-        (ox, oy), (ax, ay), (bx, by) = flat[o], flat[a], flat[b]
-        return (ax - ox) * (by - oy) - (ay - oy) * (bx - ox)
-
-    fan = [(0, k, k + 1) for k in range(1, count - 1)]
-    if all(turn(k - 1, k, (k + 1) % count) >= 0 for k in range(count)):
-        return fan
-    left = list(range(count))
-    triangles: list[tuple[int, int, int]] = []
-    while len(left) > 3:
-        for k in range(len(left)):
-            a, b, c = left[k - 1], left[k], left[(k + 1) % len(left)]
-            if turn(a, b, c) <= 0:
-                continue                  # a reflex corner is no ear
-            if any(turn(a, b, p) > 0 and turn(b, c, p) > 0 and turn(c, a, p) > 0
-                   for p in left if p not in (a, b, c)):
-                continue                  # another corner inside: not an ear
-            triangles.append((a, b, c))
-            left.pop(k)
-            break
-        else:
-            return triangles + [(left[0], left[k], left[k + 1])
-                                for k in range(1, len(left) - 1)]
-    return triangles + [tuple(left)]
 
 
 def glb_stats(path: Path) -> dict:
@@ -245,6 +202,11 @@ UNCERTAIN_FACE = 5.0
 # Degrees either side of the smoothing angle: an edge this close to it could
 # go either way, so both are allowed.
 ANGLE_BAND = 0.01
+# Degrees. A corner whose fan depends on such edges is checked against all of
+# them smooth and all of them sharp; it counts as matching one within this.
+# One that matches neither may be a mix of the two, which is not rebuilt, so
+# it is left unchecked rather than failed.
+BAND_MATCH = 1.0
 
 
 def smoothing_error(path: Path, angle: float) -> dict:
@@ -265,7 +227,9 @@ def smoothing_error(path: Path, angle: float) -> dict:
 
     Corners at a vertex of a face whose float32 normal is uncertain by more
     than ``UNCERTAIN_FACE`` degrees are left out (``unchecked``): Blender's
-    sharp-edge choices next to such slivers are rounding noise. On G1 and the
+    sharp-edge choices next to such slivers are rounding noise. So is a corner
+    whose fan turns on edges within ``ANGLE_BAND`` of the angle and which
+    matches neither all of them smooth nor all of them sharp. On G1 and the
     KR 16 that is 2% of corners, most of them on the KR 16's sub-micrometre
     triangles.
     """
@@ -354,21 +318,27 @@ def _fan_error(tri: np.ndarray, normals: np.ndarray, angle: float
     pull = (weight[..., None] * face[:, None, :]).reshape(corners, 3)
     stored = normals.reshape(corners, 3)
     stored = stored / np.maximum(np.linalg.norm(stored, axis=1), 1e-300)[:, None]
-    best = None
+    def angle_between(x: np.ndarray, y: np.ndarray) -> np.ndarray:
+        return np.degrees(np.arccos(np.clip((x * y).sum(axis=1), -1.0, 1.0)))
+
+    expected = []
     for smooth in (dihedral < angle - ANGLE_BAND, dihedral <= angle + ANGLE_BAND):
         a, b = e1[smooth], e2[smooth]
         # Across a smooth edge, the corners at each end join one fan.
         fan = _components(corners, np.r_[a, following(a)], np.r_[following(b), b])
         total = np.zeros((corners, 3))
         np.add.at(total, fan, pull)
-        expected = total[fan]
-        expected /= np.maximum(np.linalg.norm(expected, axis=1), 1e-300)[:, None]
-        error = np.degrees(np.arccos(np.clip((expected * stored).sum(axis=1), -1.0, 1.0)))
-        best = error if best is None else np.minimum(best, error)
+        normal = total[fan]
+        expected.append(normal / np.maximum(np.linalg.norm(normal, axis=1), 1e-300)[:, None])
+    sharp, smooth = (angle_between(e, stored) for e in expected)
+    error = np.minimum(sharp, smooth)
+    # Where edges near the angle change a corner's fan, Blender may have taken
+    # some each way, and neither pass is that mix.
+    mixed = (angle_between(*expected) > ANGLE_BAND) & (error > BAND_MATCH)
     doubtful = np.zeros(int(vertex.max()) + 1, dtype=bool)
     doubtful[vertex[unsure_face].ravel()] = True
-    checked = ~doubtful[vertex].ravel()
-    return best[checked], int((~checked).sum()), unsure_edges
+    checked = ~doubtful[vertex].ravel() & ~mixed
+    return error[checked], int((~checked).sum()), unsure_edges
 
 
 def _components(size: int, u: np.ndarray, v: np.ndarray) -> np.ndarray:

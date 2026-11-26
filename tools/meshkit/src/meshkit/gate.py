@@ -74,6 +74,9 @@ def check_smoothed(smoothing: dict | None, angle: float,
     """
     if not smoothing or smoothing.get("p99_9") is None or not smoothing.get("corners"):
         return ["normals: no corner could be checked against smoothing by angle"]
+    if not math.isfinite(smoothing["p99_9"]):
+        return [f"normals: the smoothing measurement is {smoothing['p99_9']}, not a number "
+                "of degrees"]
     problems = []
     share = smoothing["corners"] / (smoothing["corners"] + smoothing.get("unchecked", 0))
     if share < CHECKED_SHARE:

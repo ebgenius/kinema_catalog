@@ -342,3 +342,69 @@ def test_normal_deviation_takes_other_percentiles():
     triangles, normals = cube_corners(flat=False)
     (worst,) = normal_deviation(triangles, normals, (100,))
     assert worst == pytest.approx(54.7356, abs=1e-3)   # a cube corner's diagonal
+
+
+def test_plain_stats_cover_a_concave_polygon_seen_along_y(tmp_path):
+    # The same arrow standing in the XZ plane: its normal is along -Y, and the
+    # projection must still turn the way the polygon does.
+    path = tmp_path / "arrow.obj"
+    path.write_text("v 0 0 0\nv 2 0 0\nv 2 0 2\nv 1 0 0.5\nv 0 0 2\nf 1 2 3 4 5\n",
+                    encoding="utf-8")
+    assert plain_stats(path)["area"] == pytest.approx(2.5)
+
+
+def test_plain_stats_cover_a_polygon_whose_notch_touches_a_diagonal(tmp_path):
+    # The notch (1, 1) lies on the diagonal from (0, 0) to (2, 2).
+    path = tmp_path / "notch.obj"
+    path.write_text("v 0 0 0\nv 2 0 0\nv 2 2 0\nv 1 1 0\nv 0 2 0\nf 1 2 3 4 5\n",
+                    encoding="utf-8")
+    stats = plain_stats(path)
+    assert stats["triangles"] == 3
+    assert stats["area"] == pytest.approx(3.0)
+
+
+def rotated(point: np.ndarray, axis: np.ndarray, degrees: float) -> np.ndarray:
+    """``point`` turned about ``axis`` (through the origin), by Rodrigues' formula."""
+    k = axis / np.linalg.norm(axis)
+    t = np.radians(degrees)
+    return point * np.cos(t) + np.cross(k, point) * np.sin(t) + k * (k @ point) * (1 - np.cos(t))
+
+
+def test_edges_either_side_of_the_angle_at_one_corner_are_not_failed(tmp_path):
+    # Three triangles fanned round the origin. The first two meet at 29.995
+    # degrees, under the angle, so Blender joins them; the last two at
+    # 30.005, over it, so it does not. Both edges are within the band, and
+    # neither pass -- both smooth, both sharp -- is that mix.
+    def ring(degrees):
+        return np.array([np.cos(np.radians(degrees)), np.sin(np.radians(degrees)), 0.0])
+
+    p1, p2 = ring(0), ring(60)
+    p0 = rotated(ring(-60), p1, 29.995)
+    p3 = rotated(ring(120), p2, -30.005)
+    origin = np.zeros(3)
+    tri = np.array([[origin, p0, p1], [origin, p1, p2], [origin, p2, p3]])
+    face = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0])
+    face /= np.linalg.norm(face, axis=1)[:, None]
+    dihedral = np.degrees(np.arccos([face[0] @ face[1], face[1] @ face[2]]))
+    assert dihedral == pytest.approx([29.995, 30.005], abs=1e-6)
+
+    def weighted(faces, corner):
+        total = sum(np.arctan2(np.linalg.norm(np.cross(tri[f, (corner[f] + 1) % 3] - tri[f, corner[f]],
+                                                       tri[f, (corner[f] + 2) % 3] - tri[f, corner[f]])),
+                               (tri[f, (corner[f] + 1) % 3] - tri[f, corner[f]])
+                               @ (tri[f, (corner[f] + 2) % 3] - tri[f, corner[f]])) * face[f]
+                    for f in faces)
+        return total / np.linalg.norm(total)
+
+    normals = np.repeat(face[:, None, :], 3, axis=1)
+    joined = weighted([0, 1], {0: 0, 1: 0})            # at the origin, Blender's normal
+    normals[0, 0] = normals[1, 0] = joined
+    at_p1 = weighted([0, 1], {0: 2, 1: 1})             # p1 is on the smooth edge
+    normals[0, 2] = normals[1, 1] = at_p1
+
+    measured = smoothing_error(corner_glb(tri, normals, tmp_path / "fan.glb"), 30.0)
+    assert measured["ambiguous_edges"] == 2
+    assert measured["p99_9"] < 0.01
+    # The joined pair's corners at the origin. The third's is its own face
+    # normal, which the all-sharp pass gives, so it is checked.
+    assert measured["unchecked"] == 2

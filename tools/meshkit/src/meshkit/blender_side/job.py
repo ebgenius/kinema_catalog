@@ -95,6 +95,18 @@ def load_importer(path: Path):
     return module
 
 
+def load_polygon():
+    """meshkit's ``polygon`` module, by path: the split ``external.plain_stats`` uses."""
+    path = Path(__file__).resolve().parent.parent / "polygon.py"
+    spec = importlib.util.spec_from_file_location("meshkit_polygon", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 # ---------------------------------------------------------------- measurement
 
 def reset_scene() -> None:
@@ -246,10 +258,37 @@ def import_plain(source: Path) -> list[bpy.types.Object]:
     return mesh_objects()
 
 
+def split_polygons(bm) -> None:
+    """Every face of more than three corners, as triangles: ``polygon.triangulate``'s.
+
+    Not ``bmesh.ops.triangulate``: its choice of diagonal for a warped quad is
+    its own, and a warped quad's area depends on the diagonal. The import
+    check reads the file with the same function, so both hold the same
+    triangles. Each new corner takes the old one's data (UVs, colours), and
+    each face the old face's material and flags.
+    """
+    triangulate = load_polygon().triangulate
+    for face in [f for f in bm.faces if len(f.verts) > 3]:
+        loops = list(face.loops)
+        corners = np.array([loop.vert.co for loop in loops], dtype=np.float64)
+        for triangle in triangulate(corners):
+            verts = [loops[i].vert for i in triangle]
+            try:
+                made = bm.faces.new(verts, face)
+            except ValueError:
+                continue        # already a face: a doubled one, dropped anyway
+            for loop in made.loops:
+                loop.copy_from(loops[triangle[verts.index(loop.vert)]])
+        bm.faces.remove(face)
+
+
 def weld(objects: list[bpy.types.Object]) -> tuple[int, int]:
     """Join vertices at the same position, so faces share edges; drop doubled faces.
 
     Returns how many vertices were joined and how many faces dropped.
+
+    Polygons (an OBJ's quads) are split into triangles here too, before
+    anything is smoothed, so the smoothing works on the faces the GLB holds.
 
     With no shared edges there is nothing to smooth across. An STL writes
     each corner once per triangle; Blender 5.2's STL importer already shares
@@ -276,6 +315,10 @@ def weld(objects: list[bpy.types.Object]) -> tuple[int, int]:
             before = len(bm.verts)
             bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=WELD)
             joined += before - len(bm.verts)
+            # Triangles before smoothing: the GLB holds triangles, and the
+            # gate rebuilds the smoothing from those. A warped quad smoothed
+            # whole has one normal the two triangles it is exported as do not.
+            split_polygons(bm)
             bm.verts.index_update()
             seen: set[tuple[int, ...]] = set()
             doubled = []

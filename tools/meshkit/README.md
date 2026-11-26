@@ -257,7 +257,8 @@ smoothed on the way:
    face on the same corners as an earlier one in its object, in either winding, is
    dropped, as the `.dae` path drops it; the report counts them (`doubled_faces`).
    Blender alone is not consistent here: its STL importer drops them, its OBJ
-   importer keeps them.
+   importer keeps them. An OBJ's quads and larger polygons are split into
+   triangles at this point too, so the smoothing works on the faces the GLB holds.
 3. **Smoothed by angle:** Blender's Shade Smooth by Angle at 30 degrees
    (`--smooth-angle`), so faces meeting at less than that shade as one surface and
    sharper edges stay sharp. Geometry is unchanged; only the normals are new. An OBJ's
@@ -285,12 +286,15 @@ trimesh. An edge is sharp where its faces meet at more than the angle, or where 
 not shared by exactly two faces wound alike. At each vertex the faces joined by the
 other edges form a fan, and each corner's normal is the fan's face normals weighted by
 their angles at the vertex, which is Blender's rule. Each corner is measured against
-that. Flat normals fail, and so do normals averaged across a sharp edge. A cone's tip
+that. Normals averaged across a sharp edge fail, and so do flat normals wherever
+smoothing would have changed them: on a curved surface. On a flat one the two are the
+same, so there is nothing to lose there and nothing to see. A cone's tip
 passes: its normal points up the axis, 84 degrees from every face, which is what the
 rule gives it.
 
 Two allowances, both for float32. An edge within 0.01 degrees of the angle may go
-either way. And corners beside a face whose normal float32 rounding leaves uncertain by
+either way: a corner whose fan turns on such edges must match them all smooth or all
+sharp, and one that matches neither, perhaps a mix, is not checked. And corners beside a face whose normal float32 rounding leaves uncertain by
 more than 5 degrees are not checked: next to such slivers, Blender's own choice of
 sharp edges is noise, down to marking sharp an edge between coplanar faces. The report
 counts them (`smoothing.unchecked`). It is 1.9% of corners across G1's 49 links and the

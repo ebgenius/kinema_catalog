@@ -132,9 +132,12 @@ def _same_file(path: Path) -> str:
     Case-folded everywhere, not only where the filesystem ignores case
     (Windows, and macOS by default): ``Part.glb`` and ``part.glb`` are two
     files on Linux but one in a clone on either of the others, and a fork is
-    cloned on all three.
+    cloned on all three. The directory is resolved, so a symlinked folder
+    meets its target; the file name is not, since ``_publish`` replaces the
+    entry itself rather than what it points to.
     """
-    return os.path.normcase(os.path.abspath(path)).casefold()
+    resolved = os.path.join(os.path.realpath(path.parent), path.name)
+    return os.path.normcase(resolved).casefold()
 
 
 def _judge(result: dict, tolerance: Tolerance) -> tuple[list[str], dict | None]:

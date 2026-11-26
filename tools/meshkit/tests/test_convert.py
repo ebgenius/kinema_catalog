@@ -210,3 +210,16 @@ def test_the_smoothing_angle_reaches_the_job(tmp_path, monkeypatch):
     convert(plan([source(tmp_path, "a.dae")], tmp_path, None), BLENDER,
             report_path=tmp_path / "report.json", smooth_angle=12.5, progress=lambda _: None)
     assert seen == [12.5]
+
+
+def test_a_symlinked_folder_is_its_target(tmp_path):
+    real = tmp_path / "real"
+    real.mkdir()
+    link = tmp_path / "link"
+    try:
+        link.symlink_to(real, target_is_directory=True)
+    except OSError:
+        import pytest
+        pytest.skip("this system does not allow symlinks here")
+    same = convert_module._same_file
+    assert same(link / "part.glb") == same(real / "part.glb")
