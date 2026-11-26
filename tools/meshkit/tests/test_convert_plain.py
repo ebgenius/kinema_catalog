@@ -378,4 +378,4 @@ def test_an_obj_the_reader_refuses_fails_naming_the_reader(tmp_path, blender):
     assert item["status"] == "failed"
     (problem,) = item["problems"]
     assert problem.startswith("import: meshkit OBJ reader could not read the source")
-    assert "loops overlap" in problem
+    assert "lies inside or on another" in problem

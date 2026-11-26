@@ -466,23 +466,47 @@ def test_a_face_naming_a_vertex_twice_around_a_hole_is_refused(tmp_path):
     path = tmp_path / "hole.obj"
     path.write_text("v 0 0 0\nv 4 0 0\nv 4 4 0\nv 0 4 0\nv 1 1 0\nv 1 3 0\nv 3 3 0\nv 3 1 0\n"
                     "f 1 2 3 4 1 5 6 7 8 5\n", encoding="utf-8")
-    with pytest.raises(ValueError, match="face 1 names a vertex twice, and its loops overlap"):
+    with pytest.raises(ValueError, match="face 1 names a vertex twice, and a corner of one "
+                                         "loop lies inside or on another"):
         plain_stats(path)
 
 
-@pytest.mark.parametrize("face, triangles", [
-    ("1 2 3 1 4 5", 2),       # two loops touching at vertex 1: a triangle each
-    ("1 2 2 3 6", 2),         # a neighbour named twice: a quad
-    ("1 2 3 6 1", 2),         # the first again at the end: a quad
+@pytest.mark.parametrize("extra, face, reason", [
+    # Crossing loops turning opposite ways, equal areas: Blender gives no face.
+    # Their Newell normal is zero, so judged in its plane they did not cross.
+    ("v 1 3 0\nv 2.8 0.4 0\n", "1 2 3 4 1 5 6", "the edges of two of its loops cross"),
+    # A corner on the square's edge: Blender splits that edge, a pentagon.
+    ("v 1 -1 0\nv 1 0 0\nv 2 -1 0\nv 0 -2 0\n", "1 2 3 4 1 5 6 7 8",
+     "a corner of one loop lies inside or on another"),
+    # The same loop twice: Blender gives no face.
+    ("", "1 2 3 1 2 3", "two of its loops share more than one corner"),
+    # Loops sharing an edge (Blender fills both) are refused with it.
+    ("v 1 -1 0\n", "1 2 3 4 1 2 5", "two of its loops share more than one corner"),
 ])
-def test_a_face_naming_a_vertex_twice_reads_as_blender_repairs_it(tmp_path, face, triangles):
-    # Blender 5.2's importer on each, probed: the same faces, area 1.
+def test_a_face_naming_a_vertex_twice_is_refused_unless_its_loops_are_apart(
+        tmp_path, extra, face, reason):
+    # Blender 5.2's importer on each, probed.
     path = tmp_path / "part.obj"
-    path.write_text("v 0 0 0\nv 1 0 0\nv 1 1 0\nv -1 0 0\nv -1 -1 0\nv 0 1 0\n"
+    path.write_text(f"v 0 0 0\nv 2 0 0\nv 2 2 0\nv 0 2 0\n{extra}f {face}\n", encoding="utf-8")
+    with pytest.raises(ValueError, match=f"face 1 names a vertex twice, and {reason}"):
+        plain_stats(path)
+
+
+@pytest.mark.parametrize("face, triangles, area", [
+    ("1 2 3 1 4 5", 2, 1.0),      # two loops touching at vertex 1: a triangle each
+    ("1 2 3 1 5 4", 2, 1.0),      # the same turning opposite ways: Newell normal zero
+    ("1 2 3 1 7 4", 2, 1.5),      # ... and unequal
+    ("1 2 2 3 6", 2, 1.0),        # a neighbour named twice: a quad
+    ("1 2 3 6 1", 2, 1.0),        # the first again at the end: a quad
+])
+def test_a_face_naming_a_vertex_twice_reads_as_blender_repairs_it(tmp_path, face, triangles, area):
+    # Blender 5.2's importer on each, probed: the same faces and area.
+    path = tmp_path / "part.obj"
+    path.write_text("v 0 0 0\nv 1 0 0\nv 1 1 0\nv -1 0 0\nv -1 -1 0\nv 0 1 0\nv -1 -2 0\n"
                     f"f {face}\n", encoding="utf-8")
     stats = plain_stats(path)
     assert stats["triangles"] == triangles
-    assert stats["area"] == pytest.approx(1.0)
+    assert stats["area"] == pytest.approx(area)
 
 
 @pytest.mark.parametrize("face, message", [

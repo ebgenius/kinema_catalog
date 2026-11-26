@@ -278,12 +278,13 @@ Two sources that would write the same GLB, a `part.dae` beside a `part.stl`, are
 refused, and the report names the other. Otherwise the second would replace the first.
 
 An OBJ face that names one vertex twice is repaired by Blender's importer before
-anything else. Where its loops only touch (`f 1 2 3 1 4 5`, two triangles), the
-import check reads it the same way. Where one loop lies inside another or their edges
-cross, such as a square with a hole bridged by a repeated corner, Blender rebuilds
-the face with its own constrained triangulation. meshkit's reader does not reproduce
+anything else. Where its loops share one corner and meet nowhere else
+(`f 1 2 3 1 4 5`, two triangles), the import check reads it the same way. Otherwise
+Blender rebuilds the face with its own constrained triangulation. A loop inside
+another becomes a hole, crossing loops can come out as no face at all, and a corner
+lying on another loop's edge splits that edge. meshkit's reader does not reproduce
 that, so the mesh fails and the report says why, rather than being checked against a
-guess. So does a face naming a vertex the file does not have. The report names the
+guess. Loops that share two corners or more are refused with them. So does a face naming a vertex the file does not have. The report names the
 reader that failed: meshkit's own for an OBJ, trimesh for an STL.
 
 The gate is the same except where the source's normals were the reference:

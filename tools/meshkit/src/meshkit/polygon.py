@@ -11,14 +11,21 @@ from __future__ import annotations
 import numpy as np
 
 
-def project(polygon: np.ndarray) -> np.ndarray:
+def newell(polygon: np.ndarray) -> np.ndarray:
+    """A polygon's Newell normal: twice its area, along the way it turns."""
+    return np.cross(polygon, np.roll(polygon, -1, axis=0)).sum(axis=0)
+
+
+def project(polygon: np.ndarray, normal: np.ndarray | None = None) -> np.ndarray:
     """(n, 2): the corners in the plane a polygon lies in, counter-clockwise from its normal.
 
-    The plane is the one across the largest component of its Newell normal;
-    the two other axes go in cyclic order -- (y, z), (z, x), (x, y) -- so the
-    projection turns the way the normal's own component says.
+    The plane is the one across the largest component of ``normal`` -- its
+    own Newell normal unless one is given; the two other axes go in cyclic
+    order -- (y, z), (z, x), (x, y) -- so the projection turns the way the
+    normal's own component says.
     """
-    normal = np.cross(polygon, np.roll(polygon, -1, axis=0)).sum(axis=0)
+    if normal is None:
+        normal = newell(polygon)
     axis = int(np.argmax(np.abs(normal)))
     flat = polygon[:, [(axis + 1) % 3, (axis + 2) % 3]]
     return flat[:, ::-1] if normal[axis] < 0 else flat

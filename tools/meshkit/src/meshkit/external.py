@@ -28,7 +28,7 @@ from pathlib import Path
 import numpy as np
 import trimesh
 
-from meshkit.polygon import project, triangulate
+from meshkit.polygon import newell, project, triangulate
 
 # Percentiles of the normal-deviation distribution the gate compares.
 QUANTILES = (50, 90, 99)
@@ -191,38 +191,61 @@ def _simple_loops(corners: list[int]) -> list[list[int]]:
     return loops
 
 
-def _loops_overlap(points: np.ndarray, corners: list[int], loops: list[list[int]]) -> bool:
-    """True if any of one face's loops reaches into another: a corner inside, or edges crossing.
+def _loops_conflict(points: np.ndarray, loops: list[list[int]]) -> str | None:
+    """Why one face's loops are not the faces Blender's importer makes of them, or None.
 
-    In the plane of the whole face (``polygon.project``). Loops that only
-    touch, at the corner they share, do not overlap.
+    Blender repairs a face that names a vertex twice by triangulating its
+    edges together, so its loops come out filled each -- as ``_simple_loops``
+    has them -- only when they are apart: two that share one corner and
+    meet nowhere else (probed). Anything else, refused here, Blender gives
+    otherwise: a loop inside another is a hole, crossing loops whose turns
+    cancel give nothing, a loop written twice gives nothing, a corner on
+    another loop's edge splits that edge.
+
+    Judged in the plane of the whole face, from the loops' own normals each
+    turned to agree, since a face's Newell normal is zero when its loops turn
+    opposite ways with equal areas and would leave no plane to judge in.
     """
-    flat = dict(zip(corners, project(points[corners])))
+    normals = [newell(points[loop]) for loop in loops]
+    largest = max(normals, key=lambda n: float(n @ n))
+    normal = sum((n if n @ largest >= 0 else -n) for n in normals)
+    if not np.any(normal):
+        return "its loops lie along a line"
+    every = sorted({i for loop in loops for i in loop})
+    flat = dict(zip(every, project(points[every], normal)))
 
     def turn(o, a, b) -> float:
         return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
 
-    def inside(p, ring) -> bool:
+    def on(c, a, b) -> bool:
+        return turn(a, b, c) == 0 and min(a[0], b[0]) <= c[0] <= max(a[0], b[0])             and min(a[1], b[1]) <= c[1] <= max(a[1], b[1])
+
+    def inside(c, ring) -> bool:
         crossings = False
-        for a, b in zip(ring, np.roll(ring, -1, axis=0)):
-            if (a[1] > p[1]) != (b[1] > p[1]) and \
-                    p[0] < a[0] + (p[1] - a[1]) * (b[0] - a[0]) / (b[1] - a[1]):
+        for a, b in ring:
+            if (a[1] > c[1]) != (b[1] > c[1]) and                     c[0] < a[0] + (c[1] - a[1]) * (b[0] - a[0]) / (b[1] - a[1]):
                 crossings = not crossings
         return crossings
 
-    rings = [np.array([flat[i] for i in loop]) for loop in loops]
+    def edges(loop):
+        return [(flat[i], flat[j]) for i, j in zip(loop, loop[1:] + loop[:1])]
+
     for k, first in enumerate(loops):
-        for m in range(k + 1, len(loops)):
-            second = loops[m]
-            a_ring, b_ring = rings[k], rings[m]
-            if any(inside(flat[i], a_ring) for i in second if i not in first) or \
-                    any(inside(flat[i], b_ring) for i in first if i not in second):
-                return True
-            for p, q in zip(a_ring, np.roll(a_ring, -1, axis=0)):
-                for r, s in zip(b_ring, np.roll(b_ring, -1, axis=0)):
-                    if turn(p, q, r) * turn(p, q, s) < 0 and turn(r, s, p) * turn(r, s, q) < 0:
-                        return True
-    return False
+        for second in loops[k + 1:]:
+            if len(set(first) & set(second)) > 1:
+                return "two of its loops share more than one corner"
+            for own, other in ((first, second), (second, first)):
+                ring = edges(other)
+                for i in own:
+                    if i in other:
+                        continue
+                    if any(on(flat[i], a, b) for a, b in ring) or inside(flat[i], ring):
+                        return "a corner of one loop lies inside or on another"
+            for p, q in edges(first):
+                for r, t in edges(second):
+                    if turn(p, q, r) * turn(p, q, t) < 0 and turn(r, t, p) * turn(r, t, q) < 0:
+                        return "the edges of two of its loops cross"
+    return None
 
 
 def _obj_objects(path: Path) -> list[tuple[np.ndarray, list[list[int]]]]:
@@ -283,11 +306,12 @@ def _obj_objects(path: Path) -> list[tuple[np.ndarray, list[list[int]]]]:
             # each, as ``_simple_loops`` has them (probed); anything else is
             # Blender's own triangulation, which is not reproduced here.
             loops = _simple_loops(corners)
-            if _loops_overlap(points, corners, loops):
+            conflict = _loops_conflict(points, loops)
+            if conflict:
                 raise ValueError(
-                    f"face {number} names a vertex twice, and its loops overlap (a hole, "
-                    f"or edges that cross): Blender rebuilds such a face by its own "
-                    f"triangulation, which this reader does not reproduce")
+                    f"face {number} names a vertex twice, and {conflict}: Blender "
+                    f"rebuilds such a face by its own triangulation, which this "
+                    f"reader does not reproduce")
             polygons += loops
         objects.append(polygons)
     result = []
