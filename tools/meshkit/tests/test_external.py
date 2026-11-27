@@ -482,6 +482,8 @@ def test_a_face_naming_a_vertex_twice_around_a_hole_is_refused(tmp_path):
     ("", "1 2 3 1 2 3", "two of its loops share more than one corner"),
     # Loops sharing an edge (Blender fills both) are refused with it.
     ("v 1 -1 0\n", "1 2 3 4 1 2 5", "two of its loops share more than one corner"),
+    # A loop along a line beside one that is not: not probed, so refused.
+    ("v -1 0 0\nv -2 0 0\n", "1 2 3 4 1 5 6", "one of its loops lies along a line"),
 ])
 def test_a_face_naming_a_vertex_twice_is_refused_unless_its_loops_are_apart(
         tmp_path, extra, face, reason):
@@ -507,6 +509,21 @@ def test_a_face_naming_a_vertex_twice_reads_as_blender_repairs_it(tmp_path, face
     stats = plain_stats(path)
     assert stats["triangles"] == triangles
     assert stats["area"] == pytest.approx(area)
+
+
+@pytest.mark.parametrize("face", [
+    "1 2 1 3",            # two loops of two: nothing left
+    "1 2 3 1",            # one loop, along a line
+    "1 2 3 1 4 5",        # two loops, both along a line
+])
+def test_a_face_naming_a_vertex_twice_that_collapses_leaves_the_rest(tmp_path, face):
+    # Blender 5.2's importer drops each and keeps the triangle beside it, probed.
+    path = tmp_path / "part.obj"
+    path.write_text("v 0 0 0\nv 1 0 0\nv 2 0 0\nv -1 0 0\nv -2 0 0\nv 0 1 0\n"
+                    f"f {face}\nf 1 2 6\n", encoding="utf-8")
+    stats = plain_stats(path)
+    assert stats["triangles"] == 1
+    assert stats["area"] == pytest.approx(0.5)
 
 
 @pytest.mark.parametrize("face, message", [

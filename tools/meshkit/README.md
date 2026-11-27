@@ -284,7 +284,9 @@ Blender rebuilds the face with its own constrained triangulation. A loop inside
 another becomes a hole, crossing loops can come out as no face at all, and a corner
 lying on another loop's edge splits that edge. meshkit's reader does not reproduce
 that, so the mesh fails and the report says why, rather than being checked against a
-guess. Loops that share two corners or more are refused with them. So does a face naming a vertex the file does not have. The report names the
+guess. Loops that share two corners or more are refused with them. A face left with no
+loop (`f 1 2 1 3`), or with loops that all lie along a line, is dropped, as Blender
+drops it, and the rest of the mesh converts. So does a face naming a vertex the file does not have. The report names the
 reader that failed: meshkit's own for an OBJ, trimesh for an STL.
 
 The gate is the same except where the source's normals were the reference:

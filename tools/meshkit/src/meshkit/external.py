@@ -191,6 +191,12 @@ def _simple_loops(corners: list[int]) -> list[list[int]]:
     return loops
 
 
+def _along_a_line(loop: np.ndarray) -> bool:
+    """True if a loop's corners enclose no area: its Newell normal is zero, to rounding."""
+    size = float(np.ptp(loop, axis=0).max())
+    return float(np.linalg.norm(newell(loop))) <= 1e-12 * size * size
+
+
 def _loops_conflict(points: np.ndarray, loops: list[list[int]]) -> str | None:
     """Why one face's loops are not the faces Blender's importer makes of them, or None.
 
@@ -205,12 +211,14 @@ def _loops_conflict(points: np.ndarray, loops: list[list[int]]) -> str | None:
     Judged in the plane of the whole face, from the loops' own normals each
     turned to agree, since a face's Newell normal is zero when its loops turn
     opposite ways with equal areas and would leave no plane to judge in.
+    None of the loops lies along a line (``_obj_objects`` has seen to it), so
+    their normals, turned to agree with the largest, cannot sum to zero.
     """
+    if len(loops) < 2:
+        return None
     normals = [newell(points[loop]) for loop in loops]
     largest = max(normals, key=lambda n: float(n @ n))
     normal = sum((n if n @ largest >= 0 else -n) for n in normals)
-    if not np.any(normal):
-        return "its loops lie along a line"
     every = sorted({i for loop in loops for i in loop})
     flat = dict(zip(every, project(points[every], normal)))
 
@@ -306,6 +314,14 @@ def _obj_objects(path: Path) -> list[tuple[np.ndarray, list[list[int]]]]:
             # each, as ``_simple_loops`` has them (probed); anything else is
             # Blender's own triangulation, which is not reproduced here.
             loops = _simple_loops(corners)
+            flat = [_along_a_line(points[loop]) for loop in loops]
+            if all(flat):
+                continue        # none left, or all flat: Blender drops it (probed)
+            if any(flat):
+                raise ValueError(
+                    f"face {number} names a vertex twice, and one of its loops lies "
+                    f"along a line: Blender rebuilds such a face by its own "
+                    f"triangulation, which this reader does not reproduce")
             conflict = _loops_conflict(points, loops)
             if conflict:
                 raise ValueError(

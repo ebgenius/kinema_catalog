@@ -379,3 +379,18 @@ def test_an_obj_the_reader_refuses_fails_naming_the_reader(tmp_path, blender):
     (problem,) = item["problems"]
     assert problem.startswith("import: meshkit OBJ reader could not read the source")
     assert "lies inside or on another" in problem
+
+
+@pytest.mark.parametrize("face", ["1 2 1 3", "1 2 4 1", "1 2 4 1 5 6"])
+def test_an_obj_with_a_face_that_collapses_converts_the_rest(tmp_path, blender, face):
+    # No loop left, or loops along a line: Blender drops the face, and so
+    # does the import check.
+    obj = tmp_path / "catalog" / "src" / "fork" / "part.obj"
+    obj.parent.mkdir(parents=True)
+    obj.write_text("v 0 0 0\nv 0.1 0 0\nv 0.1 0.1 0\nv 0.2 0 0\nv -0.1 0 0\nv -0.2 0 0\n"
+                   f"f {face}\nf 1 2 3\n", encoding="utf-8")
+
+    item, glb = convert_one(tmp_path, obj, blender)
+
+    assert item["status"] == "converted", item["problems"]
+    assert trimesh.load(str(glb), force="mesh", process=False).faces.shape == (1, 3)
