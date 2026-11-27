@@ -1,4 +1,8 @@
-"""``meshkit convert``: .dae visual meshes to .glb, gated.
+"""``meshkit convert``: .dae, .stl and .obj visual meshes to .glb, gated.
+
+For an .stl or .obj, checks 3 and 4 read the file without pycollada
+(``external.plain_stats``), and the shading check holds the new normals to what
+smoothing by angle makes instead of to the file's (``_judge_plain``).
 
 Every GLB is produced in a staging directory and only moved next to its source
 once it has passed all four checks:
@@ -10,7 +14,9 @@ once it has passed all four checks:
 4. the shading, raw .dae against GLB with no Blender in between
    (``gate.compare_normals``).
 
-A file that fails any of them stays out of the tree, and the report says why. Nothing
+A file that fails any of them stays out of the tree, and the report says why. So
+do two sources that would write the same GLB (``part.dae`` beside ``part.stl``):
+neither is converted, rather than one silently replacing the other. Nothing
 is ever deleted: the .dae stays where it is, because rewriting references to
 the new file is a separate, reviewable step.
 """
@@ -19,6 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import shutil
 import tempfile
@@ -32,8 +39,9 @@ import collada
 from meshkit import __version__
 from meshkit._vendor import VENDORED_FILE, importer_provenance
 from meshkit.blender import TIMED_OUT, Blender, run_script
-from meshkit.external import dae_stats, glb_stats
-from meshkit.gate import DEFAULT, Tolerance, compare, compare_normals
+from meshkit.external import dae_stats, glb_stats, plain_loader, plain_stats, smoothing_error
+from meshkit.gate import (DEFAULT, SMOOTH_ANGLE, Tolerance, check_smoothed, compare,
+                          compare_normals)
 
 JOB_SCRIPT = Path(__file__).parent / "blender_side" / "job.py"
 
@@ -70,6 +78,12 @@ class Item:
     output_sha256: str | None = None
     up_axis: str | None = None
     unit_meter: float | None = None
+    # STL and OBJ only: what was done to the mesh on its way to the GLB.
+    smooth_angle: float | None = None
+    welded_vertices: int | None = None
+    doubled_faces: int | None = None        # triangles, dropped as repeats of earlier ones
+    dropped_normals: bool | None = None     # an OBJ's own, replaced by the smoothing
+    neutral_material: bool | None = None
     importer_warnings: list[str] = field(default_factory=list)
     # glTF export options this Blender does not have, so the export ran without them.
     dropped_export_options: list[str] = field(default_factory=list)
@@ -113,6 +127,20 @@ def _publish(staged: Path, output: Path) -> None:
         raise
 
 
+def _same_file(path: Path) -> str:
+    """One key for every spelling of a path, case included.
+
+    Case-folded everywhere, not only where the filesystem ignores case
+    (Windows, and macOS by default): ``Part.glb`` and ``part.glb`` are two
+    files on Linux but one in a clone on either of the others, and a fork is
+    cloned on all three. The directory is resolved, so a symlinked folder
+    meets its target; the file name is not, since ``_publish`` replaces the
+    entry itself rather than what it points to.
+    """
+    resolved = os.path.join(os.path.realpath(path.parent), path.name)
+    return os.path.normcase(resolved).casefold()
+
+
 def _judge(result: dict, tolerance: Tolerance) -> tuple[list[str], dict | None]:
     """The checks for one Blender result: problems found, and the outside numbers."""
     if not result.get("ok"):
@@ -127,6 +155,8 @@ def _judge(result: dict, tolerance: Tolerance) -> tuple[list[str], dict | None]:
     except Exception as exc:  # noqa: BLE001 - an unreadable GLB is a failure, not a crash
         problems.append(f"trimesh could not read the GLB: {type(exc).__name__}: {exc}")
         return problems, external
+    if Path(result["source"]).suffix.lower() != ".dae":
+        return problems + _judge_plain(result, external, tolerance), external
     try:
         source = dae_stats(Path(result["source"]))
         external["source_normal_deviation"] = source["normal_deviation"]
@@ -143,6 +173,39 @@ def _judge(result: dict, tolerance: Tolerance) -> tuple[list[str], dict | None]:
     return problems, external
 
 
+def _judge_plain(result: dict, external: dict, tolerance: Tolerance) -> list[str]:
+    """The STL and OBJ checks that start from the file rather than the import.
+
+    * **the file against the import:** ``plain_stats`` reads the file raw,
+      welds it as the job does, and its triangles, area, centroid and bounds must match
+      what Blender imported -- positions included, since both read it in the
+      link's frame. Geometry unchanged means this.
+    * **the shading:** the normals are new on purpose, so they cannot be held
+      against the file's. Instead they must be what smoothing by angle makes
+      of the GLB's own triangles (``external.smoothing_error``,
+      ``gate.check_smoothed``).
+    """
+    problems: list[str] = []
+    path = Path(result["source"])
+    try:
+        source = plain_stats(path)
+    except Exception as exc:  # noqa: BLE001
+        # Named, since an OBJ is read by meshkit's own reader, not trimesh.
+        return [f"import: {plain_loader(path)} could not read the source: "
+                f"{type(exc).__name__}: {exc}"]
+    external["source_triangles"] = source["triangles"]
+    external["source_file_triangles"] = source["file_triangles"]
+    problems += [f"import: {p}" for p in compare(source, result["source_stats"], tolerance)]
+    try:
+        external["smoothing"] = smoothing_error(Path(result["staged"]), result["smooth_angle"])
+    except Exception as exc:  # noqa: BLE001
+        return problems + [f"shading: could not measure the smoothing: "
+                           f"{type(exc).__name__}: {exc}"]
+    problems += [f"shading: {p}" for p in check_smoothed(
+        external["smoothing"], result["smooth_angle"], tolerance)]
+    return problems
+
+
 def convert(
     targets: list[Target],
     blender: Blender,
@@ -152,6 +215,7 @@ def convert(
     force: bool = False,
     dry_run: bool = False,
     tolerance: Tolerance = DEFAULT,
+    smooth_angle: float = SMOOTH_ANGLE,
     progress=print,
 ) -> dict:
     provenance = importer_provenance()
@@ -167,9 +231,21 @@ def convert(
     }
     items: list[Item] = []
 
+    # Two sources, one GLB: part.dae and part.stl side by side. Both would pass
+    # and the second would replace the first, so neither goes.
+    claims: dict[str, list[Target]] = {}
+    for target in targets:
+        claims.setdefault(_same_file(target.output), []).append(target)
+
     pending: list[Target] = []
     for target in targets:
-        if target.output.exists() and not force:
+        rivals = [t for t in claims[_same_file(target.output)] if t is not target]
+        if rivals:
+            items.append(Item(target.id, str(target.source), str(target.output), "failed",
+                              reason="the same GLB is the output of "
+                                     + ", ".join(str(t.source) for t in rivals)
+                                     + "; neither is converted"))
+        elif target.output.exists() and not force:
             items.append(Item(target.id, str(target.source), str(target.output),
                               "skipped", reason="output exists (use --force to redo)"))
         else:
@@ -188,7 +264,7 @@ def convert(
         for number, start in enumerate(range(0, len(pending), batch_size), start=1):
             batch = pending[start:start + batch_size]
             progress(f"batch {number}: {len(batch)} mesh(es)")
-            jobs = [{"id": t.id, "source": str(t.source),
+            jobs = [{"id": t.id, "source": str(t.source), "smooth_angle": smooth_angle,
                      "staged": str(staging / f"{t.id}.glb")} for t in batch]
             jobs_file = staging / f"jobs-{number}.json"
             results_file = staging / f"results-{number}.json"
@@ -220,6 +296,11 @@ def convert(
                     continue
                 item.up_axis = result.get("up_axis")
                 item.unit_meter = result.get("unit_meter")
+                item.smooth_angle = result.get("smooth_angle")
+                item.welded_vertices = result.get("welded_vertices")
+                item.doubled_faces = result.get("doubled_faces")
+                item.dropped_normals = result.get("dropped_normals")
+                item.neutral_material = result.get("neutral_material")
                 item.importer_warnings = result.get("importer_warnings", [])
                 item.dropped_export_options = result.get("dropped_export_options", [])
                 item.traceback = result.get("traceback")
@@ -263,6 +344,25 @@ def _finish(report: dict, report_path: Path) -> dict:
         counts[item["status"]] = counts.get(item["status"], 0) + 1
     report["summary"] = counts
     report["finished"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    # The report returned is the one written, so a caller sees what a reader
+    # of the file sees.
+    report = _json_safe(report)
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    report_path.write_text(json.dumps(report, indent=2, allow_nan=False), encoding="utf-8")
     return report
+
+
+def _json_safe(value):
+    """``value`` with every NaN or infinity as None: JSON has no word for them.
+
+    Python's ``json`` would write ``NaN`` and ``Infinity``, which a strict
+    reader refuses, so one bad measurement would make the whole report
+    unreadable. The item's problems already say what was not a number.
+    """
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, dict):
+        return {key: _json_safe(v) for key, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    return value

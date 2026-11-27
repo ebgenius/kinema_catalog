@@ -14,7 +14,7 @@ from pathlib import Path
 from meshkit import __version__
 from meshkit._vendor import COMMIT, SHA256, importer_provenance
 from meshkit.blender import ENV_VAR, BlenderNotFound, find_blender, run_script
-from meshkit.gate import Tolerance
+from meshkit.gate import SMOOTH_ANGLE, Tolerance
 
 
 def find_root(start: Path) -> Path:
@@ -29,12 +29,12 @@ def _root(args) -> Path:
     return (args.root or find_root(Path.cwd())).resolve()
 
 
-def _scan(root: Path):
+def _scan(root: Path, suffixes: tuple[str, ...] | None = None):
     from meshkit.catalog import CatalogError
-    from meshkit.scan import scan
+    from meshkit.scan import MESH_SUFFIX, scan
 
     try:
-        return scan(root)
+        return scan(root, suffixes=suffixes or (MESH_SUFFIX,))
     except CatalogError as exc:
         raise SystemExit(f"meshkit: {exc}") from None
 
@@ -175,6 +175,7 @@ def cmd_scan(args) -> int:
 
 def cmd_convert(args) -> int:
     from meshkit.convert import convert, plan
+    from meshkit.scan import MESH_SUFFIXES
 
     root = _root(args)
     if args.file:
@@ -182,6 +183,10 @@ def cmd_convert(args) -> int:
         missing = [s for s in sources if not s.is_file()]
         if missing:
             raise SystemExit("meshkit: no such file: " + ", ".join(map(str, missing)))
+        other = [s for s in sources if s.suffix.lower() not in MESH_SUFFIXES]
+        if other:
+            raise SystemExit("meshkit: convert takes " + ", ".join(MESH_SUFFIXES)
+                             + " files, not: " + ", ".join(map(str, other)))
         if args.out:
             # --out mirrors each source's path under the catalog root.
             outside = [s for s in sources if not s.is_relative_to(root)]
@@ -191,7 +196,7 @@ def cmd_convert(args) -> int:
     else:
         if not args.fork:
             raise SystemExit("meshkit convert: name at least one --fork, or --file")
-        inventory = _scan(root)
+        inventory = _scan(root, MESH_SUFFIXES)
         unknown = sorted(set(args.fork) - set(inventory.forks()))
         if unknown:
             raise SystemExit("meshkit: unknown fork(s): " + ", ".join(unknown))
@@ -228,6 +233,7 @@ def cmd_convert(args) -> int:
         dry_run=args.dry_run,
         tolerance=Tolerance(position=args.tolerance_position, area=args.tolerance_area,
                             normals=args.tolerance_normals),
+        smooth_angle=args.smooth_angle,
     )
     summary = ", ".join(f"{count} {status}" for status, count in sorted(report["summary"].items()))
     print(f"{summary}\nreport: {report_path}")
@@ -342,6 +348,18 @@ def _same_file(a: Path, b: Path) -> bool:
 
 # ------------------------------------------------------------------------- main
 
+def _smooth_angle(text: str) -> float:
+    """Between 0 and 180 degrees, ends excluded: 0 smooths nothing and 180 everything,
+    and neither is a choice anyone means."""
+    try:
+        value = float(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"not a number: {text!r}") from None
+    if not 0 < value < 180:
+        raise argparse.ArgumentTypeError(f"must be between 0 and 180 degrees, not {value:g}")
+    return value
+
+
 def _batch_size(text: str) -> int:
     """At least 1: a zero step crashes the batching, and a negative one converts
     nothing and reports success."""
@@ -417,11 +435,13 @@ def build_parser() -> argparse.ArgumentParser:
     output.add_argument("--json", action="store_true")
     scan_p.set_defaults(func=cmd_scan)
 
-    conv = sub.add_parser("convert", help="convert visual .dae meshes to verified .glb")
+    conv = sub.add_parser("convert", help="convert visual .dae, .stl and .obj meshes to "
+                          "verified .glb")
     # One or the other: given both, one selection would be silently dropped.
     which = conv.add_mutually_exclusive_group()
     which.add_argument("--fork", action="append", help="convert a submodule's visual meshes")
-    which.add_argument("--file", action="append", help="convert specific .dae files")
+    which.add_argument("--file", action="append",
+                       help="convert specific .dae, .stl or .obj files")
     conv.add_argument("--out", type=Path, help="write under this directory instead of in place")
     conv.add_argument("--report", type=Path, help="report path (default: out/meshkit/)")
     conv.add_argument("--batch-size", type=_batch_size, default=25)
@@ -430,7 +450,11 @@ def build_parser() -> argparse.ArgumentParser:
     conv.add_argument("--tolerance-position", type=float, default=Tolerance().position)
     conv.add_argument("--tolerance-area", type=float, default=Tolerance().area)
     conv.add_argument("--tolerance-normals", type=float, default=Tolerance().normals,
-                      help="degrees, per percentile of normal deviation")
+                      help="degrees: a .dae's normals from the file's, per percentile; an "
+                           "STL's or OBJ's (p99.9) from what smoothing by angle makes")
+    conv.add_argument("--smooth-angle", type=_smooth_angle, default=SMOOTH_ANGLE,
+                      help="degrees: an STL or OBJ is smoothed where faces meet at under "
+                           f"this (default {SMOOTH_ANGLE:g})")
     conv.add_argument("--allow-importer-drift", action="store_true")
     conv.set_defaults(func=cmd_convert)
     return parser

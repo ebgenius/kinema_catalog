@@ -1,11 +1,14 @@
 # meshkit
 
-Convert the catalog's COLLADA (`.dae`) visual meshes to glTF binary (`.glb`), through
-the Blender installed on your machine, and refuse to write any file that doesn't
+Convert the catalog's visual meshes (`.dae`, `.stl` and `.obj`) to glTF binary (`.glb`),
+through the Blender installed on your machine, and refuse to write any file that doesn't
 measure the same as its source.
 
-It converts through **kinema's own COLLADA importer**, so a GLB made here is the robot
-kinema shows. Every GLB is checked three ways before it leaves staging.
+A `.dae` converts through **kinema's own COLLADA importer**, so a GLB made here is the
+robot kinema shows, normals and colours as the file has them (an instance whose
+material fails to bind comes in without it; see *Lost placement* below). An `.stl` or `.obj` is
+smoothed by angle on the way, the rule Kinema applies on import. Every GLB is checked
+several ways before it leaves staging.
 
 It also builds the catalog's index, `catalog.json`, from `catalog/*.yaml` (see
 [`catalog/README.md`](../../catalog/README.md)).
@@ -209,9 +212,11 @@ minutes), so one that hangs xacro or holds a pathological mesh costs only its ow
 uv run meshkit convert --fork franka_description            # next to each .dae
 uv run meshkit convert --fork franka_description --out ../../out/try   # a mirror, for review
 uv run meshkit convert --file path/to/one.dae --force
+uv run meshkit convert --file path/to/link.stl --smooth-angle 20
 ```
 
-Each `.glb` is written next to its `.dae` in the fork. The `.dae` is never modified or
+Each `.glb` is written next to its source mesh in the fork, or with `--out`, at the same
+place under that mirror. The source is never modified or
 deleted, and existing `.glb` files are skipped unless you pass `--force`. Pointing the
 descriptions at the new files is a separate step, reviewed as its own PR in each fork.
 A JSON report (default `out/meshkit/convert-<time>.json`) records the Blender version,
@@ -236,6 +241,81 @@ averaging away every file's normals (see below). Tolerances are flags:
 
 **Axes:** glTF is Y-up by specification, so the GLB stores Y-up. Blender's glTF
 importer converts it back, and the GLB lands in kinema exactly where the `.dae` did.
+
+### STL and OBJ
+
+These carry no shading worth keeping: an STL has one normal per face and no material,
+and an OBJ has whatever its exporter wrote. So instead of being copied, they are
+smoothed on the way:
+
+1. **Imported as the numbers say**, in metres, axes untouched (Y forward, Z up), because
+   ROS reads both formats raw in the link's frame. The OBJ importer's default would
+   rotate every mesh from Y-up.
+2. **Welded:** corners at exactly the same position are joined, so faces share edges.
+   Not *nearly* the same: KUKA's KR 16 R2010-2 has 0.1 nm edges that a 1 nm weld
+   collapsed. (Blender 5.2's STL importer already shares identical corners.) A
+   face on the same corners as an earlier one in its object, in any winding or
+   starting corner, is dropped whole, as the `.dae` path drops it; this is done
+   before the weld, which would otherwise settle such a pair itself and keep the
+   later face. Blender alone is not consistent here: its STL importer drops them,
+   its OBJ importer keeps them. An OBJ's quads and larger polygons are then split into triangles, so the
+   smoothing works on the faces the GLB holds, and a triangle on the same corners
+   as an earlier one is dropped too, such as one the file also writes on its own.
+   Always the first in the file stays, with its material. The report counts what
+   went in triangles (`doubled_faces`): a doubled quad is two.
+3. **Smoothed by angle:** Blender's Shade Smooth by Angle at 30 degrees
+   (`--smooth-angle`), so faces meeting at less than that shade as one surface and
+   sharper edges stay sharp. Geometry is unchanged; only the normals are new. An OBJ's
+   own normals (`vn`) are cleared first, with the sharp edges its importer marks from
+   them, and the report says so (`dropped_normals`): otherwise they outrank the
+   smoothing, and a faceted OBJ leaves faceted. The angle alone decides.
+4. **A material:** an OBJ keeps its own. An STL, having none, gets one named
+   `meshkit_neutral` (mid-grey, roughness 0.5), so it can be found and replaced. It is
+   always a new material: an OBJ's own material of that name stays as it is, and the
+   new one takes Blender's next free suffix (`meshkit_neutral.001`, say).
+
+Two sources that would write the same GLB, a `part.dae` beside a `part.stl`, are both
+refused, and the report names the other. Otherwise the second would replace the first.
+
+An OBJ face that names one vertex twice is repaired by Blender's importer before
+anything else. Where its loops share one corner and meet nowhere else
+(`f 1 2 3 1 4 5`, two triangles), the import check reads it the same way. Otherwise
+Blender rebuilds the face with its own constrained triangulation. A loop inside
+another becomes a hole, crossing loops can come out as no face at all, and a corner
+lying on another loop's edge splits that edge. meshkit's reader does not reproduce
+that, so the mesh fails and the report says why, rather than being checked against a
+guess. Loops that share two corners or more are refused with them. A face left with no
+loop (`f 1 2 1 3`), or with loops that all lie along a line, is dropped, as Blender
+drops it, and the rest of the mesh converts. So does a face naming a vertex the file does not have. The report names the
+reader that failed: meshkit's own for an OBJ, trimesh for an STL.
+
+The gate is the same except where the source's normals were the reference:
+
+| check | compares | catches |
+|---|---|---|
+| round trip, trimesh | as for `.dae` | as for `.dae` |
+| import | the raw file, read without Blender (an STL by trimesh, an OBJ object by object by meshkit's own reader) and welded the same way, against Blender's import: triangles (exact), area, centroid, bounds | a rotated or rescaled import, triangles lost in the weld |
+| shading | the `.glb`'s corner normals against what smoothing by angle makes of its own triangles, rebuilt without Blender: the 99.9th percentile must be within `--tolerance-normals` | normals averaged across sharp edges, and smoothing lost |
+
+Smoothing by angle is a rule, so the shading check runs it again, from the GLB read by
+trimesh. An edge is sharp where its faces meet at more than the angle, or where it is
+not shared by exactly two faces wound alike. At each vertex the faces joined by the
+other edges form a fan, and each corner's normal is the fan's face normals weighted by
+their angles at the vertex, which is Blender's rule. Each corner is measured against
+that. Normals averaged across a sharp edge fail, and so do flat normals wherever
+smoothing would have changed them: on a curved surface. On a flat one the two are the
+same, so there is nothing to lose there and nothing to see. A cone's tip
+passes: its normal points up the axis, 84 degrees from every face, which is what the
+rule gives it.
+
+Two allowances, both for float32. An edge within 0.01 degrees of the angle may go
+either way: a corner whose fan turns on such edges must match them all smooth or all
+sharp, and one that matches neither, perhaps a mix, is not checked. And corners beside a face whose normal float32 rounding leaves uncertain by
+more than 5 degrees are not checked: next to such slivers, Blender's own choice of
+sharp edges is noise, down to marking sharp an edge between coplanar faces. The report
+counts them (`smoothing.unchecked`). It is 1.9% of corners across G1's 49 links and the
+KR 16's 7, mostly the KR 16's sub-micrometre triangles; under half checked fails the
+mesh. On those 56 meshes the 99.9th percentile is at most 0.33 degrees.
 
 ## The vendored importer
 

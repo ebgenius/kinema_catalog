@@ -7,7 +7,9 @@
 For every job it:
 
 1. starts from an empty scene,
-2. imports the .dae with kinema's own COLLADA importer,
+2. imports the .dae with kinema's own COLLADA importer -- or an .stl or .obj
+   with Blender's own, raw, then welds it, smooths it by the job's angle and
+   gives a bare STL the neutral material --
 3. measures the imported geometry in world space,
 4. exports those objects to a glTF binary at the job's *staging* path,
 5. starts from an empty scene again and re-imports that GLB with Blender's glTF
@@ -88,6 +90,18 @@ def load_importer(path: Path):
     # under `from __future__ import annotations`, and dataclasses resolves their
     # annotations through sys.modules[cls.__module__]. An unregistered module
     # makes that lookup None and the import dies inside dataclasses.
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_polygon():
+    """meshkit's ``polygon`` module, by path: the split ``external.plain_stats`` uses."""
+    path = Path(__file__).resolve().parent.parent / "polygon.py"
+    spec = importlib.util.spec_from_file_location("meshkit_polygon", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load {path}")
+    module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
@@ -207,6 +221,250 @@ def import_glb(path: Path) -> list[bpy.types.Object]:
     return mesh_objects()
 
 
+# ------------------------------------------------------------- stl and obj
+
+# The material an STL is given, having none: named so a person or a script can
+# find it and put a real one in its place.
+NEUTRAL = "meshkit_neutral"
+
+# Weld distance, in metres: zero, so only corners at exactly the same position
+# join. A CAD export writes a shared corner once per triangle, bit for bit the
+# same. Any distance above zero also joins corners that are merely close:
+# KUKA's KR 16 R2010-2 has edges of 0.1 nm near its origin, and a 1 nm weld
+# collapsed 13 of its triangles.
+WELD = 0.0
+
+
+def import_plain(source: Path) -> list[bpy.types.Object]:
+    """An STL or OBJ imported as its numbers say, in metres, axes untouched.
+
+    ROS reads both formats raw, in the link's frame: no unit, no up axis. So
+    the axes are Y forward and Z up -- the identity -- not the OBJ importer's
+    Y-up default, which would rotate every mesh. Validation is off: it removes
+    faces, and the triangle count is held against the file's own.
+    """
+    suffix = source.suffix.lower()
+    if suffix == ".stl":
+        operator, wanted = bpy.ops.wm.stl_import, {
+            "global_scale": 1.0, "use_scene_unit": False, "use_facet_normal": False,
+            "forward_axis": "Y", "up_axis": "Z", "use_mesh_validate": False}
+    elif suffix == ".obj":
+        operator, wanted = bpy.ops.wm.obj_import, {
+            "global_scale": 1.0, "clamp_size": 0.0, "forward_axis": "Y", "up_axis": "Z",
+            "use_split_objects": True, "use_split_groups": False, "validate_meshes": False}
+    else:
+        raise ValueError(f"not an STL or OBJ file: {source.name}")
+    operator(filepath=str(source), **_supported_kwargs(operator, wanted))
+    return mesh_objects()
+
+
+def to_triangles(bm) -> int:
+    """Every face as triangles, each set of corners once; returns how many triangles went.
+
+    In file order, so the first face of each set stays, with its material:
+
+    - a face on the same vertices as an earlier face goes whole, in any
+      winding or starting corner. Split first, ``f 1 2 3 4`` and ``f 2 3 4 1``
+      would take different diagonals and leave four distinct triangles of one
+      square;
+    - then each face is split by ``polygon.triangulate``, and a triangle on
+      the same vertices as an earlier one goes -- a triangle the file also
+      writes on its own, before or after the polygon.
+
+    What went is counted in triangles, the ones each face would have made,
+    so the count closes the gap between the file's triangles and the GLB's.
+
+    Not ``bmesh.ops.triangulate``: its choice of diagonal for a warped quad is
+    its own, and a warped quad's area depends on the diagonal. The import
+    check reads the file with the same function, so both hold the same
+    triangles. Each new corner takes its old corner's data (UVs, colours), and
+    each face the old face's material and flags. After ``remove_doubles`` no
+    face repeats a vertex: the weld splits such a face at the repeat.
+    """
+    import bmesh
+
+    triangulate = load_polygon().triangulate
+    bm.verts.index_update()
+    seen_faces: set[tuple[int, ...]] = set()
+    seen_triangles: set[tuple[int, ...]] = set()
+    gone: list = []                    # faces dropped whole
+    splits: list = []                  # (polygon, the triangles of it kept)
+    dropped = 0
+    for face in list(bm.faces):        # in file order: the first of each set stays
+        loops = list(face.loops)
+        key = tuple(sorted(loop.vert.index for loop in loops))
+        if key in seen_faces:
+            gone.append(face)
+            dropped += len(loops) - 2
+            continue
+        seen_faces.add(key)
+        corners = np.array([loop.vert.co for loop in loops], dtype=np.float64)
+        kept = []
+        for triangle in triangulate(corners):
+            corner_key = tuple(sorted(loops[i].vert.index for i in triangle))
+            if corner_key in seen_triangles:
+                dropped += 1
+            else:
+                seen_triangles.add(corner_key)
+                kept.append(triangle)
+        if len(loops) > 3:
+            splits.append((face, kept))
+        elif not kept:
+            gone.append(face)
+    if gone:
+        # FACES: an edge only a dropped face used goes with it; the corners
+        # are all a kept face's.
+        bmesh.ops.delete(bm, geom=gone, context="FACES")
+    for face, kept in splits:
+        loops = list(face.loops)
+        for triangle in kept:
+            made = bm.faces.new([loops[i].vert for i in triangle], face)
+            # ``faces.new`` keeps the corners in the order given.
+            for loop, i in zip(made.loops, triangle):
+                loop.copy_from(loops[i])
+        bm.faces.remove(face)
+    return dropped
+
+
+def drop_coincident_faces(bm) -> int:
+    """Drop each face on the same positions as an earlier one; returns the triangles that went.
+
+    Run before the weld, because the weld settles such pairs itself and not
+    by file order: a red ``f 4 5 6`` and then a blue ``f 1 2 3``, vertices
+    4-6 copies of 1-3, leave only the blue one (Blender 5.2, probed) -- the
+    weld keeps the lower-numbered corners and drops the face it made a twin.
+    Keyed by position, any winding or starting corner, which is what makes
+    corners one vertex at a weld distance of zero. A face that repeats a
+    position is left to the weld, which splits it, and to ``to_triangles``.
+    """
+    import bmesh
+
+    seen: set[tuple] = set()
+    gone = []
+    dropped = 0
+    for face in bm.faces:            # in file order: the first of each set stays
+        key = tuple(sorted(tuple(v.co) for v in face.verts))
+        if len(set(key)) < len(key):
+            continue
+        if key in seen:
+            gone.append(face)
+            dropped += len(key) - 2
+        else:
+            seen.add(key)
+    if gone:
+        bmesh.ops.delete(bm, geom=gone, context="FACES")
+    return dropped
+
+
+def weld(objects: list[bpy.types.Object]) -> tuple[int, int]:
+    """Join vertices at the same position, so faces share edges; drop doubled faces.
+
+    Returns how many vertices were joined and how many triangles dropped.
+
+    Polygons (an OBJ's quads) are split into triangles here too, before
+    anything is smoothed, so the smoothing works on the faces the GLB holds
+    (``to_triangles``).
+
+    With no shared edges there is nothing to smooth across. An STL writes
+    each corner once per triangle; Blender 5.2's STL importer already shares
+    identical ones (on G1 and the KR 16 this joins nothing), so this is the
+    guarantee rather than the work, for an importer or an OBJ that does not.
+    A triangle left with two corners at one point collapses here, as Blender's
+    own validation would remove it.
+
+    Then every face on the same vertices as an earlier one in its object, in
+    any winding, is dropped, and so is every triangle that repeats an earlier
+    one once polygons are split. Blender is not consistent about these on its own:
+    the STL importer drops them, the OBJ importer keeps them, and the weld
+    drops one of a pair only if it is the weld that joined their corners --
+    and then whichever it likes (``drop_coincident_faces``). Dropped
+    always, first in the file kept, the rule is one, and the same one the .dae path applies
+    (``external._kept_faces``); ``external.plain_stats`` counts the file
+    the same way, per object.
+    """
+    import bmesh
+
+    joined = dropped = 0
+    for obj in objects:
+        bm = bmesh.new()
+        try:
+            bm.from_mesh(obj.data)
+            # Before the weld, which drops a face it makes a twin of and
+            # keeps the twin -- the later face, when the earlier one's
+            # corners are the copies.
+            dropped += drop_coincident_faces(bm)
+            before = len(bm.verts)
+            bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=WELD)
+            joined += before - len(bm.verts)
+            # Triangles before smoothing: the GLB holds triangles, and the
+            # gate rebuilds the smoothing from those. A warped quad smoothed
+            # whole has one normal the two triangles it is exported as do not.
+            dropped += to_triangles(bm)
+            bm.to_mesh(obj.data)
+        finally:
+            bm.free()
+        obj.data.update()
+    return joined, dropped
+
+
+def drop_authored_normals(objects: list[bpy.types.Object]) -> bool:
+    """Clear the normals an OBJ brought (``vn``); True if any object had them.
+
+    The OBJ importer keeps them as custom normals, which outrank smoothing: the
+    mesh would leave exactly as the file shaded it, faceted or not, and an
+    STL-like OBJ often is. It also marks sharp every edge where they differ.
+    Smoothing replaces both (``smooth_by_angle``), so the result depends on
+    the geometry and the angle alone -- which is what the gate can check.
+    """
+    dropped = False
+    for obj in objects:
+        if obj.data.has_custom_normals:
+            with bpy.context.temp_override(object=obj, active_object=obj,
+                                           selected_objects=[obj]):
+                bpy.ops.mesh.customdata_custom_splitnormals_clear()
+            dropped = True
+    return dropped
+
+
+def smooth_by_angle(objects: list[bpy.types.Object], degrees: float) -> None:
+    """Smooth where faces meet at under ``degrees``; sharper edges stay sharp.
+
+    Blender's own Shade Smooth by Angle, the rule Kinema's B8 applies on import,
+    so a converted mesh and an imported one look alike. The glTF exporter then
+    writes the resulting corner normals into the GLB.
+
+    ``keep_sharp_edges=False``: the angle alone decides. An STL has no sharp
+    marks to keep; an OBJ's come from the normals just dropped.
+    """
+    import math
+
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in objects:
+        obj.select_set(True)
+    bpy.context.view_layer.objects.active = objects[0]
+    bpy.ops.object.shade_smooth_by_angle(angle=math.radians(degrees), keep_sharp_edges=False)
+
+
+def give_neutral_material(objects: list[bpy.types.Object]) -> bool:
+    """The neutral material on every object that has none; True if any had none."""
+    bare = [obj for obj in objects if not any(slot.material for slot in obj.material_slots)]
+    if not bare:
+        return False
+    # Always a new one: an OBJ may already carry a material by this name, and
+    # it is the file's to keep. Blender then names this one meshkit_neutral.001.
+    material = bpy.data.materials.new(NEUTRAL)
+    material.use_nodes = True
+    principled = material.node_tree.nodes.get("Principled BSDF")
+    if principled is not None:
+        principled.inputs["Base Color"].default_value = (0.7, 0.7, 0.7, 1.0)
+        principled.inputs["Metallic"].default_value = 0.0
+        principled.inputs["Roughness"].default_value = 0.5
+    for obj in bare:
+        obj.data.materials.clear()
+        obj.data.materials.append(material)
+    return True
+
+
 # ------------------------------------------------------------------- the job
 
 def run_one(importer, job: dict) -> dict:
@@ -216,14 +474,28 @@ def run_one(importer, job: dict) -> dict:
     started = time.perf_counter()
     try:
         reset_scene()
-        imported = importer.import_dae(source)
-        result["importer_warnings"] = list(imported.warnings)
-        result["unit_meter"] = imported.unit_meter
-        result["up_axis"] = imported.up_axis
-        objects = list(imported.objects)
-        if not objects:
-            raise RuntimeError("the importer produced no geometry")
-        result["source_stats"] = world_stats(objects)
+        if source.suffix.lower() == ".dae":
+            imported = importer.import_dae(source)
+            result["importer_warnings"] = list(imported.warnings)
+            result["unit_meter"] = imported.unit_meter
+            result["up_axis"] = imported.up_axis
+            objects = list(imported.objects)
+            if not objects:
+                raise RuntimeError("the importer produced no geometry")
+            result["source_stats"] = world_stats(objects)
+        else:
+            objects = import_plain(source)
+            if not objects:
+                raise RuntimeError("the importer produced no geometry")
+            result["imported_stats"] = world_stats(objects)   # the file, as read
+            result["welded_vertices"], result["doubled_faces"] = weld(objects)
+            result["dropped_normals"] = drop_authored_normals(objects)
+            smooth_by_angle(objects, job["smooth_angle"])
+            result["smooth_angle"] = job["smooth_angle"]
+            result["neutral_material"] = give_neutral_material(objects)
+            # What the GLB must hold: the welded mesh, which only lost the
+            # degenerate and doubled faces (``weld``).
+            result["source_stats"] = world_stats(objects)
 
         result["dropped_export_options"] = export_glb(objects, staged)
         if not staged.is_file():

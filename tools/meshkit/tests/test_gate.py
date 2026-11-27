@@ -1,4 +1,6 @@
-from meshkit.gate import Tolerance, compare, compare_normals
+import pytest
+
+from meshkit.gate import Tolerance, check_smoothed, compare, compare_normals
 
 SOURCE = {"triangles": 100, "area": 2.0, "centroid": [0.0, 0.0, 0.5],
           "aabb_min": [-0.5, -0.5, 0.0], "aabb_max": [0.5, 0.5, 1.0]}
@@ -53,3 +55,44 @@ def test_averaged_normals_fail():
 
 def test_missing_normals_fail():
     assert compare_normals(None, [0.0, 0.0, 0.0])
+
+
+def smoothing(p99_9=0.3, corners=1000, unchecked=20):
+    # max well over the limit throughout: the gate is on the percentile.
+    return {"p99_9": p99_9, "max": 90.0, "corners": corners, "unchecked": unchecked,
+            "ambiguous_edges": 0}
+
+
+def test_normals_that_smoothing_makes_pass():
+    assert check_smoothed(smoothing(), 30.0) == []
+
+
+def test_normals_away_from_what_smoothing_makes_fail():
+    (problem,) = check_smoothed(smoothing(p99_9=5.6), 30.0)
+    assert problem == ("normals: p99.9 corner is 5.6 deg from what smoothing at 30 deg "
+                       "makes (limit 2)")
+
+
+def test_the_normals_tolerance_is_the_limit():
+    assert check_smoothed(smoothing(p99_9=1.9), 30.0) == []
+    assert check_smoothed(smoothing(p99_9=2.1), 30.0) != []
+    assert check_smoothed(smoothing(p99_9=2.1), 30.0, Tolerance(normals=3.0)) == []
+
+
+def test_a_mesh_mostly_unchecked_fails():
+    (problem,) = check_smoothed(smoothing(corners=400, unchecked=600), 30.0)
+    assert "only 40% of corners could be checked" in problem
+
+
+@pytest.mark.parametrize("measured", [
+    None, {}, smoothing(p99_9=None), smoothing(corners=0),
+])
+def test_smoothing_unmeasured_fails(measured):
+    assert check_smoothed(measured, 30.0) == [
+        "normals: no corner could be checked against smoothing by angle"]
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf")])
+def test_a_measurement_that_is_not_a_number_fails(value):
+    (problem,) = check_smoothed(smoothing(p99_9=value), 30.0)
+    assert "not a number of degrees" in problem

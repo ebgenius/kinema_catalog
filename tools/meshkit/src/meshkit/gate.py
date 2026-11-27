@@ -44,6 +44,49 @@ class Tolerance:
 
 DEFAULT = Tolerance()
 
+# Degrees. Faces meeting at less than this are smoothed across, sharper edges
+# stay sharp: the plan's rule (#24), and Kinema's B8.
+SMOOTH_ANGLE = 30.0
+
+
+# At least this share of a smoothed mesh's corners must be checkable
+# (external.smoothing_error leaves out those beside float32 slivers).
+CHECKED_SHARE = 0.5
+
+
+def check_smoothed(smoothing: dict | None, angle: float,
+                   tolerance: Tolerance = DEFAULT) -> list[str]:
+    """Reasons a smoothed mesh's normals are not what smoothing at ``angle`` makes.
+
+    An STL has no normals to keep, so its GLB's are new on purpose and cannot
+    be compared with the file's. They are compared with the rule instead:
+    ``external.smoothing_error`` rebuilds what smoothing by angle gives each
+    corner, from the GLB's own triangles, and measures the distance. Both
+    failures show -- normals averaged across a sharp edge, and smoothing lost
+    (flat normals, an exporter that dropped them) -- and a cone's tip, whose
+    normal rightly points up the axis, is no exception.
+
+    The bound is on the 99.9th percentile, not every corner: Blender's own
+    choices next to near-degenerate triangles are float32 noise. On G1 and the
+    KR 16 it is at most 0.33 degrees, so ``tolerance.normals`` leaves a wide
+    margin; losing the smoothing puts it at several degrees on a 32-sided
+    cylinder, and tens on a coarse one.
+    """
+    if not smoothing or smoothing.get("p99_9") is None or not smoothing.get("corners"):
+        return ["normals: no corner could be checked against smoothing by angle"]
+    if not math.isfinite(smoothing["p99_9"]):
+        return [f"normals: the smoothing measurement is {smoothing['p99_9']}, not a number "
+                "of degrees"]
+    problems = []
+    share = smoothing["corners"] / (smoothing["corners"] + smoothing.get("unchecked", 0))
+    if share < CHECKED_SHARE:
+        problems.append(f"normals: only {share:.0%} of corners could be checked "
+                        f"(minimum {CHECKED_SHARE:.0%}); the mesh is mostly slivers")
+    if smoothing["p99_9"] > tolerance.normals:
+        problems.append(f"normals: p99.9 corner is {smoothing['p99_9']:.1f} deg from what "
+                        f"smoothing at {angle:g} deg makes (limit {tolerance.normals:g})")
+    return problems
+
 
 def compare_normals(source: list[float] | None, candidate: list[float] | None,
                     tolerance: Tolerance = DEFAULT) -> list[str]:
